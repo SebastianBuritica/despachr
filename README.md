@@ -1,36 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Despachr - PWA de Gestión Logística
 
-## Getting Started
+Despachr es una Progressive Web Application (PWA) moderna para gestión logística de empresas de transporte de carga en Colombia y Latinoamérica. Digitaliza operaciones, elimina el uso de Excel y WhatsApp, y proporciona control en tiempo real de rutas y entregas.
 
-First, run the development server:
+## Características
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Para Conductores**: Aplicación móvil para gestionar entregas, registrar llegadas/salidas, capturar pruebas fotográficas
+- **Para Coordinadores**: Panel web para monitoreo en tiempo real de conductores y rutas
+- **Para Administradores**: Dashboard de indicadores, reportes de cumplimiento, gestión de clientes y conductores
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 con App Router
+- **Lenguaje**: TypeScript
+- **Estilos**: Tailwind CSS
+- **Base de datos**: Supabase (PostgreSQL)
+- **Autenticación**: Supabase Auth
+- **Deploy**: Vercel
+- **Storage**: Supabase Storage
+
+## Instalación
+
+### Requisitos previos
+
+- Node.js 18+
+- npm o yarn
+
+### Pasos de instalación
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone <repo-url>
+   cd despachr
+   ```
+
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar variables de entorno**
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   Edita `.env.local` con tus credenciales de Supabase:
+   - `NEXT_PUBLIC_SUPABASE_URL`: URL de tu proyecto Supabase
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Clave anónima de Supabase
+
+4. **Ejecutar en desarrollo**
+   ```bash
+   npm run dev
+   ```
+
+   Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+## Estructura del Proyecto
+
+```
+despachr/
+├── app/
+│   ├── (auth)/              # Rutas de autenticación
+│   │   ├── login/
+│   │   ├── register/
+│   │   └── layout.tsx
+│   ├── (dashboard)/         # Panel coordinador/admin
+│   │   ├── page.tsx
+│   │   └── layout.tsx
+│   ├── (driver)/            # Vista del conductor (mobile-first)
+│   │   ├── page.tsx
+│   │   └── layout.tsx
+│   ├── api/                 # API routes
+│   ├── page.tsx             # Landing page
+│   └── layout.tsx           # Layout raíz
+├── components/
+│   ├── ui/                  # Componentes base reutilizables
+│   ├── layout/              # Header, Sidebar
+│   ├── driver/              # Componentes específicos del conductor
+│   └── dashboard/           # Componentes del panel
+├── lib/
+│   ├── supabase.ts          # Cliente de Supabase
+│   └── utils.ts             # Utilidades generales
+├── types/
+│   └── index.ts             # Tipos TypeScript
+├── hooks/                   # Custom hooks
+├── public/                  # Assets estáticos
+├── tailwind.config.ts       # Configuración de Tailwind
+├── next.config.ts           # Configuración de Next.js
+├── middleware.ts            # Middleware de Next.js
+└── .env.local.example       # Variables de entorno ejemplo
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts disponibles
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev      # Inicia servidor de desarrollo
+npm run build    # Compila para producción
+npm run start    # Inicia servidor de producción
+npm run lint     # Ejecuta linter
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Paleta de Colores
 
-## Learn More
+- **Primario**: `#0F6E56` (Verde oscuro)
+- **Secundario**: `#1D9E75` (Verde claro)
+- **Fondo**: `#F8FAFC` (Gris muy claro)
 
-To learn more about Next.js, take a look at the following resources:
+## Próximos Pasos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [ ] Integración completa con Supabase (auth, database, realtime)
+- [ ] API endpoints para gestión de rutas y entregas
+- [ ] Geolocalización en tiempo real
+- [ ] Integración con Google Maps/Mapbox
+- [ ] Sistema de notificaciones
+- [ ] Generación de reportes
+- [ ] Sincronización offline
+- [ ] PWA instalable
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Desarrollo
 
-## Deploy on Vercel
+Este boilerplate proporciona una estructura sólida para comenzar. Todos los componentes UI están listos para ser utilizados y extendidos.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Agregar una nueva página
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Crea la carpeta bajo la ruta correspondiente en `app/`
+2. Crea el archivo `page.tsx`
+3. Importa y usa los componentes necesarios de `components/`
+
+### Agregar un nuevo componente
+
+1. Crea el archivo en la carpeta apropiada bajo `components/`
+2. Exporta como componente React
+3. Úsalo en las páginas
+
+## Deploy en Vercel
+
+El proyecto está configurado para deployarse en Vercel:
+
+```bash
+# Push a GitHub y conecta el repositorio en Vercel
+# Las variables de entorno se configuran en el dashboard de Vercel
+```
+
+## Licencia
+
+MIT
