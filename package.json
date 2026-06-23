@@ -6,7 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy": "bash scripts/deploy.sh",
+    "setup-env": "bash scripts/setup-env.sh",
+    "db:create-tables": "node scripts/db-create-tables.js",
+    "gh:feature": "bash scripts/github-workflow.sh feature",
+    "gh:bugfix": "bash scripts/github-workflow.sh bugfix",
+    "gh:pr": "bash scripts/github-workflow.sh pr",
+    "gh:sync": "bash scripts/github-workflow.sh sync",
+    "gh:cleanup": "bash scripts/github-workflow.sh cleanup",
+    "vercel:list": "vercel env list production",
+    "vercel:preview": "vercel deploy",
+    "vercel:prod": "vercel deploy --prod"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

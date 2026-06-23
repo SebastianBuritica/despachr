@@ -1,0 +1,71 @@
+{
+  "skills": {
+    "deploy-vercel": {
+      "description": "Deploy changes to Vercel production",
+      "command": "vercel deploy --prod",
+      "cwd": "${projectRoot}",
+      "successMessage": "✓ Deployed to https://despachr.vercel.app"
+    },
+    "preview-vercel": {
+      "description": "Create a preview deployment on Vercel",
+      "command": "vercel deploy",
+      "cwd": "${projectRoot}",
+      "successMessage": "✓ Preview deployment created"
+    },
+    "env-vercel": {
+      "description": "View Vercel environment variables",
+      "command": "vercel env list production",
+      "cwd": "${projectRoot}"
+    },
+    "supabase-status": {
+      "description": "Check Supabase project status",
+      "command": "curl -s https://api.supabase.com/v1/projects -H 'Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}' | jq '.[] | select(.name==\"despachr\") | {name, status, db_region}'",
+      "cwd": "${projectRoot}"
+    },
+    "github-pr-create": {
+      "description": "Create a pull request on GitHub",
+      "command": "gh pr create --title '${title}' --body '${body}' --head $(git rev-parse --abbrev-ref HEAD) --base main",
+      "cwd": "${projectRoot}",
+      "interactive": true
+    },
+    "github-pr-list": {
+      "description": "List open pull requests",
+      "command": "gh pr list --state open",
+      "cwd": "${projectRoot}"
+    },
+    "github-issue-create": {
+      "description": "Create a GitHub issue",
+      "command": "gh issue create --title '${title}' --body '${body}'",
+      "cwd": "${projectRoot}",
+      "interactive": true
+    },
+    "build-local": {
+      "description": "Build the project locally",
+      "command": "npm run build",
+      "cwd": "${projectRoot}",
+      "successMessage": "✓ Build completed successfully"
+    },
+    "dev-server": {
+      "description": "Start development server",
+      "command": "npm run dev",
+      "cwd": "${projectRoot}",
+      "successMessage": "✓ Dev server running on http://localhost:3000"
+    },
+    "lint-check": {
+      "description": "Run ESLint on the project",
+      "command": "npm run lint",
+      "cwd": "${projectRoot}"
+    }
+  },
+  "permissions": {
+    "read": ["**/*.ts", "**/*.tsx", "**/*.json"],
+    "write": [".env.local", "app/**/*", "components/**/*", "lib/**/*", "types/**/*"],
+    "bash": ["npm", "git", "gh", "vercel", "curl", "jq"]
+  },
+  "hooks": {
+    "before-commit": {
+      "command": "npm run lint",
+      "description": "Run linter before committing"
+    }
+  }
+}
