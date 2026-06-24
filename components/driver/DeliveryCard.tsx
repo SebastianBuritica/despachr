@@ -27,20 +27,20 @@ export function DeliveryCard({ delivery, onArrive, onComplete }: DeliveryCardPro
                 </div>
               </div>
             </div>
-            <Badge variant={delivery.status === 'completed' ? 'success' : 'default'}>
-              {delivery.status}
+            <Badge variant={delivery.estado === 'entregado' ? 'success' : 'default'}>
+              {delivery.estado}
             </Badge>
           </div>
 
           {delivery.notes && <p className="text-sm text-gray-600 italic">{delivery.notes}</p>}
 
           <div className="flex gap-2">
-            {delivery.status === 'pending' && onArrive && (
+            {delivery.estado === 'pendiente' && onArrive && (
               <Button size="sm" onClick={onArrive} className="flex-1">
                 Llegué
               </Button>
             )}
-            {delivery.status === 'arrived' && onComplete && (
+            {delivery.estado === 'en_punto' && onComplete && (
               <Button size="sm" onClick={onComplete} className="flex-1">
                 Completar
               </Button>

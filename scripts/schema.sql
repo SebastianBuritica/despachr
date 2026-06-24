@@ -46,7 +46,7 @@ create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   email       text not null,
   name        text not null,
-  role        text not null check (role in ('admin', 'coordinator', 'driver')),
+  role        text not null check (role in ('admin', 'coordinador', 'conductor')),
   phone       text,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -58,7 +58,7 @@ alter table public.profiles enable row level security;
 create policy "profiles_select" on public.profiles
   for select using (
     id = auth.uid()
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 create policy "profiles_update_self" on public.profiles
@@ -81,8 +81,8 @@ create table if not exists public.clients (
   city            text not null,
   department      text not null,
   contact_person  text,
-  tipo_cliente    text check (tipo_cliente in ('exclusivo', 'consolidado')),
-  tarifa_flete    numeric(12,2),
+  tipo_servicio   text check (tipo_servicio in ('paqueteo', 'consolidado', 'exclusivo')),
+  tarifa_flete    numeric(12,2),  -- tarifa base cobrada al cliente (coordinator puede verla)
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -91,7 +91,7 @@ alter table public.clients enable row level security;
 
 -- Coordinator y admin leen; solo admin escribe (tarifas = dato sensible).
 create policy "clients_select" on public.clients
-  for select using (public.get_my_role() in ('admin', 'coordinator'));
+  for select using (public.get_my_role() in ('admin', 'coordinador'));
 
 create policy "clients_admin_write" on public.clients
   for all using (public.get_my_role() = 'admin')
@@ -121,7 +121,7 @@ alter table public.drivers enable row level security;
 create policy "drivers_select" on public.drivers
   for select using (
     id = auth.uid()
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 create policy "drivers_admin_write" on public.drivers
@@ -139,7 +139,7 @@ create table if not exists public.weekly_plans (
   week_start_date  date not null,
   week_end_date    date not null,
   estado           text not null default 'borrador'
-                     check (estado in ('borrador', 'activa', 'cerrada', 'archivada')),
+                     check (estado in ('borrador', 'confirmado', 'en_ejecucion', 'completado')),
   created_by       uuid not null references public.profiles(id),
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
@@ -148,11 +148,11 @@ create table if not exists public.weekly_plans (
 alter table public.weekly_plans enable row level security;
 
 create policy "weekly_plans_select" on public.weekly_plans
-  for select using (public.get_my_role() in ('admin', 'coordinator'));
+  for select using (public.get_my_role() in ('admin', 'coordinador'));
 
 create policy "weekly_plans_write" on public.weekly_plans
-  for all using (public.get_my_role() in ('admin', 'coordinator'))
-  with check (public.get_my_role() in ('admin', 'coordinator'));
+  for all using (public.get_my_role() in ('admin', 'coordinador'))
+  with check (public.get_my_role() in ('admin', 'coordinador'));
 
 create index if not exists idx_weekly_plans_week_start on public.weekly_plans(week_start_date);
 create index if not exists idx_weekly_plans_estado     on public.weekly_plans(estado);
@@ -167,7 +167,7 @@ create table if not exists public.routes (
   driver_id       uuid not null references public.drivers(id),
   fecha           date not null,
   estado          text not null default 'pendiente'
-                    check (estado in ('pendiente', 'iniciada', 'completada', 'cancelada')),
+                    check (estado in ('pendiente', 'en_curso', 'completada', 'cancelada')),
   hora_inicio     timestamptz,
   hora_fin        timestamptz,
   distancia_km    numeric(10,2),
@@ -183,18 +183,18 @@ alter table public.routes enable row level security;
 create policy "routes_select" on public.routes
   for select using (
     driver_id = auth.uid()
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 -- El conductor puede actualizar SUS rutas (ej: iniciar/cerrar).
 create policy "routes_driver_update" on public.routes
   for update using (
     driver_id = auth.uid()
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 create policy "routes_coord_write" on public.routes
-  for insert with check (public.get_my_role() in ('admin', 'coordinator'));
+  for insert with check (public.get_my_role() in ('admin', 'coordinador'));
 
 create index if not exists idx_routes_weekly_plan on public.routes(weekly_plan_id);
 create index if not exists idx_routes_driver      on public.routes(driver_id);
@@ -214,8 +214,9 @@ create table if not exists public.deliveries (
   latitude                 numeric(10,8),
   longitude                numeric(11,8),
   numero_secuencia         integer not null,
+  valor_flete              numeric(12,2),  -- cobrado al cliente por esta entrega (coordinator visible)
   estado                   text not null default 'pendiente'
-                             check (estado in ('pendiente', 'en_punto', 'completada', 'fallida', 'rechazada')),
+                             check (estado in ('pendiente', 'en_punto', 'entregado', 'novedad', 'no_entregado')),
   hora_llegada_punto       timestamptz,
   hora_salida_punto        timestamptz,
   tiempo_en_punto_minutos  integer,
@@ -231,18 +232,18 @@ alter table public.deliveries enable row level security;
 create policy "deliveries_select" on public.deliveries
   for select using (
     route_id in (select id from public.routes where driver_id = auth.uid())
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 -- El conductor actualiza el estado de las entregas de SUS rutas.
 create policy "deliveries_driver_update" on public.deliveries
   for update using (
     route_id in (select id from public.routes where driver_id = auth.uid())
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 create policy "deliveries_coord_write" on public.deliveries
-  for insert with check (public.get_my_role() in ('admin', 'coordinator'));
+  for insert with check (public.get_my_role() in ('admin', 'coordinador'));
 
 create index if not exists idx_deliveries_route  on public.deliveries(route_id);
 create index if not exists idx_deliveries_client on public.deliveries(client_id);
@@ -260,7 +261,7 @@ create table if not exists public.delivery_events (
   driver_id     uuid not null references public.drivers(id),
   tipo_evento   text not null
                   check (tipo_evento in ('inicio_ruta', 'fin_ruta', 'llegada_punto',
-                                         'salida_punto', 'foto_cumplido', 'novedad')),
+                                         'salida_punto', 'cumplido', 'novedad')),
   timestamp     timestamptz not null default now(),
   latitude      numeric(10,8),
   longitude     numeric(11,8),
@@ -281,7 +282,7 @@ create policy "events_driver_insert" on public.delivery_events
 create policy "events_select" on public.delivery_events
   for select using (
     driver_id = auth.uid()
-    or public.get_my_role() in ('admin', 'coordinator')
+    or public.get_my_role() in ('admin', 'coordinador')
   );
 
 create index if not exists idx_events_delivery  on public.delivery_events(delivery_id);
@@ -298,8 +299,8 @@ create table if not exists public.issues (
   id                uuid primary key default gen_random_uuid(),
   delivery_id       uuid not null references public.deliveries(id) on delete cascade,
   tipo_novedad      text not null
-                      check (tipo_novedad in ('direccion_errada', 'cliente_no_encontrado',
-                                              'paquete_danado', 'acceso_denegado', 'otro')),
+                      check (tipo_novedad in ('rechazo', 'faltante', 'danado',
+                                              'cliente_ausente', 'direccion_errada', 'otro')),
   descripcion       text not null,
   foto_novedad_url  text,
   estado            text not null default 'reportada'
@@ -325,7 +326,7 @@ create policy "issues_driver_insert" on public.issues
 
 create policy "issues_select" on public.issues
   for select using (
-    public.get_my_role() in ('admin', 'coordinator')
+    public.get_my_role() in ('admin', 'coordinador')
     or delivery_id in (
       select d.id from public.deliveries d
       join public.routes r on r.id = d.route_id
@@ -335,7 +336,7 @@ create policy "issues_select" on public.issues
 
 -- Coordinator y admin resuelven novedades.
 create policy "issues_coord_update" on public.issues
-  for update using (public.get_my_role() in ('admin', 'coordinator'));
+  for update using (public.get_my_role() in ('admin', 'coordinador'));
 
 create index if not exists idx_issues_delivery on public.issues(delivery_id);
 create index if not exists idx_issues_tipo      on public.issues(tipo_novedad);
@@ -356,8 +357,8 @@ create table if not exists public.client_invoices (
   valor_total           numeric(14,2),
   valor_flete_cobrado   numeric(14,2),
   margen_operativo      numeric(14,2),
-  estado                text not null default 'borrador'
-                          check (estado in ('borrador', 'enviada_sistran', 'facturada', 'pagada', 'cancelada')),
+  estado                text not null default 'emitida'
+                          check (estado in ('emitida', 'enviada', 'pagada', 'vencida')),
   fecha_emision         date,
   fecha_vencimiento     date,
   sistran_sync_id       text,
@@ -375,6 +376,34 @@ create policy "invoices_admin_only" on public.client_invoices
 create index if not exists idx_invoices_client       on public.client_invoices(client_id);
 create index if not exists idx_invoices_weekly_plan  on public.client_invoices(weekly_plan_id);
 create index if not exists idx_invoices_estado        on public.client_invoices(estado);
+
+-- ============================================================================
+-- TABLA: delivery_financials  (financiero por entrega — SOLO admin)
+-- Separada de deliveries para que el coordinator NUNCA vea el pago al
+-- transportista ni el margen. El coordinator sí ve deliveries.valor_flete
+-- (lo que se cobra al cliente) para armar la malla; aquí va lo sensible.
+-- margen = valor_flete_cliente - valor_pago_transportista (columna generada).
+-- ============================================================================
+
+create table if not exists public.delivery_financials (
+  id                         uuid primary key default gen_random_uuid(),
+  delivery_id                uuid not null references public.deliveries(id) on delete cascade,
+  valor_flete_cliente        numeric(12,2),  -- lo que paga el cliente
+  valor_pago_transportista   numeric(12,2),  -- lo que se paga al conductor
+  margen                     numeric(12,2) generated always as
+                               (valor_flete_cliente - valor_pago_transportista) stored,
+  created_at                 timestamptz not null default now()
+);
+
+alter table public.delivery_financials enable row level security;
+
+-- SOLO admin: select / insert / update. Coordinator y conductor: sin acceso.
+create policy "delivery_financials_admin_only" on public.delivery_financials
+  for all using (public.get_my_role() = 'admin')
+  with check (public.get_my_role() = 'admin');
+
+create index if not exists idx_delivery_financials_delivery
+  on public.delivery_financials(delivery_id);
 
 -- ============================================================================
 -- TRIGGER: handle_new_user()
@@ -395,7 +424,7 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'role', 'driver'),
+    coalesce(new.raw_user_meta_data->>'role', 'conductor'),
     new.raw_user_meta_data->>'phone'
   )
   on conflict (id) do nothing;
@@ -471,11 +500,11 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.estado in ('completada', 'rechazada', 'fallida') then
+  if new.estado in ('entregado', 'no_entregado', 'novedad') then
     if not exists (
       select 1 from public.deliveries
        where route_id = new.route_id
-         and estado not in ('completada', 'rechazada', 'fallida')
+         and estado not in ('entregado', 'no_entregado', 'novedad')
     ) then
       update public.routes
          set estado = 'completada',
@@ -562,10 +591,10 @@ begin
   end if;
 
   -- Clientes (idempotente por email)
-  insert into public.clients (name, email, phone, address, city, department, contact_person, tipo_cliente, tarifa_flete)
+  insert into public.clients (name, email, phone, address, city, department, contact_person, tipo_servicio, tarifa_flete)
   values
     ('Makro Colombia', 'logistica@makro.com.co', '+57 1 123 4567', 'Cra 50 # 80-10', 'Montería', 'Córdoba', 'Roberto Gómez', 'consolidado', 45000.00),
-    ('Grupo Éxito',    'despacho@exito.com.co',  '+57 1 234 5678', 'Cra 45 # 72-20', 'Barranquilla', 'Atlántico', 'María López', 'consolidado', 52000.00)
+    ('Grupo Éxito',    'despacho@exito.com.co',  '+57 1 234 5678', 'Cra 45 # 72-20', 'Barranquilla', 'Atlántico', 'María López', 'exclusivo', 52000.00)
   on conflict (email) do nothing;
 
   select id into v_makro from public.clients where email = 'logistica@makro.com.co';
@@ -590,42 +619,48 @@ begin
 
   -- Malla semanal activa (una por semana). Si ya hay una, reutilizar y no re-sembrar rutas.
   select id into v_plan from public.weekly_plans
-   where week_start_date = v_week_start and estado = 'activa' limit 1;
+   where week_start_date = v_week_start and estado = 'en_ejecucion' limit 1;
 
   if v_plan is not null then
     return 'OK (la malla de esta semana ya existía; no se re-sembraron rutas).';
   end if;
 
   insert into public.weekly_plans (week_start_date, week_end_date, estado, created_by)
-  values (v_week_start, v_week_start + 4, 'activa', v_admin)
+  values (v_week_start, v_week_start + 4, 'en_ejecucion', v_admin)
   returning id into v_plan;
 
   -- Ruta 1 (driver 1) — en progreso
   insert into public.routes (weekly_plan_id, driver_id, fecha, estado, hora_inicio, flete_pactado)
-  values (v_plan, v_drv1, current_date, 'iniciada', now() - interval '90 minutes', 95000.00)
+  values (v_plan, v_drv1, current_date, 'en_curso', now() - interval '90 minutes', 95000.00)
   returning id into v_route1;
 
-  -- Entregas ruta 1 (3 puntos, distintos estados)
-  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, estado, hora_llegada_punto, hora_salida_punto, tiempo_en_punto_minutos)
+  -- Entregas ruta 1 (3 puntos, distintos estados; valor_flete = cobrado al cliente)
+  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, valor_flete, estado, hora_llegada_punto, hora_salida_punto, tiempo_en_punto_minutos)
   values
-    (v_route1, v_makro, 'Cra 50 # 80-10, Makro Montería', 'Montería', 8.74798000, -75.88143000, 1, 'completada', now() - interval '80 minutes', now() - interval '55 minutes', 25),
-    (v_route1, v_exito, 'Cl 41 # 22-15, Éxito Montería',  'Montería', 8.75100000, -75.87900000, 2, 'en_punto',   now() - interval '20 minutes', null, null)
+    (v_route1, v_makro, 'Cra 50 # 80-10, Makro Montería', 'Montería', 8.74798000, -75.88143000, 1, 45000.00, 'entregado', now() - interval '80 minutes', now() - interval '55 minutes', 25),
+    (v_route1, v_exito, 'Cl 41 # 22-15, Éxito Montería',  'Montería', 8.75100000, -75.87900000, 2, 52000.00, 'en_punto',  now() - interval '20 minutes', null, null)
   returning id into v_deliv;
 
-  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, estado)
+  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, valor_flete, estado)
   values
-    (v_route1, v_makro, 'Cl 29 # 10-40, Bodega Sur', 'Montería', 8.73500000, -75.88500000, 3, 'pendiente');
+    (v_route1, v_makro, 'Cl 29 # 10-40, Bodega Sur', 'Montería', 8.73500000, -75.88500000, 3, 38000.00, 'pendiente');
+
+  -- Financiero por entrega (SOLO admin). Demo: pago al transportista = 70% del flete.
+  insert into public.delivery_financials (delivery_id, valor_flete_cliente, valor_pago_transportista)
+  select d.id, d.valor_flete, round(d.valor_flete * 0.70, 2)
+    from public.deliveries d
+   where d.route_id = v_route1 and d.valor_flete is not null;
 
   -- Ruta 2 (driver 2 si existe, si no driver 1) — pendiente
   insert into public.routes (weekly_plan_id, driver_id, fecha, estado, flete_pactado)
   values (v_plan, coalesce(v_drv2, v_drv1), current_date, 'pendiente', 78000.00)
   returning id into v_route2;
 
-  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, estado)
+  insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, valor_flete, estado)
   values
-    (v_route2, v_exito, 'Cra 38 # 64-90, Éxito Norte',   'Barranquilla', 11.00410000, -74.80700000, 1, 'pendiente'),
-    (v_route2, v_makro, 'Cl 79 # 42-30, Makro B/quilla', 'Barranquilla', 10.99600000, -74.79900000, 2, 'pendiente'),
-    (v_route2, v_exito, 'Cra 53 # 75-120, CC Buenavista','Barranquilla', 11.01200000, -74.81100000, 3, 'pendiente');
+    (v_route2, v_exito, 'Cra 38 # 64-90, Éxito Norte',   'Barranquilla', 11.00410000, -74.80700000, 1, 52000.00, 'pendiente'),
+    (v_route2, v_makro, 'Cl 79 # 42-30, Makro B/quilla', 'Barranquilla', 10.99600000, -74.79900000, 2, 45000.00, 'pendiente'),
+    (v_route2, v_exito, 'Cra 53 # 75-120, CC Buenavista','Barranquilla', 11.01200000, -74.81100000, 3, 52000.00, 'pendiente');
 
   -- Eventos para simular la ruta 1 en progreso (inicio + llegada/salida del punto 1)
   insert into public.delivery_events (delivery_id, route_id, driver_id, tipo_evento, "timestamp", latitude, longitude, metadata)
@@ -653,15 +688,15 @@ PASO 2 — Crear usuarios de prueba en Auth
   Crea estos (password sugerido: password123) y en "User Metadata" (JSON)
   define el rol. Ejemplo de metadata para el coordinador:
 
-    { "name": "Daniela Coordinadora", "role": "coordinator", "phone": "+57 302 234 5678" }
+    { "name": "Daniela Coordinadora", "role": "coordinador", "phone": "+57 302 234 5678" }
 
   Usuarios mínimos:
     admin@despachr.test    →  { "name": "Carlos Admin",     "role": "admin" }
-    coord@despachr.test    →  { "name": "Daniela Coord",    "role": "coordinator" }
-    driver@despachr.test   →  { "name": "Juan Conductor",   "role": "driver" }
+    coord@despachr.test    →  { "name": "Daniela Coord",    "role": "coordinador" }
+    driver@despachr.test   →  { "name": "Juan Conductor",   "role": "conductor" }
   Opcionales (para tener 3 conductores con placa):
-    driver2@despachr.test  →  { "name": "Pedro Conductor",  "role": "driver" }
-    driver3@despachr.test  →  { "name": "Luis Conductor",   "role": "driver" }
+    driver2@despachr.test  →  { "name": "Pedro Conductor",  "role": "conductor" }
+    driver3@despachr.test  →  { "name": "Luis Conductor",   "role": "conductor" }
 
   El trigger on_auth_user_created crea el profile automáticamente.
 
@@ -681,14 +716,15 @@ RESET / BORRAR TODO (peligroso)
   drop schema public cascade; create schema public;
   -- luego vuelve a correr este archivo y repite PASO 2 y 3.
   Para borrar SOLO los datos demo conservando el schema:
-  truncate public.delivery_events, public.issues, public.deliveries,
+  truncate public.delivery_events, public.delivery_financials, public.issues, public.deliveries,
            public.routes, public.weekly_plans, public.client_invoices,
            public.drivers, public.clients restart identity cascade;
   -- (profiles se borra al eliminar los usuarios en Auth)
 
 VERIFICACIÓN RÁPIDA (RLS)
   - Login como driver@  → solo ve su ruta del día y sus entregas.
-  - Login como coord@   → ve rutas/entregas/novedades, NO client_invoices.
-  - Login como admin@   → ve todo, incluida facturación.
+  - Login como coord@   → ve rutas/entregas/novedades y deliveries.valor_flete,
+                          NO client_invoices ni delivery_financials (pago al transportista / margen).
+  - Login como admin@   → ve todo, incluida facturación y financiero por entrega.
 ═════════════════════════════════════════════════════════════════════════════
 */

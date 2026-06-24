@@ -25,8 +25,8 @@ export function RouteList({ routes }: RouteListProps) {
             <CardContent>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">{route.deliveries.length} entregas</span>
-                <Badge variant={route.status === 'completed' ? 'success' : 'default'}>
-                  {route.status}
+                <Badge variant={route.estado === 'completada' ? 'success' : 'default'}>
+                  {route.estado}
                 </Badge>
               </div>
             </CardContent>
