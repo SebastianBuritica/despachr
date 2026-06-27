@@ -577,7 +577,6 @@ declare
   v_plan    uuid;
   v_route1  uuid;
   v_route2  uuid;
-  v_deliv   uuid;
   v_week_start date := current_date - extract(dow from current_date)::int + 1; -- lunes
 begin
   -- Resolver usuarios por email (deben existir en Auth → profiles vía trigger)
@@ -639,8 +638,7 @@ begin
   insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, valor_flete, estado, hora_llegada_punto, hora_salida_punto, tiempo_en_punto_minutos)
   values
     (v_route1, v_makro, 'Cra 50 # 80-10, Makro Montería', 'Montería', 8.74798000, -75.88143000, 1, 45000.00, 'entregado', now() - interval '80 minutes', now() - interval '55 minutes', 25),
-    (v_route1, v_exito, 'Cl 41 # 22-15, Éxito Montería',  'Montería', 8.75100000, -75.87900000, 2, 52000.00, 'en_punto',  now() - interval '20 minutes', null, null)
-  returning id into v_deliv;
+    (v_route1, v_exito, 'Cl 41 # 22-15, Éxito Montería',  'Montería', 8.75100000, -75.87900000, 2, 52000.00, 'en_punto',  now() - interval '20 minutes', null, null);
 
   insert into public.deliveries (route_id, client_id, address, city, latitude, longitude, numero_secuencia, valor_flete, estado)
   values
@@ -671,7 +669,7 @@ begin
   -- Nota: los eventos llegada/salida del punto 1 dispararían los triggers; aquí los
   -- omitimos porque ya sembramos las horas directamente para evitar doble cálculo.
 
-  return 'OK. Malla, 2 rutas, 5 entregas y eventos demo creados para la semana del ' || v_week_start || '.';
+  return 'OK. Malla, 2 rutas, 6 entregas y eventos demo creados para la semana del ' || v_week_start || '.';
 end;
 $$;
 
