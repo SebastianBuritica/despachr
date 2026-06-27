@@ -24,21 +24,6 @@ ORDEN DE EJECUCIÓN (ver bloque "INSTRUCCIONES" al final):
 create extension if not exists "pgcrypto";   -- gen_random_uuid()
 
 -- ============================================================================
--- HELPER: get_my_role()
--- SECURITY DEFINER → evita recursión de RLS al leer profiles desde una policy
--- ============================================================================
-
-create or replace function public.get_my_role()
-returns text
-language sql
-security definer
-stable
-set search_path = public
-as $$
-  select role from public.profiles where id = auth.uid();
-$$;
-
--- ============================================================================
 -- TABLA: profiles  (extiende auth.users con rol y datos del usuario)
 -- ============================================================================
 
@@ -51,6 +36,22 @@ create table if not exists public.profiles (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- ============================================================================
+-- HELPER: get_my_role()  (se define DESPUÉS de profiles porque lee de ella;
+-- una función SQL valida su cuerpo al crearse y la tabla debe existir antes)
+-- SECURITY DEFINER → evita recursión de RLS al leer profiles desde una policy
+-- ============================================================================
+
+create or replace function public.get_my_role()
+returns text
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
 
 alter table public.profiles enable row level security;
 
