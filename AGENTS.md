@@ -364,13 +364,13 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-06-22
+**Last Updated:** 2026-06-28
 
 ### ✅ Completed
 - [x] Next.js 14 boilerplate with TypeScript + Tailwind
 - [x] Folder structure designed for scalability
 - [x] 13 reusable UI components
-- [x] 9 TypeScript domain models
+- [x] 9 TypeScript domain models (Spanish enums, aligned to schema)
 - [x] Supabase client configured (client + server sides)
 - [x] `useAuth` hook for session management
 - [x] Middleware to protect routes by role
@@ -380,15 +380,19 @@ npm run lint             # ESLint validation
 - [x] 10+ npm scripts for common tasks
 - [x] 10 Claude Code skills
 - [x] Complete documentation (README.md, AGENTS.md, scripts/README.md)
+- [x] DB schema live in Supabase: 10 tables, 22 RLS policies, triggers
+- [x] Seed data loaded + RLS verified per role (admin/coordinador/conductor)
+- [x] Keys de Supabase rotadas y actualizadas en Vercel
 
 ### 🔄 In Progress
-- [ ] Database schema creation in Supabase
+- [ ] Implement real Auth (login/register wired to Supabase)
 
 ### 📝 Pending (Priority Order)
 
 **WEEK 1 — Foundation**
-- [ ] Create DB schema with RLS policies
-- [ ] Seed test data (sample routes, clients, drivers)
+- [x] Create DB schema with RLS policies
+- [x] Seed test data (sample routes, clients, drivers)
+- [ ] Activate Supabase Realtime (routes, deliveries, delivery_events)
 - [ ] Implement real Auth (login/register with Supabase)
 
 **WEEK 2-3 — Driver App**
