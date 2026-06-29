@@ -2,15 +2,18 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Truck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { supabase } from '@/lib/supabase'
 import type { RolUsuario } from '@/types'
 
 function homeForRole(role: RolUsuario | null): string {
-  return role === 'conductor' ? '/driver' : '/dashboard'
+  if (role === 'conductor') return '/driver'
+  if (role === 'admin') return '/admin'
+  return '/dashboard'
 }
 
 // Traduce los errores de Supabase Auth a mensajes claros en español.
@@ -90,7 +93,12 @@ function LoginForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Contraseña</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Contraseña</Label>
+            <a href="#" className="text-xs font-medium text-brand hover:underline">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
           <Input
             id="password"
             type="password"
@@ -103,11 +111,21 @@ function LoginForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="h-[42px] w-full" disabled={loading}>
           {loading && <Loader2 className="size-4 animate-spin" />}
           {loading ? 'Ingresando…' : 'Iniciar sesión'}
         </Button>
       </form>
+
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <Separator className="flex-1" />
+        <span>o</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <Button type="button" variant="outline" className="h-[42px] w-full" disabled>
+        Entrar con SSO corporativo
+      </Button>
 
       <p className="text-center text-xs text-muted-foreground">
         ¿Sin cuenta? Habla con tu administrador.
@@ -116,10 +134,56 @@ function LoginForm() {
   )
 }
 
+function BrandPanel() {
+  return (
+    <div className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-14 text-white lg:flex">
+      {/* Glow radial decorativo */}
+      <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand/30 blur-3xl" />
+
+      <div className="relative flex items-center gap-2.5">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-white">
+          <Truck className="size-5" />
+        </span>
+        <span className="text-lg font-semibold tracking-tight">Despachr</span>
+      </div>
+
+      <div className="relative space-y-6">
+        <h2 className="max-w-md text-[36px] font-bold leading-tight tracking-tight">
+          Toda tu operación de carga, en tiempo real.
+        </h2>
+        <p className="max-w-sm text-slate-400">
+          Conductores, rutas y cumplimiento sincronizados — desde el primer despacho hasta la
+          última entrega.
+        </p>
+        <div className="flex items-center gap-8 pt-2">
+          <div>
+            <p className="font-mono text-3xl font-semibold text-brand-light">94.8%</p>
+            <p className="mt-1 text-sm text-slate-400">Cumplimiento</p>
+          </div>
+          <div className="h-10 w-px bg-white/15" />
+          <div>
+            <p className="font-mono text-3xl font-semibold">
+              48.3 <span className="text-2xl">T</span>
+            </p>
+            <p className="mt-1 text-sm text-slate-400">Movilizadas / sem</p>
+          </div>
+        </div>
+      </div>
+
+      <p className="relative text-xs text-slate-500">© 2026 Despachr · Transporte de carga</p>
+    </div>
+  )
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+      <BrandPanel />
+      <div className="flex items-center justify-center p-6 lg:p-10">
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
+      </div>
+    </div>
   )
 }

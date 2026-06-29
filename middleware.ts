@@ -2,10 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import type { RolUsuario } from '@/types'
 
-// Protegemos /dashboard/* y /driver/*; el resto (/, /login) es público.
+// Protegemos /dashboard/* (coordinador), /admin/* (admin) y /driver/* (conductor);
+// el resto (/, /login) es público.
 // A dónde va cada rol tras autenticarse o al pisar una ruta que no le toca.
 function homeForRole(role: RolUsuario | null): string {
-  return role === 'conductor' ? '/driver' : '/dashboard'
+  if (role === 'conductor') return '/driver'
+  if (role === 'admin') return '/admin'
+  return '/dashboard'
 }
 
 export async function middleware(request: NextRequest) {
@@ -38,12 +41,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isDashboardRoute = pathname.startsWith('/dashboard')
+  const isAdminRoute = pathname.startsWith('/admin')
   const isDriverRoute = pathname.startsWith('/driver')
   const isLogin = pathname === '/login'
 
   // --- Sin sesión -----------------------------------------------------------
   if (!user) {
-    if (isDashboardRoute || isDriverRoute) {
+    if (isDashboardRoute || isAdminRoute || isDriverRoute) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
@@ -66,8 +70,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(home, request.url))
   }
 
-  // /dashboard/* solo admin o coordinador.
-  if (isDashboardRoute && role !== 'admin' && role !== 'coordinador') {
+  // /dashboard/* solo coordinador.
+  if (isDashboardRoute && role !== 'coordinador') {
+    return NextResponse.redirect(new URL(home, request.url))
+  }
+
+  // /admin/* solo admin.
+  if (isAdminRoute && role !== 'admin') {
     return NextResponse.redirect(new URL(home, request.url))
   }
 
