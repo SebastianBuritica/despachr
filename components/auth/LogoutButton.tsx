@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { LogOut, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 
 interface LogoutButtonProps {
@@ -29,9 +29,13 @@ export function LogoutButton({ className }: LogoutButtonProps) {
       size="sm"
       className={className ?? 'gap-2'}
       onClick={handleLogout}
-      loading={loading}
+      disabled={loading}
     >
-      <LogOut className="w-4 h-4" />
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <LogOut className="size-4" />
+      )}
       Salir
     </Button>
   )

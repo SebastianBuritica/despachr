@@ -1,14 +1,12 @@
-import { Header } from '@/components/layout/Header'
-
+// Placeholder de Fase 0. La app del conductor (mobile-first) se construye en Fase 3.
 export default function DriverLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-      <main className="flex-1 p-4">{children}</main>
+    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background">
+      {children}
     </div>
   )
 }
