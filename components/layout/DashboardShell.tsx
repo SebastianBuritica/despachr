@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,7 +133,7 @@ export function DashboardShell({
 
         {/* Main */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar variant={variant} />
+          <Topbar variant={variant} pathname={pathname} />
           <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
         </div>
       </div>
@@ -140,11 +141,12 @@ export function DashboardShell({
   )
 }
 
-function Topbar({ variant }: { variant: ShellVariant }) {
+function Topbar({ variant, pathname }: { variant: ShellVariant; pathname: string }) {
   if (variant === 'admin') {
     return (
       <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-border bg-card px-6">
         <span className="text-sm font-medium text-muted-foreground">Administración</span>
+        {pathname === '/admin' && <PeriodToggle />}
       </header>
     )
   }

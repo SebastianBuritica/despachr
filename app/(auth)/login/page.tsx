@@ -65,7 +65,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-[360px] space-y-6">
+    <div className="w-full min-w-0 max-w-[360px] space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
         <p className="text-sm text-muted-foreground">Ingresa a tu panel de operación.</p>
@@ -177,9 +177,9 @@ function BrandPanel() {
 
 export default function LoginPage() {
   return (
-    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="flex min-h-dvh flex-col lg:grid lg:grid-cols-[1.05fr_0.95fr]">
       <BrandPanel />
-      <div className="flex items-center justify-center p-6 lg:p-10">
+      <div className="flex flex-1 items-center justify-center p-6 lg:p-10">
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
