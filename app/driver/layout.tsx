@@ -1,12 +1,8 @@
-// Placeholder de Fase 0. La app del conductor (mobile-first) se construye en Fase 3.
+// App del conductor: mobile-first, columna centrada en pantallas grandes.
 export default function DriverLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background">
-      {children}
-    </div>
-  )
+  return <div className="mx-auto w-full max-w-md bg-background">{children}</div>
 }
