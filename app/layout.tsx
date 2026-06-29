@@ -1,20 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-sans',
   subsets: ['latin'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const jetbrainsMono = JetBrains_Mono({
+  variable: '--font-mono',
   subsets: ['latin'],
 })
 
 export const metadata: Metadata = {
-  title: 'Despachr - Gestión Logística',
-  description: 'PWA de gestión logística para empresas de transporte de carga en Colombia y Latinoamérica',
+  title: 'Despachr — Gestión Logística',
+  description:
+    'PWA de gestión logística para empresas de transporte de carga en Colombia y Latinoamérica',
 }
 
 export const viewport: Viewport = {
@@ -29,8 +32,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background">{children}</body>
+    <html
+      lang="es"
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
+    >
+      <body className="min-h-full bg-background">
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
+      </body>
     </html>
   )
 }

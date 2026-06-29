@@ -384,8 +384,10 @@ npm run lint             # ESLint validation
 - [x] Seed data loaded + RLS verified per role (admin/coordinador/conductor)
 - [x] Keys de Supabase rotadas y actualizadas en Vercel
 - [x] Auth real con redirección por rol (login + middleware + useAuth + LogoutButton)
+- [x] **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova, base neutral). Tokens del handoff en `app/globals.css` (verde de marca `#0F6E56` como `--primary`, sidebar oscuro `#0A0A0A`, neutros slate, sombras, radios, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn (button, card, input, table, tabs, badge, avatar, progress, dialog, sheet, dropdown-menu, sonner, etc.). `cn()` con `tailwind-merge`. Boilerplate visual viejo eliminado; páginas como placeholders (login conserva su lógica de auth). Build verde. Handoff de diseño + screenshots en `assets/screenshots/`.
 
 ### 🔄 In Progress
+- [ ] Rediseño UI — Fase 1+: shells (login split, dashboard sidebar oscuro) y pantallas por rol (conductor → coordinador → admin), pixel-perfect según handoff
 - [ ] Driver app: lista de entregas del día (mobile-first)
 
 ### 📝 Pending (Priority Order)

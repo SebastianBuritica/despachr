@@ -2,9 +2,10 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Alert } from '@/components/ui/Alert'
+import { Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import type { RolUsuario } from '@/types'
 
@@ -61,43 +62,55 @@ function LoginForm() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary-600">Despachr</h1>
-        <p className="text-gray-600 mt-1">Gestión Logística Inteligente</p>
+    <div className="w-full max-w-[360px] space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
+        <p className="text-sm text-muted-foreground">Ingresa a tu panel de operación.</p>
       </div>
 
-      {error && <Alert type="error">{error}</Alert>}
+      {error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <Input
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="correo@empresa.com"
-          label="Correo"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <Input
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          placeholder="Contraseña"
-          label="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="email">Correo corporativo</Label>
+          <Input
+            id="email"
+            type="email"
+            name="email"
+            autoComplete="email"
+            placeholder="correo@empresa.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-        <Button type="submit" className="w-full" loading={loading}>
-          Iniciar sesión
+        <div className="space-y-2">
+          <Label htmlFor="password">Contraseña</Label>
+          <Input
+            id="password"
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            placeholder="••••••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading && <Loader2 className="size-4 animate-spin" />}
+          {loading ? 'Ingresando…' : 'Iniciar sesión'}
         </Button>
       </form>
 
-      <p className="text-center text-xs text-gray-500">
-        ¿No tienes acceso? Contacta al administrador de tu empresa.
+      <p className="text-center text-xs text-muted-foreground">
+        ¿Sin cuenta? Habla con tu administrador.
       </p>
     </div>
   )
