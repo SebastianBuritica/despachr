@@ -1,61 +1,102 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { User } from '@/types'
+import type { RolUsuario, User } from '@/types'
 
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
+interface UseAuthResult {
+  user: SupabaseUser | null
+  profile: User | null
+  rol: RolUsuario | null
+  loading: boolean
+  error: string | null
+  signOut: () => Promise<void>
+}
+
+// Mapea una fila de public.profiles (snake_case) al modelo de dominio User.
+function mapProfile(row: {
+  id: string
+  email: string
+  name: string
+  role: RolUsuario
+  phone: string | null
+  created_at: string
+  updated_at: string
+}): User {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    phone: row.phone ?? '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function useAuth(): UseAuthResult {
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [profile, setProfile] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const loadProfile = useCallback(async (authUser: SupabaseUser | null) => {
+    if (!authUser) {
+      setProfile(null)
+      return
+    }
+    const { data, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, name, role, phone, created_at, updated_at')
+      .eq('id', authUser.id)
+      .single()
+
+    if (profileError) {
+      setError(profileError.message)
+      setProfile(null)
+      return
+    }
+    setProfile(mapProfile(data))
+  }, [])
+
   useEffect(() => {
-    const checkAuth = async () => {
+    let active = true
+
+    const init = async () => {
       try {
         const { data } = await supabase.auth.getUser()
-        if (data.user) {
-          // TODO: Fetch user profile from database
-          setUser({
-            id: data.user.id,
-            email: data.user.email || '',
-            name: data.user.user_metadata?.name || '',
-            role: 'conductor',
-            phone: data.user.user_metadata?.phone || '',
-            createdAt: data.user.created_at || '',
-            updatedAt: data.user.updated_at || '',
-          })
-        }
+        if (!active) return
+        setUser(data.user)
+        await loadProfile(data.user)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error de autenticación')
+        if (active) setError(err instanceof Error ? err.message : 'Error de autenticación')
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
-    checkAuth()
+    init()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || '',
-          role: 'conductor',
-          phone: session.user.user_metadata?.phone || '',
-          createdAt: session.user.created_at || '',
-          updatedAt: session.user.updated_at || '',
-        })
-      } else {
-        setUser(null)
-      }
+      setUser(session?.user ?? null)
+      loadProfile(session?.user ?? null)
     })
 
     return () => {
+      active = false
       subscription?.unsubscribe()
     }
+  }, [loadProfile])
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+    // Limpieza inmediata del estado; onAuthStateChange también disparará.
+    setUser(null)
+    setProfile(null)
   }, [])
 
-  return { user, loading, error }
+  return { user, profile, rol: profile?.role ?? null, loading, error, signOut }
 }

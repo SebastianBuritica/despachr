@@ -1,32 +1,84 @@
+import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import type { RolUsuario } from '@/types'
 
-const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/forgot-password']
-const driverRoutes = ['/driver']
-const dashboardRoutes = ['/dashboard']
-const adminRoutes = ['/admin']
+// Protegemos /dashboard/* y /driver/*; el resto (/, /login) es público.
+// A dónde va cada rol tras autenticarse o al pisar una ruta que no le toca.
+function homeForRole(role: RolUsuario | null): string {
+  return role === 'conductor' ? '/driver' : '/dashboard'
+}
 
-export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
+export async function middleware(request: NextRequest) {
+  // Respuesta base: el cliente de Supabase puede refrescar tokens y reescribir cookies aquí.
+  let response = NextResponse.next({ request })
 
-  // Public routes - allow access
-  if (publicRoutes.includes(pathname) || pathname.startsWith('/auth/')) {
-    return NextResponse.next()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // IMPORTANTE: getUser() valida el token contra Supabase (no confía en la cookie).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+  const isDashboardRoute = pathname.startsWith('/dashboard')
+  const isDriverRoute = pathname.startsWith('/driver')
+  const isLogin = pathname === '/login'
+
+  // --- Sin sesión -----------------------------------------------------------
+  if (!user) {
+    if (isDashboardRoute || isDriverRoute) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+    return response
   }
 
-  // Protected routes - check for auth token
-  const token = request.cookies.get('auth-token')?.value
+  // --- Con sesión: leer rol del profile ------------------------------------
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
-  if (!token) {
-    const loginUrl = new URL('/auth/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+  const role = (profile?.role ?? null) as RolUsuario | null
+  const home = homeForRole(role)
+
+  // Usuario autenticado intentando entrar a /login → a su vista.
+  if (isLogin) {
+    return NextResponse.redirect(new URL(home, request.url))
   }
 
-  return NextResponse.next()
+  // /dashboard/* solo admin o coordinador.
+  if (isDashboardRoute && role !== 'admin' && role !== 'coordinador') {
+    return NextResponse.redirect(new URL(home, request.url))
+  }
+
+  // /driver/* solo conductor.
+  if (isDriverRoute && role !== 'conductor') {
+    return NextResponse.redirect(new URL(home, request.url))
+  }
+
+  return response
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
