@@ -390,8 +390,9 @@ npm run lint             # ESLint validation
 
 - [x] **Rediseño UI — Fase 2 (coordinador):** 4 pantallas con datos mock — **operación en vivo** (mapa placeholder + 4 mini-stats + alertas + tabla rutas activas), **rutas** (4 cards resumen + chips de filtro interactivos + tabla 8 col), **conductores** (grid de cards con métricas), **clientes** (tabla on-time). Piezas reutilizables: `StatusBadge` (sistema de badges del handoff), `StatCard`, `RouteProgress`, `LiveMap`, `AlertsCard`, `DriverCard`, `RoutesTable`. Mock en `lib/mock/coordinator.ts`. Build verde.
 
+- [x] **Rediseño UI — Fase 3 (admin):** 4 pantallas — **métricas** (4 KPI cards + gráfico de barras CSS + anillo conic-gradient + tabla de rentabilidad), **clientes** (gestión: 4 cards + tabla 8 col), **facturación** (4 cards + tabla con estados pagada/pendiente/vencida), **reportes** (4 cards de generación + tabla recientes). Componentes: `KpiCard`, `TonnageChart`, `ComplianceRing`, `PeriodToggle` (segmented en topbar, solo en Métricas). Mock en `lib/mock/admin.ts`. **Verificación visual** con Chrome headless (login + 5 pantallas) ✓. Build verde.
+
 ### 🔄 In Progress
-- [ ] Rediseño UI — Fase 3 (admin): métricas (KPIs + barras + anillo), clientes, facturación, reportes
 - [ ] Rediseño UI — App del conductor (mobile): list → active → capture → done
 
 ### 📝 Pending (Priority Order)
