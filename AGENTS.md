@@ -388,9 +388,11 @@ npm run lint             # ESLint validation
 
 - [x] **Rediseño UI — Fase 1 (shells + ruteo):** **login split** de 2 columnas (panel oscuro de marca + formulario shadcn, redirección por rol). **DashboardShell** reutilizable (frame centrado 1320px radius 14px + sidebar oscuro `#0A0A0A` con nav activo/hover + topbar + user card con logout vía dropdown). Segmentos separados por rol: `/dashboard/*` (coordinador: operación, rutas, conductores, clientes) y `/admin/*` (admin: métricas, clientes, facturación, reportes), con sub-páginas placeholder y `PageHeader` reutilizable. `homeForRole` y middleware actualizados (admin → `/admin`, protección por rol). Build verde (12 rutas).
 
+- [x] **Rediseño UI — Fase 2 (coordinador):** 4 pantallas con datos mock — **operación en vivo** (mapa placeholder + 4 mini-stats + alertas + tabla rutas activas), **rutas** (4 cards resumen + chips de filtro interactivos + tabla 8 col), **conductores** (grid de cards con métricas), **clientes** (tabla on-time). Piezas reutilizables: `StatusBadge` (sistema de badges del handoff), `StatCard`, `RouteProgress`, `LiveMap`, `AlertsCard`, `DriverCard`, `RoutesTable`. Mock en `lib/mock/coordinator.ts`. Build verde.
+
 ### 🔄 In Progress
-- [ ] Rediseño UI — Fase 2 (coordinador): operación en vivo (mapa+alertas), rutas, conductores, clientes — pixel-perfect según handoff/screenshots
-- [ ] Driver app: lista de entregas del día (mobile-first)
+- [ ] Rediseño UI — Fase 3 (admin): métricas (KPIs + barras + anillo), clientes, facturación, reportes
+- [ ] Rediseño UI — App del conductor (mobile): list → active → capture → done
 
 ### 📝 Pending (Priority Order)
 
