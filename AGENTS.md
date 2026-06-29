@@ -383,17 +383,18 @@ npm run lint             # ESLint validation
 - [x] DB schema live in Supabase: 10 tables, 22 RLS policies, triggers
 - [x] Seed data loaded + RLS verified per role (admin/coordinador/conductor)
 - [x] Keys de Supabase rotadas y actualizadas en Vercel
+- [x] Auth real con redirección por rol (login + middleware + useAuth + LogoutButton)
 
 ### 🔄 In Progress
-- [ ] Implement real Auth (login/register wired to Supabase)
+- [ ] Driver app: lista de entregas del día (mobile-first)
 
 ### 📝 Pending (Priority Order)
 
 **WEEK 1 — Foundation**
 - [x] Create DB schema with RLS policies
 - [x] Seed test data (sample routes, clients, drivers)
-- [ ] Activate Supabase Realtime (routes, deliveries, delivery_events)
-- [ ] Implement real Auth (login/register with Supabase)
+- [x] Activate Supabase Realtime (routes, deliveries, delivery_events)
+- [x] Implement real Auth — login + role-based redirects (admin/coordinador → /dashboard, conductor → /driver), protected routes via middleware, `useAuth` (user/profile/rol/signOut), reusable `LogoutButton`. Public registration removed (admin-only user creation).
 
 **WEEK 2-3 — Driver App**
 - [ ] List today's deliveries (mobile-first view)

@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
-import { Menu, LogOut } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useState } from 'react'
+import { LogoutButton } from '@/components/auth/LogoutButton'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -27,16 +27,30 @@ export function Header() {
               Conductor
             </Link>
           </nav>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <LogOut className="w-4 h-4" />
-            Salir
-          </Button>
+          <LogoutButton />
         </div>
 
-        <button className="md:hidden p-2 hover:bg-gray-100 rounded-lg">
+        <button
+          className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-label="Abrir menú"
+          aria-expanded={mobileMenuOpen}
+        >
           <Menu className="w-6 h-6" />
         </button>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-gray-200 px-6 py-4 flex flex-col gap-3">
+          <Link href="/dashboard" className="text-gray-700 hover:text-primary-600 transition-colors">
+            Dashboard
+          </Link>
+          <Link href="/driver" className="text-gray-700 hover:text-primary-600 transition-colors">
+            Conductor
+          </Link>
+          <LogoutButton className="gap-2 justify-start w-fit" />
+        </div>
+      )}
     </header>
   )
 }

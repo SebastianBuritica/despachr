@@ -14,8 +14,8 @@ export default function HomePage() {
             </div>
             <span className="font-bold text-gray-900">Despachr</span>
           </div>
-          <Link href="/auth/login">
-            <Button>Inicia Sesión</Button>
+          <Link href="/login">
+            <Button>Iniciar sesión</Button>
           </Link>
         </div>
       </header>
@@ -30,15 +30,10 @@ export default function HomePage() {
             Digitaliza la operación de tu empresa de transporte. Deja atrás Excel y WhatsApp.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/auth/login">
+            <Link href="/login">
               <Button size="lg">
                 Acceder
                 <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link href="/auth/register">
-              <Button variant="outline" size="lg">
-                Registrarse
               </Button>
             </Link>
           </div>
@@ -86,7 +81,7 @@ export default function HomePage() {
           <p className="text-lg mb-8 opacity-90">
             Únete a decenas de empresas que ya confían en Despachr
           </p>
-          <Link href="/auth/register">
+          <Link href="/login">
             <Button variant="secondary" size="lg">
               Comienza Ahora
             </Button>
