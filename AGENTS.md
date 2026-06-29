@@ -386,8 +386,10 @@ npm run lint             # ESLint validation
 - [x] Auth real con redirección por rol (login + middleware + useAuth + LogoutButton)
 - [x] **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova, base neutral). Tokens del handoff en `app/globals.css` (verde de marca `#0F6E56` como `--primary`, sidebar oscuro `#0A0A0A`, neutros slate, sombras, radios, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn (button, card, input, table, tabs, badge, avatar, progress, dialog, sheet, dropdown-menu, sonner, etc.). `cn()` con `tailwind-merge`. Boilerplate visual viejo eliminado; páginas como placeholders (login conserva su lógica de auth). Build verde. Handoff de diseño + screenshots en `assets/screenshots/`.
 
+- [x] **Rediseño UI — Fase 1 (shells + ruteo):** **login split** de 2 columnas (panel oscuro de marca + formulario shadcn, redirección por rol). **DashboardShell** reutilizable (frame centrado 1320px radius 14px + sidebar oscuro `#0A0A0A` con nav activo/hover + topbar + user card con logout vía dropdown). Segmentos separados por rol: `/dashboard/*` (coordinador: operación, rutas, conductores, clientes) y `/admin/*` (admin: métricas, clientes, facturación, reportes), con sub-páginas placeholder y `PageHeader` reutilizable. `homeForRole` y middleware actualizados (admin → `/admin`, protección por rol). Build verde (12 rutas).
+
 ### 🔄 In Progress
-- [ ] Rediseño UI — Fase 1+: shells (login split, dashboard sidebar oscuro) y pantallas por rol (conductor → coordinador → admin), pixel-perfect según handoff
+- [ ] Rediseño UI — Fase 2 (coordinador): operación en vivo (mapa+alertas), rutas, conductores, clientes — pixel-perfect según handoff/screenshots
 - [ ] Driver app: lista de entregas del día (mobile-first)
 
 ### 📝 Pending (Priority Order)
