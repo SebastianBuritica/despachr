@@ -392,8 +392,10 @@ npm run lint             # ESLint validation
 
 - [x] **Rediseño UI — Fase 3 (admin):** 4 pantallas — **métricas** (4 KPI cards + gráfico de barras CSS + anillo conic-gradient + tabla de rentabilidad), **clientes** (gestión: 4 cards + tabla 8 col), **facturación** (4 cards + tabla con estados pagada/pendiente/vencida), **reportes** (4 cards de generación + tabla recientes). Componentes: `KpiCard`, `TonnageChart`, `ComplianceRing`, `PeriodToggle` (segmented en topbar, solo en Métricas). Mock en `lib/mock/admin.ts`. **Verificación visual** con Chrome headless (login + 5 pantallas) ✓. Build verde.
 
+- [x] **Rediseño UI — App del conductor (mobile):** flujo completo `list → active → capture → done` en un state machine (`DriverApp`). Lista con header oscuro + progreso + cards por estado (entregada/en punto/pendiente); entrega activa con **timer en vivo** (mm:ss, arranca ~6:12 si "en punto"), dirección + Navegar/Llamar, carga; captura de **foto + firma** (placeholders con `animate-pop`) + "Recibido por", CTA habilitado solo con ambos; confirmación con check + resumen. Logout vía dropdown en avatar. Mock en `lib/mock/driver.ts`. Verificado visualmente (4 pantallas) con Chrome headless ✓.
+
 ### 🔄 In Progress
-- [ ] Rediseño UI — App del conductor (mobile): list → active → capture → done
+- [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real
 
 ### 📝 Pending (Priority Order)
 
