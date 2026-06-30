@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { Truck, ArrowRight, Play } from 'lucide-react'
+import { ArrowRight, Play } from 'lucide-react'
 import { CountUp } from '@/components/landing/CountUp'
+import { BrandMark } from '@/components/brand/BrandMark'
 import { Reveal } from '@/components/landing/Reveal'
 import { LiveMapCard } from '@/components/landing/LiveMapCard'
 import { DemoMockup } from '@/components/landing/DemoMockup'
@@ -21,9 +22,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0C0B]/80 backdrop-blur">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-[#0F6E56] text-white">
-              <Truck className="size-[18px]" />
-            </span>
+            <BrandMark className="h-7 text-white" />
             <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
           </Link>
           <div className="hidden items-center gap-7 md:flex">
@@ -182,9 +181,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-7 items-center justify-center rounded-md bg-[#0F6E56] text-white">
-              <Truck className="size-4" />
-            </span>
+            <BrandMark className="h-7 text-white" />
             <span className="font-semibold tracking-tight">Despachr</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-5 text-sm text-[#A1A1AA]">

@@ -1,4 +1,5 @@
-import { LayoutGrid, Route as RouteIcon, Users, Building2, BarChart3, TrendingUp } from 'lucide-react'
+import { LayoutGrid, Route as RouteIcon, Users, Building2, BarChart3 } from 'lucide-react'
+import { BrandMark } from '@/components/brand/BrandMark'
 
 // Mockup del producto en LIGHT (Zinc) dentro de un marco de navegador oscuro.
 // Colores explícitos: la landing es oscura, pero el producto se muestra claro.
@@ -46,9 +47,7 @@ export function DemoMockup() {
         {/* Sidebar claro */}
         <aside className="hidden w-[180px] shrink-0 flex-col gap-1 border-r border-[#E4E4E7] p-3 sm:flex">
           <div className="mb-2 flex items-center gap-2 px-2 py-1.5">
-            <span className="flex size-6 items-center justify-center rounded-md bg-[#0F6E56] text-white">
-              <RouteIcon className="size-3.5" />
-            </span>
+            <BrandMark className="h-5 text-[#0F6E56]" />
             <span className="text-sm font-semibold">Despachr</span>
           </div>
           {NAV.map((n) => {

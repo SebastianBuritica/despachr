@@ -2,11 +2,12 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Truck } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { BrandMark } from '@/components/brand/BrandMark'
 import { supabase } from '@/lib/supabase'
 import type { RolUsuario } from '@/types'
 
@@ -141,9 +142,7 @@ function BrandPanel() {
       <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand/30 blur-3xl" />
 
       <div className="relative flex items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-white">
-          <Truck className="size-5" />
-        </span>
+        <BrandMark className="h-8 text-white" />
         <span className="text-lg font-semibold tracking-tight">Despachr</span>
       </div>
 
