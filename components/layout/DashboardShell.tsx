@@ -12,7 +12,6 @@ import {
   BarChart3,
   Receipt,
   FileText,
-  Truck,
   Bell,
   Search,
   LogOut,
@@ -23,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import { BrandMark } from '@/components/brand/BrandMark'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,9 +95,7 @@ export function DashboardShell({
         {/* Sidebar */}
         <aside className="flex w-[236px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
           <div className="flex items-center gap-2.5 px-5 py-5">
-            <span className="flex size-7 items-center justify-center rounded-[7px] bg-brand text-white">
-              <Truck className="size-4" />
-            </span>
+            <BrandMark className="h-6 text-brand dark:text-white" />
             <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
           </div>
 

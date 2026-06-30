@@ -398,6 +398,8 @@ npm run lint             # ESLint validation
 
 - [x] **Landing page (marketing oscuro):** página pública en `/` con tema oscuro fijo (colores explícitos, independiente del toggle de la app). Nav sticky con blur; hero 2 col con entrada escalonada (`fadeUp` + delays) y **mapa "EN VIVO" animado** (`LiveMapCard`: ruta SVG con dash animado, vehículo recorriéndola vía `animateMotion`, pines, chips, toast cíclico); banda de stats con **count-up** (`IntersectionObserver`, formato es-CO); sección demo con el **dashboard en LIGHT Zinc** dentro de marco de navegador (`DemoMockup`); CTA de cierre + footer. Scroll-reveal (`Reveal`) y `prefers-reduced-motion` respetado. Verificado con Chrome headless.
 
+- [x] **Marca / iconos oficiales:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx` (asta + nodo origen en `currentColor`, recorrido y destino en verde) reemplaza el placeholder de camión en sidebar, login, landing (nav+footer) y demo. **PWA**: `app/manifest.ts` (icons 192/512, standalone) + metadata de iconos en el layout (favicon svg/png, **apple-touch-icon 180**, `appleWebApp`). Assets en `public/brand/`. Arregla el icono genérico de la pantalla de inicio en iOS. Verificado con Chrome headless.
+
 ### 🔄 In Progress
 - [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real (landing + app del conductor + coordinador)
 
