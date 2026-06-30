@@ -137,12 +137,12 @@ function ListScreen({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="rounded-b-[22px] bg-sidebar px-5 pb-5 pt-6 text-white">
+      <header className="rounded-b-[22px] bg-panel px-5 pb-5 pt-6 text-panel-foreground">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs text-slate-400">Ruta de hoy</p>
+            <p className="text-xs text-panel-muted">Ruta de hoy</p>
             <h1 className="mt-0.5 text-lg font-bold tracking-tight">{DRIVER_ROUTE.name}</h1>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-panel-muted">
               {DRIVER_ROUTE.date} · {DRIVER_ROUTE.driver} · {DRIVER_ROUTE.plate}
             </p>
           </div>
@@ -273,12 +273,12 @@ function ActiveScreen({
         </div>
 
         {/* Timer */}
-        <div className="animate-fade-up rounded-2xl bg-sidebar p-6 text-center text-white">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        <div className="animate-fade-up rounded-2xl bg-panel p-6 text-center text-panel-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-panel-muted">
             Tiempo en sitio
           </p>
           <p className="mt-2 font-mono text-5xl font-semibold tabular-nums">{mmss(seconds)}</p>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-slate-300">
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-panel-muted">
             <span className="size-2 animate-ping rounded-full bg-brand-light" />
             En curso
           </p>
@@ -287,7 +287,7 @@ function ActiveScreen({
         {/* Dirección */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <div className="flex gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#DCFCE7] text-brand">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#DCFCE7] text-brand dark:bg-green-500/15 dark:text-brand-light">
               <MapPin className="size-4" />
             </span>
             <div>
@@ -472,7 +472,7 @@ function DoneScreen({
 }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
-      <span className="flex size-20 animate-pop items-center justify-center rounded-full bg-[#DCFCE7] text-brand">
+      <span className="flex size-20 animate-pop items-center justify-center rounded-full bg-[#DCFCE7] text-brand dark:bg-green-500/15 dark:text-brand-light">
         <Check className="size-10" />
       </span>
       <h1 className="mt-6 text-2xl font-bold tracking-tight">Entrega confirmada</h1>

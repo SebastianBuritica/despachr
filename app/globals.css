@@ -5,73 +5,131 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Despachr design tokens — derivados del handoff de diseño (alta fidelidad).
-  Light mode con acentos oscuros (sidebars/login). Verde de marca = primary.
+  Despachr design tokens — escala neutra Zinc, light & dark mode.
+  Verde de marca (#0F6E56 / #1D9E75) constante en ambos modos.
+  Superficies suaves, sidebar claro (estilo Linear/Notion).
 */
 :root {
-  --radius: 0.625rem; /* 10px — radius base de cards */
+  --radius: 0.625rem; /* 10px */
 
-  /* Superficies y texto (slate) */
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* Superficies y texto (Zinc light) */
+  --background: #fafafa;
+  --foreground: #18181b;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #18181b;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover-foreground: #18181b;
 
-  /* Marca */
+  /* Marca (acento, no cambia entre modos) */
   --primary: #0f6e56;
   --primary-foreground: #ffffff;
 
-  /* Secundario shadcn = neutro sutil (botones secundarios discretos) */
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
 
   --destructive: #dc2626;
 
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f6e56; /* focus ring verde */
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #0f6e56;
 
-  /* Acentos de marca adicionales (no semánticos de shadcn) */
+  /* Acentos de marca + utilitarios */
   --brand: #0f6e56;
   --brand-strong: #0a5a45;
   --brand-light: #1d9e75;
   --success: #1d9e75;
-  --warning: #d97706;
+  --warning: #b45309;
+  --faint: #a1a1aa; /* placeholders, ejes */
+  --track: #e4e4e7; /* pista de donut/progreso */
 
-  /* Charts (verde de marca + slate) */
+  /* Panel oscuro intencional (login, header/timer del conductor) — suave en ambos modos */
+  --panel: #18181b;
+  --panel-foreground: #fafafa;
+  --panel-muted: #a1a1aa;
+
+  /* Charts */
   --chart-1: #0f6e56;
   --chart-2: #1d9e75;
-  --chart-3: #475569;
-  --chart-4: #94a3b8;
-  --chart-5: #cbd5e1;
+  --chart-3: #71717a;
+  --chart-4: #a1a1aa;
+  --chart-5: #d4d4d8;
 
-  /* Sidebar / paneles oscuros (#0A0A0A) */
-  --sidebar: #0a0a0a;
-  --sidebar-foreground: #ffffff;
+  /* Sidebar claro (= tono del fondo) */
+  --sidebar: #fafafa;
+  --sidebar-foreground: #18181b;
+  --sidebar-primary: #0f6e56;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f0f1; /* item activo */
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #0f6e56;
+  --sidebar-muted: #52525b; /* item inactivo */
+  --sidebar-hover: #f4f4f5;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+
+  --primary: #0f6e56;
+  --primary-foreground: #ffffff;
+
+  --secondary: #232327;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #232327;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ef4444;
+
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #1d9e75;
+
+  --brand: #0f6e56;
+  --brand-strong: #0a5a45;
+  --brand-light: #1d9e75;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --faint: #71717a;
+  --track: #2b2b2f;
+
+  --panel: #18181b;
+  --panel-foreground: #fafafa;
+  --panel-muted: #a1a1aa;
+
+  --chart-1: #1d9e75;
+  --chart-2: #0f6e56;
+  --chart-3: #a1a1aa;
+  --chart-4: #71717a;
+  --chart-5: #52525b;
+
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #fafafa;
   --sidebar-primary: #1d9e75;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a1a1a; /* item activo */
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1f1f1f;
-  --sidebar-ring: #0f6e56;
-  --sidebar-muted: #94a3b8; /* texto inactivo */
-  --sidebar-hover: #161616; /* hover de item */
+  --sidebar-accent: #232327;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #1d9e75;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-hover: #232327;
 }
 
 @theme inline {
-  /* Fuentes */
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-heading: var(--font-sans);
 
-  /* Superficies / texto */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -91,21 +149,23 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Marca */
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-brand-light: var(--brand-light);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-faint: var(--faint);
+  --color-track: var(--track);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
 
-  /* Charts */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* Sidebar */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -117,19 +177,16 @@
   --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-hover: var(--sidebar-hover);
 
-  /* Radios */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px); /* 14px — shell de dashboard */
+  --radius-xl: calc(var(--radius) + 4px);
   --radius-pill: 20px;
 
-  /* Sombras */
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-elevated: 0 20px 50px -24px rgba(15, 23, 42, 0.25);
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-elevated: 0 20px 50px -24px rgba(24, 24, 27, 0.25);
   --shadow-cta: 0 8px 20px -6px rgba(15, 110, 86, 0.5);
 
-  /* Animaciones del prototipo */
   --animate-fade-up: fadeUp 0.4s ease both;
   --animate-pop: pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -170,30 +227,8 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  /* Cifras, placas, horas, montos, IDs → mono */
   .tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
-}
-
-.dark {
-  --background: #0a0a0a;
-  --foreground: #f8fafc;
-  --card: #141414;
-  --card-foreground: #f8fafc;
-  --popover: #141414;
-  --popover-foreground: #f8fafc;
-  --primary: #1d9e75;
-  --primary-foreground: #04130d;
-  --secondary: #1f1f1f;
-  --secondary-foreground: #f8fafc;
-  --muted: #1f1f1f;
-  --muted-foreground: #94a3b8;
-  --accent: #1f1f1f;
-  --accent-foreground: #f8fafc;
-  --destructive: #ef4444;
-  --border: #262626;
-  --input: #262626;
-  --ring: #1d9e75;
 }

@@ -5,12 +5,12 @@ import type { LiveAlert } from '@/lib/mock/coordinator'
 
 const ICON_TONE = {
   danger: 'text-destructive',
-  warning: 'text-[#D97706]',
+  warning: 'text-[#B45309] dark:text-[#FBBF24]',
 } as const
 
 const ROW_TONE = {
   danger: 'bg-destructive/5',
-  warning: 'bg-[#FFFBEB]',
+  warning: 'bg-[#FEF9C3] dark:bg-amber-500/10',
 } as const
 
 export function AlertsCard({ alerts }: { alerts: LiveAlert[] }) {

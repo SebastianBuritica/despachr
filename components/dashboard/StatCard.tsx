@@ -13,7 +13,10 @@ interface StatCardProps {
 const TONE: Record<StatTone, { card: string; value: string }> = {
   default: { card: 'border-border bg-card', value: 'text-foreground' },
   danger: { card: 'border-destructive/20 bg-destructive/5', value: 'text-destructive' },
-  warning: { card: 'border-[#D97706]/20 bg-[#FFFBEB]', value: 'text-[#D97706]' },
+  warning: {
+    card: 'border-[#FDE68A] bg-[#FEF9C3] dark:border-amber-500/25 dark:bg-amber-500/10',
+    value: 'text-[#B45309] dark:text-[#FBBF24]',
+  },
 }
 
 // Card de métrica: label + valor grande mono. Reutilizada en live ops, rutas y admin.
