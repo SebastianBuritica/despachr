@@ -10,6 +10,7 @@
     "deploy": "bash scripts/deploy.sh",
     "setup-env": "bash scripts/setup-env.sh",
     "db:create-tables": "node scripts/db-create-tables.js",
+    "qa": "node scripts/qa.mjs",
     "gh:feature": "bash scripts/github-workflow.sh feature",
     "gh:bugfix": "bash scripts/github-workflow.sh bugfix",
     "gh:pr": "bash scripts/github-workflow.sh pr",

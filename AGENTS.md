@@ -364,7 +364,7 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-06-28
+**Last Updated:** 2026-06-30
 
 ### ✅ Completed
 - [x] Next.js 14 boilerplate with TypeScript + Tailwind
@@ -399,6 +399,8 @@ npm run lint             # ESLint validation
 - [x] **Landing page (marketing oscuro):** página pública en `/` con tema oscuro fijo (colores explícitos, independiente del toggle de la app). Nav sticky con blur; hero 2 col con entrada escalonada (`fadeUp` + delays) y **mapa "EN VIVO" animado** (`LiveMapCard`: ruta SVG con dash animado, vehículo recorriéndola vía `animateMotion`, pines, chips, toast cíclico); banda de stats con **count-up** (`IntersectionObserver`, formato es-CO); sección demo con el **dashboard en LIGHT Zinc** dentro de marco de navegador (`DemoMockup`); CTA de cierre + footer. Scroll-reveal (`Reveal`) y `prefers-reduced-motion` respetado. Verificado con Chrome headless.
 
 - [x] **Marca / iconos oficiales:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx` (asta + nodo origen en `currentColor`, recorrido y destino en verde) reemplaza el placeholder de camión en sidebar, login, landing (nav+footer) y demo. **PWA**: `app/manifest.ts` (icons 192/512, standalone) + metadata de iconos en el layout (favicon svg/png, **apple-touch-icon 180**, `appleWebApp`). Assets en `public/brand/`. Arregla el icono genérico de la pantalla de inicio en iOS. Verificado con Chrome headless.
+
+- [x] **QA tooling (skill + subagent):** pase de QA de toda la app. `scripts/qa.mjs` (Playwright) hace login por rol (creds de prueba en `.env.local`: `QA_<ROL>_EMAIL/PASSWORD`) y recorre **todas las rutas** en desktop (1440×900) + mobile (390×844) y en **light/dark** (la landing `/` es dark-only), capturando screenshot full-page, errores de consola/JS y violaciones de accesibilidad (axe WCAG 2 A/AA, serias+críticas) → `assets/qa/<timestamp>/{report.md,results.json,*.png}` (gitignored). Skill `/qa [segmento]` (`.claude/skills/qa/`) orquesta lint+build → dev server → sweep → lectura de screenshots y veredicto PASS/WARN/FAIL. Subagente delegable `qa` (`.claude/agents/qa.md`). Script npm `npm run qa`. Tooling se instala al primer uso (`playwright`, `@axe-core/playwright`, `dotenv` como devDeps).
 
 ### 🔄 In Progress
 - [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real (landing + app del conductor + coordinador)

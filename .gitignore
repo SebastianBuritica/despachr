@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# qa run artifacts (screenshots + reports)
+/assets/qa
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
