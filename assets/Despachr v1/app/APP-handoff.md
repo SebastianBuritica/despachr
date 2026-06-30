@@ -1,14 +1,15 @@
-# Handoff: Despachr — SaaS B2B logístico
+# Handoff: Despachr — App (producto)
 
-## 📂 Índice del paquete
-Este handoff cubre **tres entregables**. Léelos en este orden según lo que vayas a construir:
+> Parte del paquete **Despachr v1**. Para el índice general, la landing y la marca, ver el `README.md` de la carpeta raíz. Este documento cubre **la app**.
 
-| # | Documento | Qué cubre | Archivo de referencia |
-|---|---|---|---|
-| 1 | **Este README** | La **app** completa (login, conductor, coordinador, admin) + design tokens + todas las pantallas. | `Despachr.dc.html` |
-| 2 | `UPDATE-tema-y-graficas.md` | **Tema light/dark (escala Zinc)** + sidebar claro estilo Linear + gráficas pulidas. **Sustituye la paleta de la sección Design Tokens de abajo.** | `Despachr.dc.html` |
-| 3 | `LANDING-handoff.md` | La **landing page** de marketing (oscura): hero con mapa real + ruta animada, demo en light, CTA. | `Despachr Landing.dc.html` |
-| 3b | `LANDING-mapa-en-vivo.md` | **Guía técnica del mapa "EN VIVO"** (las 3 capas: mapa real + ruta vial + camión con `offset-path`). Lee esto si la visualización no te quedó como el diseño. | `screenshots/landing-01-hero.png` |
+## 📂 Documentos de la app
+
+| Documento | Qué cubre |
+|---|---|
+| **Este `APP-handoff.md`** | La app completa (login, conductor, coordinador, admin) + design tokens + todas las pantallas, estado e interacciones. |
+| `UPDATE-tema-y-graficas.md` | **Tema light/dark (escala Zinc)** + sidebar claro estilo Linear + gráficas pulidas. **Sustituye la paleta de la sección Design Tokens de abajo.** |
+
+Archivo de referencia: `Despachr.dc.html` · capturas en `screenshots/`. (La landing tiene sus propios docs en `../landing/`.)
 
 > ⚠️ **Orden de precedencia de la paleta**: la app objetivo usa el **tema Zinc light/dark** descrito en `UPDATE-tema-y-graficas.md`. La tabla de colores de este README documenta el prototipo original (sidebar negro, solo light) y queda **superada** por ese documento — úsalo como la fuente de verdad de color/tema. El resto de este README (estructura, pantallas, interacciones, estado) sigue plenamente vigente.
 
@@ -240,7 +241,6 @@ Capturas de referencia en `screenshots/` (1× cada pantalla):
 
 ## Files
 - `Despachr.dc.html` — prototipo completo de la app (4 experiencias + 8 sub-páginas, con tema light/dark Zinc ya aplicado). Léelo como fuente de medidas, colores y copy exactos; la lógica está en su clase `Component` (estado e interacciones) y el markup usa estilos inline.
-- `Despachr Landing.dc.html` — prototipo de la landing page (oscura, con mapa real + animaciones y demo en light).
 - `UPDATE-tema-y-graficas.md` — especificación del tema Zinc (light/dark), sidebar claro y gráficas pulidas. **Fuente de verdad de color/tema.**
-- `LANDING-handoff.md` — especificación completa de la landing page.
 - `screenshots/` — 14 capturas de referencia de la app.
+- *(La landing y la marca están en `../landing/` y `../brand/` — ver el README maestro.)*

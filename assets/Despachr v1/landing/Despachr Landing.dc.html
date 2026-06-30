@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0A0A0A}
+  html{scroll-behavior:smooth}
+  a{text-decoration:none;color:inherit}
+  button{font-family:inherit;cursor:pointer;border:none}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:#2A2A2A;border-radius:8px}
+  ::-webkit-scrollbar-track{background:#0A0A0A}
+  @keyframes dz-up{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  @keyframes dz-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  @keyframes dz-ping{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.6);opacity:0}}
+  @keyframes dz-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes dz-truck{0%{offset-distance:0%;opacity:0}6%{opacity:1}92%{opacity:1}100%{offset-distance:100%;opacity:0}}
+  @keyframes dz-flow{0%{offset-distance:0%;opacity:0}10%{opacity:1}90%{opacity:1}100%{offset-distance:100%;opacity:0}}
+  @keyframes dz-toast{0%{opacity:0;transform:translateY(10px) scale(.96)}7%{opacity:1;transform:none}42%{opacity:1;transform:none}50%{opacity:0;transform:translateY(10px) scale(.96)}100%{opacity:0}}
+  @keyframes dz-dash{to{stroke-dashoffset:-28}}
+  @keyframes dz-bar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes dz-grid{from{transform:translateY(0)}to{transform:translateY(34px)}}
+</style>
+</helmet>
+
+<div id="dpz-landing" style="font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#F8FAFC;background:#0A0A0A;-webkit-font-smoothing:antialiased;overflow-x:hidden;">
+
+  <!-- ===== NAV ===== -->
+  <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(10,10,10,.72);border-bottom:1px solid rgba(255,255,255,.08);">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <div style="width:30px;height:30px;border-radius:8px;background:#0A0A0A;border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;"><svg width="16" height="19" viewBox="0 0 40 48" fill="none"><path d="M11 8C28 8 35 15 35 24C35 33 28 40 11 40" stroke="#1D9E75" stroke-width="4.4" fill="none" stroke-linecap="round" stroke-dasharray="0.1 7.8"/><path d="M11 8V40" stroke="#fff" stroke-width="4.8" stroke-linecap="round"/><circle cx="11" cy="8" r="4.6" fill="#fff"/><circle cx="11" cy="40" r="4.6" fill="#1D9E75"/></svg></div>
+        <span style="font-weight:700;font-size:19px;letter-spacing:-.4px;color:#fff;">Despachr</span>
+      </div>
+      <nav style="display:flex;align-items:center;gap:30px;font-size:14px;font-weight:500;color:#94A3B8;">
+        <a href="#producto" style="transition:color .15s;" style-hover="color:#fff">Producto</a>
+        <a href="#como-funciona" style="transition:color .15s;" style-hover="color:#fff">Cómo funciona</a>
+        <a href="#preview" style="transition:color .15s;" style-hover="color:#fff">Plataforma</a>
+        <a href="#precios" style="transition:color .15s;" style-hover="color:#fff">Precios</a>
+      </nav>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <a href="#" style="font-size:14px;font-weight:600;color:#fff;padding:9px 14px;border-radius:7px;transition:background .15s;" style-hover="background:rgba(255,255,255,.07)">Iniciar sesión</a>
+        <a href="#" style="display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#fff;background:#0F6E56;padding:9px 16px;border-radius:7px;transition:background .15s;" style-hover="background:#1D9E75">Acceder <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== HERO ===== -->
+  <section style="position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-180px;right:-120px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(29,158,117,.22),transparent 66%);pointer-events:none;"></div>
+    <div style="position:absolute;top:160px;left:-200px;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(15,110,86,.14),transparent 70%);pointer-events:none;"></div>
+    <div style="max-width:1200px;margin:0 auto;padding:84px 24px 104px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;position:relative;">
+      <!-- left -->
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:30px;padding:6px 14px;font-size:13px;font-weight:600;color:#1D9E75;animation:dz-up .6s cubic-bezier(.22,1,.36,1) both;">
+          <span style="position:relative;width:8px;height:8px;"><span style="position:absolute;inset:0;border-radius:50%;background:#1D9E75;"></span><span style="position:absolute;inset:0;border-radius:50%;background:#1D9E75;animation:dz-ping 1.8s ease-out infinite;"></span></span>
+          Plataforma logística en tiempo real
+        </div>
+        <h1 style="font-size:60px;line-height:1.04;letter-spacing:-2px;font-weight:800;margin:22px 0 0;color:#fff;text-wrap:balance;animation:dz-up .7s cubic-bezier(.22,1,.36,1) both;animation-delay:.08s;">Toda tu operación de carga, <span style="color:#1D9E75;">en tiempo real.</span></h1>
+        <p style="font-size:19px;line-height:1.6;color:#94A3B8;max-width:480px;margin:22px 0 0;animation:dz-up .7s cubic-bezier(.22,1,.36,1) both;animation-delay:.16s;">Conductores, rutas y cumplimiento sincronizados — desde el primer despacho hasta la última entrega. Sin llamadas, sin hojas de cálculo.</p>
+        <div style="display:flex;gap:12px;margin-top:32px;animation:dz-up .7s cubic-bezier(.22,1,.36,1) both;animation-delay:.24s;">
+          <a href="#" style="display:flex;align-items:center;gap:8px;background:#0F6E56;color:#fff;font-size:15px;font-weight:600;padding:14px 24px;border-radius:9px;box-shadow:0 12px 30px -8px rgba(15,110,86,.6);transition:background .15s,transform .15s;" style-hover="background:#1D9E75;transform:translateY(-1px)">Acceder ahora <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a href="#preview" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);color:#fff;font-size:15px;font-weight:600;padding:14px 22px;border-radius:9px;border:1px solid rgba(255,255,255,.12);transition:background .15s;" style-hover="background:rgba(255,255,255,.12)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4Z"/></svg>Ver demo</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:30px;animation:dz-up .7s cubic-bezier(.22,1,.36,1) both;animation-delay:.32s;">
+          <div style="display:flex;">
+            <div style="width:32px;height:32px;border-radius:50%;background:#0F6E56;border:2px solid #0A0A0A;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;">CM</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:#1D9E75;border:2px solid #0A0A0A;margin-left:-9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;">AG</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:#334155;border:2px solid #0A0A0A;margin-left:-9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;">+9</div>
+          </div>
+          <span style="font-size:13px;color:#94A3B8;line-height:1.4;">Empresas de transporte de carga ya operan<br>con Despachr en Colombia.</span>
+        </div>
+      </div>
+
+      <!-- right: live ops viz -->
+      <div style="display:flex;justify-content:center;animation:dz-up .8s cubic-bezier(.22,1,.36,1) both;animation-delay:.2s;">
+        <div style="animation:dz-float 6s ease-in-out infinite;">
+          <div style="position:relative;width:520px;height:440px;background:#121212;border:1px solid rgba(255,255,255,.22);border-radius:18px;box-shadow:0 50px 100px -30px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.05),0 0 60px -10px rgba(29,158,117,.45);overflow:hidden;">
+            <div style="position:absolute;inset:0;background:#15181d;overflow:hidden;">
+              <div style="position:absolute;left:-124px;top:-164px;width:768px;height:768px;display:grid;grid-template-columns:repeat(6,128px);grid-template-rows:repeat(6,128px);filter:saturate(.95) brightness(1.15) contrast(1.06);">
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1194/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1195/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1196/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1197/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1198/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1199/1920.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1194/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1195/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1196/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1197/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1198/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1199/1921.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1194/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1195/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1196/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1197/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1198/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1199/1922.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1194/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1195/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1196/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1197/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1198/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1199/1923.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1194/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1195/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1196/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1197/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1198/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1199/1924.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1194/1925.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1195/1925.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://a.basemaps.cartocdn.com/dark_all/12/1196/1925.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://b.basemaps.cartocdn.com/dark_all/12/1197/1925.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://c.basemaps.cartocdn.com/dark_all/12/1198/1925.png" width="128" height="128" alt="" style="display:block;" />
+                <img src="https://d.basemaps.cartocdn.com/dark_all/12/1199/1925.png" width="128" height="128" alt="" style="display:block;" />
+              </div>
+            </div>
+            <div style="position:absolute;inset:0;background:linear-gradient(rgba(8,10,9,.12),rgba(8,10,9,.34)),radial-gradient(circle at 72% 28%,rgba(29,158,117,.16),transparent 56%);"></div>
+            <div style="position:absolute;right:8px;bottom:6px;font-size:9px;color:rgba(15,23,42,.45);font-family:'JetBrains Mono',monospace;z-index:2;">© OpenStreetMap · CARTO</div>
+            <svg style="position:absolute;inset:0;" width="520" height="440" viewBox="0 0 520 440">
+              <path d="M29.8 103.7 L31.6 108.3 L40.4 112.5 L42.6 112.7 L60.1 102 L88.8 86.9 L125 81.6 L163.2 76.8 L184.5 78.6 L213.4 94 L221.8 97.5 L234.9 103.9 L242.9 107.6 L247.6 111.1 L259.9 115.4 L274.3 119.6 L284.1 121.8 L288.4 127.9 L278.6 150.2 L272.7 165.7 L274.2 177.9 L277.5 189.5 L280.4 197.2 L286.1 215.7 L295.4 223.2 L304 223.8" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="10" stroke-linecap="round"/>
+              <path d="M29.8 103.7 L31.6 108.3 L40.4 112.5 L42.6 112.7 L60.1 102 L88.8 86.9 L125 81.6 L163.2 76.8 L184.5 78.6 L213.4 94 L221.8 97.5 L234.9 103.9 L242.9 107.6 L247.6 111.1 L259.9 115.4 L274.3 119.6 L284.1 121.8 L288.4 127.9 L278.6 150.2 L272.7 165.7 L274.2 177.9 L277.5 189.5 L280.4 197.2 L286.1 215.7 L295.4 223.2 L304 223.8" fill="none" stroke="#1D9E75" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="2 10" style="animation:dz-dash 1s linear infinite;"/>
+            </svg>
+            <div style="position:absolute;top:0;left:0;width:12px;height:12px;border-radius:50%;background:#1D9E75;box-shadow:0 0 16px 4px rgba(29,158,117,.7);offset-path:path('M29.8 103.7 L31.6 108.3 L40.4 112.5 L42.6 112.7 L60.1 102 L88.8 86.9 L125 81.6 L163.2 76.8 L184.5 78.6 L213.4 94 L221.8 97.5 L234.9 103.9 L242.9 107.6 L247.6 111.1 L259.9 115.4 L274.3 119.6 L284.1 121.8 L288.4 127.9 L278.6 150.2 L272.7 165.7 L274.2 177.9 L277.5 189.5 L280.4 197.2 L286.1 215.7 L295.4 223.2 L304 223.8');offset-rotate:0deg;animation:dz-flow 7s linear infinite;"></div>
+            <div style="position:absolute;top:0;left:0;offset-path:path('M29.8 103.7 L31.6 108.3 L40.4 112.5 L42.6 112.7 L60.1 102 L88.8 86.9 L125 81.6 L163.2 76.8 L184.5 78.6 L213.4 94 L221.8 97.5 L234.9 103.9 L242.9 107.6 L247.6 111.1 L259.9 115.4 L274.3 119.6 L284.1 121.8 L288.4 127.9 L278.6 150.2 L272.7 165.7 L274.2 177.9 L277.5 189.5 L280.4 197.2 L286.1 215.7 L295.4 223.2 L304 223.8');offset-rotate:0deg;animation:dz-truck 7s ease-in-out infinite;">
+              <div style="transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#0F6E56;border:3px solid #121212;box-shadow:0 6px 16px rgba(15,110,86,.6);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18a2 2 0 1 0 4 0"/><path d="M15 18a2 2 0 1 0 4 0"/><path d="M14 17V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2"/><path d="M9 18h4"/><path d="M19 18h1a1 1 0 0 0 1-1v-3.3a1 1 0 0 0-.2-.6l-2.9-3.7a1 1 0 0 0-.8-.4H14"/></svg></div>
+            </div>
+            <div style="position:absolute;left:29.8px;top:103.7px;transform:translate(-50%,-50%);"><span style="display:block;width:14px;height:14px;border-radius:50%;background:#64748B;border:3px solid #121212;"></span></div>
+            <div style="position:absolute;left:213.4px;top:94px;transform:translate(-50%,-50%);"><span style="position:relative;display:block;width:14px;height:14px;"><span style="position:absolute;inset:-7px;border-radius:50%;background:#D97706;opacity:.3;animation:dz-ping 1.8s ease-out infinite;"></span><span style="position:absolute;inset:0;border-radius:50%;background:#D97706;border:3px solid #121212;"></span></span></div>
+            <div style="position:absolute;left:304px;top:223.8px;transform:translate(-50%,-50%);"><span style="display:block;width:14px;height:14px;border-radius:50%;background:#1D9E75;border:3px solid #121212;box-shadow:0 0 12px rgba(29,158,117,.6);"></span></div>
+            <div style="position:absolute;left:16px;top:16px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;"><span style="width:7px;height:7px;border-radius:50%;background:#1D9E75;animation:dz-pulse 1.4s infinite;"></span>EN VIVO · 4 rutas</div>
+            <div style="position:absolute;left:316px;top:150px;background:#1E1E1E;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:7px 11px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;gap:7px;box-shadow:0 10px 24px -8px rgba(0,0,0,.6);"><span style="width:7px;height:7px;border-radius:50%;background:#D97706;"></span>Carlos M. · ABC-123</div>
+            <div style="position:absolute;right:16px;bottom:18px;left:16px;background:#1A1A1A;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 18px 36px -14px rgba(0,0,0,.7);animation:dz-toast 6s ease-in-out infinite;">
+              <div style="width:38px;height:38px;border-radius:10px;background:rgba(29,158,117,.16);flex:none;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:600;color:#fff;">Entrega confirmada</div><div style="font-size:12px;color:#94A3B8;">Makro Montería · cumplido + firma</div></div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1D9E75;font-weight:600;">11:32</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRODUCTO (features) ===== -->
+  <section id="producto" style="background:#FFFFFF;scroll-margin-top:72px;">
+    <div style="max-width:1200px;margin:0 auto;padding:96px 24px;">
+    <div data-reveal style="opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;max-width:660px;margin:0 auto 56px;">
+      <div style="font-size:13px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:.6px;">Una sola plataforma</div>
+      <h2 style="font-size:40px;font-weight:800;letter-spacing:-1.2px;margin:12px 0 0;color:#0F172A;text-wrap:balance;">Del celular del conductor al margen por cliente</h2>
+      <p style="font-size:17px;color:#64748B;line-height:1.6;margin:16px 0 0;">Cada eslabón de tu operación, conectado en tiempo real.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px;">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .25s,background .25s;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:28px;box-shadow:0 1px 2px rgba(15,23,42,.04);" style-hover="border-color:rgba(29,158,117,.5);box-shadow:0 18px 40px -22px rgba(15,23,42,.18)">
+        <div style="width:46px;height:46px;border-radius:12px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+        <h3 style="font-size:19px;font-weight:700;letter-spacing:-.3px;margin:18px 0 0;color:#18181B;">App del conductor</h3>
+        <p style="font-size:14.5px;color:#64748B;line-height:1.6;margin:8px 0 0;">Lista de entregas, navegación, timer en sitio y captura de cumplido con foto y firma — todo desde el celular, incluso sin señal.</p>
+      </div>
+      <div data-reveal data-delay=".08s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .25s,background .25s;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:28px;box-shadow:0 1px 2px rgba(15,23,42,.04);" style-hover="border-color:rgba(29,158,117,.5);box-shadow:0 18px 40px -22px rgba(15,23,42,.18)">
+        <div style="width:46px;height:46px;border-radius:12px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3 style="font-size:19px;font-weight:700;letter-spacing:-.3px;margin:18px 0 0;color:#18181B;">Coordinación en vivo</h3>
+        <p style="font-size:14.5px;color:#64748B;line-height:1.6;margin:8px 0 0;">Mapa con todas las rutas, estado de cada parada y alertas automáticas de retrasos o entregas fuera de ventana.</p>
+      </div>
+      <div data-reveal data-delay=".16s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .25s,background .25s;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:28px;box-shadow:0 1px 2px rgba(15,23,42,.04);" style-hover="border-color:rgba(29,158,117,.5);box-shadow:0 18px 40px -22px rgba(15,23,42,.18)">
+        <div style="width:46px;height:46px;border-radius:12px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg></div>
+        <h3 style="font-size:19px;font-weight:700;letter-spacing:-.3px;margin:18px 0 0;color:#18181B;">Métricas y márgenes</h3>
+        <p style="font-size:14.5px;color:#64748B;line-height:1.6;margin:8px 0 0;">Cumplimiento, toneladas y rentabilidad por cliente y ruta. Reportes listos para junta, sin armar nada a mano.</p>
+      </div>
+      <div data-reveal data-delay=".24s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .25s,background .25s;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:28px;box-shadow:0 1px 2px rgba(15,23,42,.04);" style-hover="border-color:rgba(29,158,117,.5);box-shadow:0 18px 40px -22px rgba(15,23,42,.18)">
+        <div style="width:46px;height:46px;border-radius:12px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z"/></svg></div>
+        <h3 style="font-size:19px;font-weight:700;letter-spacing:-.3px;margin:18px 0 0;color:#18181B;">Cumplido digital</h3>
+        <p style="font-size:14.5px;color:#64748B;line-height:1.6;margin:8px 0 0;">Evidencia de cada entrega — foto, firma y hora — sincronizada al instante. Adiós a las remesas en papel.</p>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ===== CÓMO FUNCIONA ===== -->
+  <section id="como-funciona" style="max-width:1200px;margin:0 auto;padding:80px 24px;scroll-margin-top:72px;">
+    <div data-reveal style="opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;max-width:600px;margin:0 auto 56px;">
+      <div style="font-size:13px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:.6px;">Cómo funciona</div>
+      <h2 style="font-size:40px;font-weight:800;letter-spacing:-1.2px;margin:12px 0 0;color:#fff;">Operativo en tres pasos</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;margin:0 auto;">01</div>
+        <h3 style="font-size:18px;font-weight:700;margin:20px 0 0;color:#fff;">Planea la ruta</h3>
+        <p style="font-size:14.5px;color:#94A3B8;line-height:1.6;margin:8px auto 0;max-width:280px;">El coordinador arma rutas, asigna conductores y vehículos y despacha — en minutos.</p>
+      </div>
+      <div data-reveal data-delay=".12s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:16px;background:#0F6E56;color:#fff;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 30px -10px rgba(15,110,86,.7);">02</div>
+        <h3 style="font-size:18px;font-weight:700;margin:20px 0 0;color:#fff;">El conductor entrega</h3>
+        <p style="font-size:14.5px;color:#94A3B8;line-height:1.6;margin:8px auto 0;max-width:280px;">Registra cada parada en vivo y captura el cumplido con foto y firma desde la app.</p>
+      </div>
+      <div data-reveal data-delay=".24s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(29,158,117,.16);border:1px solid rgba(29,158,117,.4);color:#1D9E75;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;margin:0 auto;">03</div>
+        <h3 style="font-size:18px;font-weight:700;margin:20px 0 0;color:#fff;">Mides el resultado</h3>
+        <p style="font-size:14.5px;color:#94A3B8;line-height:1.6;margin:8px auto 0;max-width:280px;">Cumplimiento, toneladas y márgenes se actualizan solos. Decides con datos, no con supuestos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRODUCT PREVIEW (demo) ===== -->
+  <section id="preview" style="background:#F8FAFC;scroll-margin-top:72px;">
+    <div style="max-width:1160px;margin:0 auto;padding:80px 24px;position:relative;">
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:760px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(29,158,117,.14),transparent 68%);pointer-events:none;"></div>
+    <div data-reveal style="opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;max-width:600px;margin:0 auto 44px;position:relative;">
+      <div style="font-size:13px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:.6px;">La plataforma</div>
+      <h2 style="font-size:40px;font-weight:800;letter-spacing:-1.2px;margin:12px 0 0;color:#0F172A;">Coordina toda tu flota desde un tablero</h2>
+    </div>
+    <div data-reveal style="opacity:0;transform:translateY(36px) scale(.97);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1);position:relative;">
+      <div style="border-radius:16px;overflow:hidden;border:1px solid #E2E8F0;box-shadow:0 40px 90px -35px rgba(15,23,42,.3);background:#fff;">
+        <div style="height:42px;background:#0A0A0A;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;padding:0 16px;">
+          <span style="width:11px;height:11px;border-radius:50%;background:#3F3F46;"></span><span style="width:11px;height:11px;border-radius:50%;background:#3F3F46;"></span><span style="width:11px;height:11px;border-radius:50%;background:#3F3F46;"></span>
+          <div style="margin-left:14px;background:#1C1C1F;border-radius:6px;height:24px;flex:1;max-width:340px;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#71717A;font-family:'JetBrains Mono',monospace;">app.despachr.co/operacion</div>
+        </div>
+        <div style="display:flex;min-height:480px;">
+          <div style="width:204px;flex:none;background:#FAFAFA;color:#18181B;padding:18px 12px;border-right:1px solid #E4E4E7;">
+            <div style="display:flex;align-items:center;gap:9px;padding:4px 6px 18px;"><div style="width:24px;height:24px;border-radius:6px;background:#0F6E56;display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18a2 2 0 1 0 4 0"/><path d="M15 18a2 2 0 1 0 4 0"/><path d="M14 17V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h2"/><path d="M9 18h4"/><path d="M19 18h1a1 1 0 0 0 1-1v-3.3a1 1 0 0 0-.2-.6l-2.9-3.7a1 1 0 0 0-.8-.4H14"/></svg></div><span style="font-weight:700;font-size:14px;color:#18181B;">Despachr</span></div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;background:#F0F0F1;font-size:13px;font-weight:600;color:#18181B;margin-bottom:3px;"><span style="width:7px;height:7px;border-radius:2px;background:#1D9E75;"></span>Operación en vivo</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;color:#52525B;font-size:13px;">Rutas</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;color:#52525B;font-size:13px;">Conductores</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;color:#52525B;font-size:13px;">Clientes</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;color:#52525B;font-size:13px;">Métricas</div>
+          </div>
+          <div style="flex:1;background:#FAFAFA;color:#18181B;padding:22px;">
+            <div style="font-size:18px;font-weight:700;letter-spacing:-.4px;">Operación en vivo</div>
+            <div style="font-size:12px;color:#64748B;margin-top:2px;">Lunes 15 de enero · actualizado hace 12 s</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px;">
+              <div style="background:#fff;border:1px solid #E2E8F0;border-radius:9px;padding:13px;"><div style="font-size:11px;color:#71717A;">En ruta</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#0F6E56;">12</div><div style="font-size:10px;color:#15803D;font-weight:500;margin-top:2px;">▲ 8 hoy</div></div>
+              <div style="background:#fff;border:1px solid #E2E8F0;border-radius:9px;padding:13px;"><div style="font-size:11px;color:#71717A;">Completadas</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#18181B;">84</div><div style="font-size:10px;color:#15803D;font-weight:500;margin-top:2px;">▲ 92% del plan</div></div>
+              <div style="background:#fff;border:1px solid #E2E8F0;border-radius:9px;padding:13px;"><div style="font-size:11px;color:#71717A;">Paradas hoy</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#18181B;">142</div><div style="font-size:10px;color:#71717A;font-weight:500;margin-top:2px;">38 t movilizadas</div></div>
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:9px;padding:13px;"><div style="font-size:11px;color:#DC2626;">Retrasadas</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#DC2626;">2</div><div style="font-size:10px;color:#71717A;font-weight:500;margin-top:2px;">SLA 98.6%</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:14px;">
+              <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Toneladas por día</div>
+                <div style="display:flex;align-items:flex-end;gap:10px;height:130px;">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;"><div style="width:100%;height:62%;background:linear-gradient(#1D9E75,#0F6E56);border-radius:5px 5px 2px 2px;transform-origin:bottom;animation:dz-bar .8s ease both;"></div><span style="font-size:10px;color:#64748B;">L</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;"><div style="width:100%;height:88%;background:linear-gradient(#1D9E75,#0F6E56);border-radius:5px 5px 2px 2px;transform-origin:bottom;animation:dz-bar .8s ease both;animation-delay:.05s;"></div><span style="font-size:10px;color:#64748B;">M</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;"><div style="width:100%;height:74%;background:linear-gradient(#1D9E75,#0F6E56);border-radius:5px 5px 2px 2px;transform-origin:bottom;animation:dz-bar .8s ease both;animation-delay:.1s;"></div><span style="font-size:10px;color:#64748B;">X</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;"><div style="width:100%;height:100%;background:linear-gradient(#1D9E75,#0F6E56);border-radius:5px 5px 2px 2px;transform-origin:bottom;animation:dz-bar .8s ease both;animation-delay:.15s;"></div><span style="font-size:10px;color:#64748B;">J</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;"><div style="width:100%;height:92%;background:linear-gradient(#1D9E75,#0F6E56);border-radius:5px 5px 2px 2px;transform-origin:bottom;animation:dz-bar .8s ease both;animation-delay:.2s;"></div><span style="font-size:10px;color:#64748B;">V</span></div>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div style="position:relative;width:120px;height:120px;border-radius:50%;background:conic-gradient(#1D9E75 0 94.8%,#F1F5F9 94.8% 100%);display:flex;align-items:center;justify-content:center;"><div style="width:86px;height:86px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;">94.8%</span><span style="font-size:10px;color:#64748B;">a tiempo</span></div></div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E4E7;border-radius:10px;margin-top:14px;overflow:hidden;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #E4E4E7;"><span style="font-size:13px;font-weight:600;color:#18181B;">Rutas activas</span><span style="font-size:11px;color:#71717A;">6 en operación</span></div>
+              <div style="display:grid;grid-template-columns:1.5fr 1.2fr 1.3fr .7fr .9fr;padding:8px 16px;font-size:10px;font-weight:600;color:#71717A;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #F1F1F3;background:#FAFAFA;"><span>Ruta</span><span>Conductor</span><span>Progreso</span><span>ETA</span><span>Estado</span></div>
+              <div style="display:grid;grid-template-columns:1.5fr 1.2fr 1.3fr .7fr .9fr;padding:11px 16px;align-items:center;font-size:12px;border-bottom:1px solid #F1F1F3;"><span style="font-weight:600;color:#18181B;">Costa Atlántica</span><span style="color:#3F3F46;">Carlos Martínez</span><span style="display:flex;align-items:center;gap:8px;"><span style="flex:1;max-width:84px;height:5px;background:#F1F1F3;border-radius:5px;overflow:hidden;"><span style="display:block;height:100%;width:33%;background:#1D9E75;border-radius:5px;"></span></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;">1/3</span></span><span style="font-family:'JetBrains Mono',monospace;color:#18181B;">15:30</span><span><span style="display:inline-flex;align-items:center;gap:5px;background:#DCFCE7;color:#15803D;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;">En ruta</span></span></div>
+              <div style="display:grid;grid-template-columns:1.5fr 1.2fr 1.3fr .7fr .9fr;padding:11px 16px;align-items:center;font-size:12px;border-bottom:1px solid #F1F1F3;"><span style="font-weight:600;color:#18181B;">Sabana Centro</span><span style="color:#3F3F46;">Andrés Gómez</span><span style="display:flex;align-items:center;gap:8px;"><span style="flex:1;max-width:84px;height:5px;background:#F1F1F3;border-radius:5px;overflow:hidden;"><span style="display:block;height:100%;width:66%;background:#1D9E75;border-radius:5px;"></span></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;">4/6</span></span><span style="font-family:'JetBrains Mono',monospace;color:#18181B;">16:10</span><span><span style="display:inline-flex;align-items:center;gap:5px;background:#DCFCE7;color:#15803D;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;">En ruta</span></span></div>
+              <div style="display:grid;grid-template-columns:1.5fr 1.2fr 1.3fr .7fr .9fr;padding:11px 16px;align-items:center;font-size:12px;"><span style="font-weight:600;color:#18181B;">Valle del Cauca</span><span style="color:#3F3F46;">María Restrepo</span><span style="display:flex;align-items:center;gap:8px;"><span style="flex:1;max-width:84px;height:5px;background:#F1F1F3;border-radius:5px;overflow:hidden;"><span style="display:block;height:100%;width:40%;background:#DC2626;border-radius:5px;"></span></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;">2/5</span></span><span style="font-family:'JetBrains Mono',monospace;color:#18181B;">17:45</span><span><span style="display:inline-flex;align-items:center;gap:5px;background:#FEF2F2;color:#DC2626;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;">Retrasada</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ===== PRECIOS ===== -->
+  <section id="precios" style="max-width:1200px;margin:0 auto;padding:40px 24px 100px;scroll-margin-top:72px;position:relative;">
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:720px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(29,158,117,.1),transparent 68%);pointer-events:none;"></div>
+    <div data-reveal style="opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;max-width:620px;margin:0 auto 18px;position:relative;">
+      <div style="font-size:13px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:.6px;">Precios</div>
+      <h2 style="font-size:40px;font-weight:800;letter-spacing:-1.2px;margin:12px 0 0;color:#fff;text-wrap:balance;">Un plan para cada tamaño de flota</h2>
+      <p style="font-size:17px;color:#94A3B8;line-height:1.6;margin:16px 0 0;">Sin instalaciones ni contratos largos. Cancela cuando quieras.</p>
+    </div>
+    <div data-reveal data-delay=".06s" style="opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);display:flex;align-items:center;justify-content:center;gap:10px;margin:0 auto 40px;position:relative;">
+      <span style="font-size:13px;color:#94A3B8;">Facturación mensual</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(29,158,117,.14);color:#1D9E75;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;">Anual · 2 meses gratis</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start;position:relative;">
+
+      <!-- Arranque -->
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);background:#101010;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:30px;">
+        <div style="font-size:14px;font-weight:600;color:#fff;">Arranque</div>
+        <p style="font-size:13px;color:#94A3B8;line-height:1.5;margin:6px 0 0;min-height:38px;">Para transportadoras que empiezan a digitalizar.</p>
+        <div style="display:flex;align-items:flex-end;gap:6px;margin:22px 0 2px;"><span style="font-family:'JetBrains Mono',monospace;font-size:38px;font-weight:600;letter-spacing:-1px;color:#fff;">$290k</span><span style="font-size:13px;color:#94A3B8;margin-bottom:8px;">COP / mes</span></div>
+        <div style="font-size:12px;color:#64748B;">Hasta 5 conductores</div>
+        <a href="#" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:24px;height:44px;background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:600;border-radius:9px;border:1px solid rgba(255,255,255,.12);transition:background .15s;" style-hover="background:rgba(255,255,255,.12)">Empezar</a>
+        <div style="height:1px;background:rgba(255,255,255,.08);margin:24px 0;"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>App del conductor</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Cumplido digital (foto + firma)</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Tablero de operación en vivo</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Soporte por correo</div>
+        </div>
+      </div>
+
+      <!-- Operación (popular) -->
+      <div data-reveal data-delay=".1s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);background:linear-gradient(#11201A,#0d1512);border:1px solid rgba(29,158,117,.5);border-radius:16px;padding:30px;position:relative;box-shadow:0 30px 70px -30px rgba(29,158,117,.5);">
+        <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#04130D;font-size:11px;font-weight:700;letter-spacing:.3px;padding:5px 12px;border-radius:20px;">MÁS POPULAR</span>
+        <div style="font-size:14px;font-weight:600;color:#fff;">Operación</div>
+        <p style="font-size:13px;color:#94A3B8;line-height:1.5;margin:6px 0 0;min-height:38px;">Para flotas en crecimiento que coordinan a diario.</p>
+        <div style="display:flex;align-items:flex-end;gap:6px;margin:22px 0 2px;"><span style="font-family:'JetBrains Mono',monospace;font-size:38px;font-weight:600;letter-spacing:-1px;color:#fff;">$690k</span><span style="font-size:13px;color:#94A3B8;margin-bottom:8px;">COP / mes</span></div>
+        <div style="font-size:12px;color:#64748B;">Hasta 20 conductores</div>
+        <a href="#" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:24px;height:44px;background:#0F6E56;color:#fff;font-size:14px;font-weight:600;border-radius:9px;transition:background .15s;box-shadow:0 12px 30px -10px rgba(15,110,86,.7);" style-hover="background:#1D9E75">Acceder ahora <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div style="height:1px;background:rgba(255,255,255,.1);margin:24px 0;"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#E2E8F0;font-weight:500;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Todo lo de Arranque, y además:</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Mapa en vivo + alertas de retraso</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Métricas y rentabilidad por cliente</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Reportes exportables</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Soporte prioritario</div>
+        </div>
+      </div>
+
+      <!-- Flota -->
+      <div data-reveal data-delay=".18s" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);background:#101010;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:30px;">
+        <div style="font-size:14px;font-weight:600;color:#fff;">Flota</div>
+        <p style="font-size:13px;color:#94A3B8;line-height:1.5;margin:6px 0 0;min-height:38px;">Para operaciones grandes con varias regionales.</p>
+        <div style="display:flex;align-items:flex-end;gap:6px;margin:22px 0 2px;"><span style="font-family:'JetBrains Mono',monospace;font-size:38px;font-weight:600;letter-spacing:-1px;color:#fff;">A medida</span></div>
+        <div style="font-size:12px;color:#64748B;">Conductores ilimitados</div>
+        <a href="#" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:24px;height:44px;background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:600;border-radius:9px;border:1px solid rgba(255,255,255,.12);transition:background .15s;" style-hover="background:rgba(255,255,255,.12)">Hablar con ventas</a>
+        <div style="height:1px;background:rgba(255,255,255,.08);margin:24px 0;"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#E2E8F0;font-weight:500;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Todo lo de Operación, y además:</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Multi-sede y roles avanzados</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>Integración con tu ERP / facturación</div>
+          <div style="display:flex;gap:10px;font-size:13.5px;color:#CBD5E1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><path d="M20 6 9 17l-5-5"/></svg>SLA y gerente de cuenta dedicado</div>
+        </div>
+      </div>
+
+    </div>
+    <p data-reveal style="opacity:0;transform:translateY(16px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);text-align:center;font-size:13px;color:#64748B;margin:34px 0 0;position:relative;">Precios de referencia en COP, sin IVA. ¿Una operación distinta? <a href="#" style="color:#1D9E75;font-weight:600;">Armamos un plan a tu medida.</a></p>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section style="padding:0 24px 100px;">
+    <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#0F6E56,#0A3D2E);border-radius:24px;padding:64px 48px;position:relative;overflow:hidden;text-align:center;border:1px solid rgba(255,255,255,.08);">
+      <div style="position:absolute;top:-140px;right:-60px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(29,158,117,.5),transparent 66%);"></div>
+      <div style="position:absolute;bottom:-160px;left:-80px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06),transparent 70%);"></div>
+      <h2 style="font-size:42px;font-weight:800;letter-spacing:-1.4px;color:#fff;margin:0;position:relative;text-wrap:balance;">Empieza a operar en tiempo real</h2>
+      <p style="font-size:18px;color:rgba(255,255,255,.8);line-height:1.6;max-width:520px;margin:18px auto 0;position:relative;">Digitaliza tu operación de carga hoy. Sin instalaciones, sin contratos largos.</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;position:relative;flex-wrap:wrap;">
+        <a href="#" style="display:flex;align-items:center;gap:8px;background:#fff;color:#0F6E56;font-size:15px;font-weight:700;padding:14px 26px;border-radius:9px;transition:transform .15s,box-shadow .15s;box-shadow:0 12px 30px -10px rgba(0,0,0,.4);" style-hover="transform:translateY(-1px)">Empezar ahora <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a href="#" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;font-size:15px;font-weight:600;padding:14px 24px;border-radius:9px;border:1px solid rgba(255,255,255,.22);transition:background .15s;" style-hover="background:rgba(255,255,255,.18)">Hablar con ventas</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer style="border-top:1px solid rgba(255,255,255,.08);">
+    <div style="max-width:1200px;margin:0 auto;padding:32px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:26px;height:26px;border-radius:7px;background:#0A0A0A;border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;"><svg width="14" height="17" viewBox="0 0 40 48" fill="none"><path d="M11 8C28 8 35 15 35 24C35 33 28 40 11 40" stroke="#1D9E75" stroke-width="4.6" fill="none" stroke-linecap="round" stroke-dasharray="0.1 8"/><path d="M11 8V40" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="11" cy="8" r="4.8" fill="#fff"/><circle cx="11" cy="40" r="4.8" fill="#1D9E75"/></svg></div>
+        <span style="font-weight:700;font-size:15px;color:#fff;">Despachr</span>
+      </div>
+      <div style="display:flex;gap:24px;font-size:13px;color:#94A3B8;"><a href="#producto" style-hover="color:#fff">Producto</a><a href="#precios" style-hover="color:#fff">Precios</a><a href="#" style-hover="color:#fff">Soporte</a><a href="#" style-hover="color:#fff">Privacidad</a></div>
+      <div style="font-size:12px;color:#64748B;">© 2026 Despachr · Transporte de carga</div>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    setTimeout(() => this.init(), 60);
+  }
+  init() {
+    const root = document.getElementById('dpz-landing');
+    if (!root) return;
+    const ro = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const el = e.target;
+          if (el.dataset.delay) el.style.transitionDelay = el.dataset.delay;
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          ro.unobserve(el);
+        }
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -40px 0px' });
+    root.querySelectorAll('[data-reveal]').forEach(el => ro.observe(el));
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
