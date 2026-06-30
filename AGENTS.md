@@ -400,6 +400,8 @@ npm run lint             # ESLint validation
 
 - [x] **Marca / iconos oficiales:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx` (asta + nodo origen en `currentColor`, recorrido y destino en verde) reemplaza el placeholder de camión en sidebar, login, landing (nav+footer) y demo. **PWA**: `app/manifest.ts` (icons 192/512, standalone) + metadata de iconos en el layout (favicon svg/png, **apple-touch-icon 180**, `appleWebApp`). Assets en `public/brand/`. Arregla el icono genérico de la pantalla de inicio en iOS. Verificado con Chrome headless.
 
+- [x] **Landing v2 (ritmo claro/oscuro):** rediseño de la landing a 8 secciones alternando fondos (nav/hero oscuro → **Producto blanco** (4 cards) → **Cómo funciona oscuro** (3 pasos) → **Plataforma `#F8FAFC`** (mockup) → **Precios oscuro** (3 planes, Operación "Más popular") → **CTA gradiente verde** → footer). Componentes nuevos: `ProductFeatures`, `HowItWorks`, `Pricing`. Se quitó la banda de stats/`CountUp`. Anclas de nav (`#producto`/`#como-funciona`/`#preview`/`#precios`). Verificado con Chrome headless.
+
 ### 🔄 In Progress
 - [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real (landing + app del conductor + coordinador)
 
