@@ -189,6 +189,9 @@
 
   --animate-fade-up: fadeUp 0.4s ease both;
   --animate-pop: pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-toast: toastCycle 6s ease-in-out infinite;
+  --animate-dash: dashMove 1.2s linear infinite;
 }
 
 @keyframes fadeUp {
@@ -230,5 +233,58 @@
   .tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---- Landing (marketing oscuro) ---- */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes dashMove {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes toastCycle {
+  0%,
+  8% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  16%,
+  60% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Vehículo recorriendo la ruta (offset-path se define inline por elemento). */
+@keyframes routeTruck {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/* Respeta prefers-reduced-motion: corta los bucles dentro de la landing. */
+@media (prefers-reduced-motion: reduce) {
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation: none !important;
+    transition: none !important;
+    offset-distance: 0 !important;
   }
 }

@@ -396,8 +396,10 @@ npm run lint             # ESLint validation
 
 - [x] **Light/Dark mode (Zinc) + gráficas pulidas:** sistema de tokens reescrito a escala **Zinc** (light + dark) manteniendo el verde de marca; **next-themes** (`system` por defecto, override + persistencia) con switch sol/luna en el topbar. **Sidebar claro** estilo Linear/Notion (las superficies oscuras intencionales — login, header/timer del conductor, badge mapa — pasaron a token `--panel`). Badges, StatCard, AlertsCard, LiveMap adaptados a dark. **Gráficas**: barras con línea base + pico resaltado (resto a 0.5); donut más fino con leyenda y %. Verificado en ambos modos con Chrome headless.
 
+- [x] **Landing page (marketing oscuro):** página pública en `/` con tema oscuro fijo (colores explícitos, independiente del toggle de la app). Nav sticky con blur; hero 2 col con entrada escalonada (`fadeUp` + delays) y **mapa "EN VIVO" animado** (`LiveMapCard`: ruta SVG con dash animado, vehículo recorriéndola vía `animateMotion`, pines, chips, toast cíclico); banda de stats con **count-up** (`IntersectionObserver`, formato es-CO); sección demo con el **dashboard en LIGHT Zinc** dentro de marco de navegador (`DemoMockup`); CTA de cierre + footer. Scroll-reveal (`Reveal`) y `prefers-reduced-motion` respetado. Verificado con Chrome headless.
+
 ### 🔄 In Progress
-- [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real
+- [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real (landing + app del conductor + coordinador)
 
 ### 📝 Pending (Priority Order)
 
