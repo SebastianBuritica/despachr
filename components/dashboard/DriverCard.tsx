@@ -22,7 +22,7 @@ export function DriverCard({ driver }: { driver: DriverCardData }) {
           <AvatarFallback
             className={cn(
               'text-sm font-semibold text-white',
-              driver.onRoute ? 'bg-brand' : 'bg-slate-400'
+              driver.onRoute ? 'bg-brand' : 'bg-faint'
             )}
           >
             {initials(driver.name)}

@@ -394,6 +394,8 @@ npm run lint             # ESLint validation
 
 - [x] **Rediseño UI — App del conductor (mobile):** flujo completo `list → active → capture → done` en un state machine (`DriverApp`). Lista con header oscuro + progreso + cards por estado (entregada/en punto/pendiente); entrega activa con **timer en vivo** (mm:ss, arranca ~6:12 si "en punto"), dirección + Navegar/Llamar, carga; captura de **foto + firma** (placeholders con `animate-pop`) + "Recibido por", CTA habilitado solo con ambos; confirmación con check + resumen. Logout vía dropdown en avatar. Mock en `lib/mock/driver.ts`. Verificado visualmente (4 pantallas) con Chrome headless ✓.
 
+- [x] **Light/Dark mode (Zinc) + gráficas pulidas:** sistema de tokens reescrito a escala **Zinc** (light + dark) manteniendo el verde de marca; **next-themes** (`system` por defecto, override + persistencia) con switch sol/luna en el topbar. **Sidebar claro** estilo Linear/Notion (las superficies oscuras intencionales — login, header/timer del conductor, badge mapa — pasaron a token `--panel`). Badges, StatCard, AlertsCard, LiveMap adaptados a dark. **Gráficas**: barras con línea base + pico resaltado (resto a 0.5); donut más fino con leyenda y %. Verificado en ambos modos con Chrome headless.
+
 ### 🔄 In Progress
 - [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real
 

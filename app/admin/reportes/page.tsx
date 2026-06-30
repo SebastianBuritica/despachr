@@ -48,7 +48,9 @@ export default function ReportesPage() {
               <span
                 className={cn(
                   'flex size-9 items-center justify-center rounded-md',
-                  g.accent ? 'bg-[#DCFCE7] text-brand' : 'bg-muted text-muted-foreground'
+                  g.accent
+                    ? 'bg-[#DCFCE7] text-brand dark:bg-green-500/15 dark:text-brand-light'
+                    : 'bg-muted text-muted-foreground'
                 )}
               >
                 <Icon className="size-4" />

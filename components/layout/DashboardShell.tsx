@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,7 +93,7 @@ export function DashboardShell({
     <div className="min-h-dvh bg-background p-4">
       <div className="mx-auto flex h-[calc(100dvh-2rem)] w-full max-w-[1320px] overflow-hidden rounded-xl border border-border bg-card shadow-elevated">
         {/* Sidebar */}
-        <aside className="flex w-[236px] shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+        <aside className="flex w-[236px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
           <div className="flex items-center gap-2.5 px-5 py-5">
             <span className="flex size-7 items-center justify-center rounded-[7px] bg-brand text-white">
               <Truck className="size-4" />
@@ -100,7 +101,7 @@ export function DashboardShell({
             <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
           </div>
 
-          <p className="px-5 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <p className="px-5 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">
             {section}
           </p>
 
@@ -113,13 +114,13 @@ export function DashboardShell({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'bg-sidebar-accent text-white'
-                      : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-white'
+                      ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+                      : 'font-medium text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
                   )}
                 >
-                  <Icon className="size-[17px] shrink-0" />
+                  <Icon className={cn('size-[17px] shrink-0', active && 'text-brand')} />
                   {item.label}
                 </Link>
               )
@@ -144,9 +145,12 @@ export function DashboardShell({
 function Topbar({ variant, pathname }: { variant: ShellVariant; pathname: string }) {
   if (variant === 'admin') {
     return (
-      <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-border bg-card px-6">
+      <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
         <span className="text-sm font-medium text-muted-foreground">Administración</span>
-        {pathname === '/admin' && <PeriodToggle />}
+        <div className="flex items-center gap-3">
+          {pathname === '/admin' && <PeriodToggle />}
+          <ThemeToggle />
+        </div>
       </header>
     )
   }
@@ -157,16 +161,19 @@ function Topbar({ variant, pathname }: { variant: ShellVariant; pathname: string
         <Search className="size-4" />
         <span className="truncate">Buscar ruta, conductor o cliente…</span>
       </div>
-      <button
-        type="button"
-        className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-        aria-label="Notificaciones"
-      >
-        <Bell className="size-[18px]" />
-        <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-white">
-          3
-        </span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+          aria-label="Notificaciones"
+        >
+          <Bell className="size-[18px]" />
+          <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-white">
+            3
+          </span>
+        </button>
+        <ThemeToggle />
+      </div>
     </header>
   )
 }
@@ -196,7 +203,7 @@ function UserCard({ name, roleLabel }: { name: string; roleLabel: string }) {
             </AvatarFallback>
           </Avatar>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-white">{name}</span>
+            <span className="block truncate text-sm font-medium text-sidebar-foreground">{name}</span>
             <span className="block truncate text-xs text-sidebar-muted">{roleLabel}</span>
           </span>
         </button>

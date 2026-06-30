@@ -1,11 +1,12 @@
-// Anillo de cumplimiento (conic-gradient verde / gris) con centro blanco.
+// Donut fino: conic-gradient (primary-2 / track), centro surface, leyenda con %.
 export function ComplianceRing({ pct }: { pct: number }) {
+  const rest = Math.round((100 - pct) * 10) / 10
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-5">
       <div
-        className="relative flex size-40 items-center justify-center rounded-full"
+        className="flex size-[148px] items-center justify-center rounded-full"
         style={{
-          background: `conic-gradient(#0F6E56 ${pct}%, #E2E8F0 ${pct}% 100%)`,
+          background: `conic-gradient(var(--brand-light) 0 ${pct}%, var(--track) ${pct}% 100%)`,
         }}
       >
         <div className="flex size-28 flex-col items-center justify-center rounded-full bg-card">
@@ -15,10 +16,10 @@ export function ComplianceRing({ pct }: { pct: number }) {
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-brand" /> A tiempo
+          <span className="size-2 rounded-full bg-brand-light" /> A tiempo {pct}%
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-border" /> Fuera de ventana
+          <span className="size-2 rounded-full bg-track" /> Fuera {rest}%
         </span>
       </div>
     </div>

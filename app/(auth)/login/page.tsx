@@ -136,7 +136,7 @@ function LoginForm() {
 
 function BrandPanel() {
   return (
-    <div className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-14 text-white lg:flex">
+    <div className="relative hidden flex-col justify-between overflow-hidden bg-panel p-14 text-panel-foreground lg:flex">
       {/* Glow radial decorativo */}
       <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand/30 blur-3xl" />
 
@@ -151,26 +151,26 @@ function BrandPanel() {
         <h2 className="max-w-md text-[36px] font-bold leading-tight tracking-tight">
           Toda tu operación de carga, en tiempo real.
         </h2>
-        <p className="max-w-sm text-slate-400">
+        <p className="max-w-sm text-panel-muted">
           Conductores, rutas y cumplimiento sincronizados — desde el primer despacho hasta la
           última entrega.
         </p>
         <div className="flex items-center gap-8 pt-2">
           <div>
             <p className="font-mono text-3xl font-semibold text-brand-light">94.8%</p>
-            <p className="mt-1 text-sm text-slate-400">Cumplimiento</p>
+            <p className="mt-1 text-sm text-panel-muted">Cumplimiento</p>
           </div>
           <div className="h-10 w-px bg-white/15" />
           <div>
             <p className="font-mono text-3xl font-semibold">
               48.3 <span className="text-2xl">T</span>
             </p>
-            <p className="mt-1 text-sm text-slate-400">Movilizadas / sem</p>
+            <p className="mt-1 text-sm text-panel-muted">Movilizadas / sem</p>
           </div>
         </div>
       </div>
 
-      <p className="relative text-xs text-slate-500">© 2026 Despachr · Transporte de carga</p>
+      <p className="relative text-xs text-panel-muted">© 2026 Despachr · Transporte de carga</p>
     </div>
   )
 }
