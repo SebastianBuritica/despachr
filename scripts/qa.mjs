@@ -105,6 +105,26 @@ async function login(context, role) {
   }
 }
 
+// Trigger IntersectionObserver-based reveals by stepping through the page,
+// then return to the top so the full-page screenshot starts clean.
+async function autoScroll(page) {
+  await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+    const step = Math.round(window.innerHeight * 0.5)
+    let y = 0
+    // Re-read scrollHeight each iteration — revealing sections can grow the page.
+    while (y <= document.documentElement.scrollHeight) {
+      window.scrollTo(0, y)
+      await sleep(220) // let each IntersectionObserver reveal fire + animate
+      y += step
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    await sleep(350) // dwell at the bottom so the last section settles
+    window.scrollTo(0, 0)
+  })
+  await page.waitForTimeout(400)
+}
+
 const results = []
 
 async function visit(context, segName, route, theme) {
@@ -130,6 +150,9 @@ async function visit(context, segName, route, theme) {
     let navOk = true
     try {
       await page.goto(`${BASE}${route.path}`, { waitUntil: 'networkidle', timeout: 30000 })
+      // Scroll-reveal sections (IntersectionObserver) render blank in a full-page
+      // shot unless they've scrolled into view first. Step down, then back to top.
+      await autoScroll(page)
       await page.waitForTimeout(700) // let fadeUp/pop animations settle
     } catch (e) {
       navOk = false
