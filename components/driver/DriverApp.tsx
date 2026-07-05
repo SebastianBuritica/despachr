@@ -360,7 +360,7 @@ function CaptureScreen({
   onBack: () => void
   onConfirm: () => void
 }) {
-  const ready = photo && signed
+  const ready = photo && signed && receiver.trim().length > 0
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="flex-1 space-y-5 p-4">
@@ -452,7 +452,7 @@ function CaptureScreen({
 
       <footer className="sticky bottom-0 border-t border-border bg-card p-4">
         <Button className="h-12 w-full" disabled={!ready} onClick={onConfirm}>
-          {ready ? 'Confirmar entrega' : 'Captura foto y firma para continuar'}
+          {ready ? 'Confirmar entrega' : 'Completa foto, firma y quién recibe'}
         </Button>
       </footer>
     </div>

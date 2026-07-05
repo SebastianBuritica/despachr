@@ -15,6 +15,7 @@ import {
   Bell,
   Search,
   LogOut,
+  Menu,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { BrandMark } from '@/components/brand/BrandMark'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,54 +87,46 @@ export function DashboardShell({
   const pathname = usePathname()
   const { profile } = useAuth()
   const { section, items } = NAV[variant]
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const name = profile?.name ?? 'Usuario'
   const roleLabel = profile?.role ? ROLE_LABEL[profile.role] : '—'
 
+  const sidebar = (
+    <SidebarNav
+      section={section}
+      items={items}
+      pathname={pathname}
+      name={name}
+      roleLabel={roleLabel}
+      onNavigate={() => setMobileOpen(false)}
+    />
+  )
+
   return (
     <div className="min-h-dvh bg-background p-4">
       <div className="mx-auto flex h-[calc(100dvh-2rem)] w-full max-w-[1320px] overflow-hidden rounded-xl border border-border bg-card shadow-elevated">
-        {/* Sidebar */}
-        <aside className="flex w-[236px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-          <div className="flex items-center gap-2.5 px-5 py-5">
-            <BrandMark className="h-6 text-brand dark:text-white" />
-            <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
-          </div>
-
-          <p className="px-5 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">
-            {section}
-          </p>
-
-          <nav className="flex flex-col gap-1 px-3">
-            {items.map((item) => {
-              const active = isActive(pathname, item)
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                    active
-                      ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
-                      : 'font-medium text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
-                  )}
-                >
-                  <Icon className={cn('size-[17px] shrink-0', active && 'text-brand')} />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          <div className="mt-auto p-3">
-            <UserCard name={name} roleLabel={roleLabel} />
-          </div>
+        {/* Sidebar (desktop) */}
+        <aside className="hidden w-[236px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+          {sidebar}
         </aside>
+
+        {/* Sidebar (mobile drawer) */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent
+            side="left"
+            showCloseButton={false}
+            aria-describedby={undefined}
+            className="flex w-[236px] flex-col border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+          >
+            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+            {sidebar}
+          </SheetContent>
+        </Sheet>
 
         {/* Main */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar variant={variant} pathname={pathname} />
+          <Topbar variant={variant} pathname={pathname} onOpenMenu={() => setMobileOpen(true)} />
           <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
         </div>
       </div>
@@ -140,11 +134,91 @@ export function DashboardShell({
   )
 }
 
-function Topbar({ variant, pathname }: { variant: ShellVariant; pathname: string }) {
+function SidebarNav({
+  section,
+  items,
+  pathname,
+  name,
+  roleLabel,
+  onNavigate,
+}: {
+  section: string
+  items: NavItem[]
+  pathname: string
+  name: string
+  roleLabel: string
+  onNavigate: () => void
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <BrandMark className="h-6 text-brand dark:text-white" />
+        <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
+      </div>
+
+      <p className="px-5 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">
+        {section}
+      </p>
+
+      <nav className="flex flex-col gap-1 px-3">
+        {items.map((item) => {
+          const active = isActive(pathname, item)
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                active
+                  ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+                  : 'font-medium text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
+              )}
+            >
+              <Icon className={cn('size-[17px] shrink-0', active && 'text-brand')} />
+              {item.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="mt-auto p-3">
+        <UserCard name={name} roleLabel={roleLabel} />
+      </div>
+    </>
+  )
+}
+
+function MenuButton({ onOpenMenu }: { onOpenMenu: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenMenu}
+      className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted md:hidden"
+      aria-label="Abrir menú"
+    >
+      <Menu className="size-[18px]" />
+    </button>
+  )
+}
+
+function Topbar({
+  variant,
+  pathname,
+  onOpenMenu,
+}: {
+  variant: ShellVariant
+  pathname: string
+  onOpenMenu: () => void
+}) {
   if (variant === 'admin') {
     return (
       <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
-        <span className="text-sm font-medium text-muted-foreground">Administración</span>
+        <div className="flex items-center gap-2">
+          <MenuButton onOpenMenu={onOpenMenu} />
+          <span className="text-sm font-medium text-muted-foreground">Administración</span>
+        </div>
         <div className="flex items-center gap-3">
           {pathname === '/admin' && <PeriodToggle />}
           <ThemeToggle />
@@ -155,9 +229,12 @@ function Topbar({ variant, pathname }: { variant: ShellVariant; pathname: string
 
   return (
     <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
-      <div className="flex h-9 w-[300px] items-center gap-2 rounded-full bg-muted px-3 text-sm text-muted-foreground">
-        <Search className="size-4" />
-        <span className="truncate">Buscar ruta, conductor o cliente…</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <MenuButton onOpenMenu={onOpenMenu} />
+        <div className="hidden h-9 w-[300px] max-w-full items-center gap-2 rounded-full bg-muted px-3 text-sm text-muted-foreground sm:flex">
+          <Search className="size-4 shrink-0" />
+          <span className="truncate">Buscar ruta, conductor o cliente…</span>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <button
