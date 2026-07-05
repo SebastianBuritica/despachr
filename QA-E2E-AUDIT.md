@@ -7,6 +7,23 @@
 
 ---
 
+## Update — fixes applied (2026-07-05, PR #15)
+
+A first bug-fix pass resolved the **5 genuinely-broken items** (no backend needed). Feature gaps (dead buttons, faked capture, Supabase wiring) remain open by design and are tracked in `AGENTS.md`.
+
+| Finding | Status |
+|---------|--------|
+| P0 #1 — Dashboard shell broken on mobile | ✅ **Resuelto** — sidebar colapsa a un `Sheet` (hamburguesa `md:hidden`) |
+| P0 #2 — ThemeToggle hydration mismatch (16 console errors) | ✅ **Resuelto** — `aria-label` estabilizado hasta `mounted`; re-QA = **0 console errors** |
+| P0 #4 — Driver confirm gate ignores receiver name | ✅ **Resuelto** — "Confirmar entrega" exige "Recibido por" no vacío |
+| P1 sec — Open redirect (`//host`) | ✅ **Resuelto** — `safeRedirect()` rechaza `//host` y `/\host` |
+| P1 sec — Silent role fallback | ✅ **Resuelto** — login cierra sesión + avisa; middleware → `/login?error=perfil` |
+| P0 #3 (dead buttons), P0 #4 (camera/signature/GPS), P1 infra, P2 a11y, Supabase wiring | ⏳ **Abierto** — fuera del alcance de este pase |
+
+Re-verified with `npm run qa` (42 screens): **0 JS exceptions · 0 console errors** (was 16) · 0 navigation failures · build green · lint clean. Remaining warnings are the pre-existing a11y backlog (P2).
+
+---
+
 ## Verdict
 
 **⚠ The app is a high-fidelity UI prototype, not a working product yet.**
@@ -18,7 +35,7 @@ The structure, design system, and navigation are solid and the build is green (0
 | Screens captured | 42 / 42 |
 | JS exceptions | **0** ✅ |
 | Navigation failures | **0** ✅ |
-| Console errors | **16** (all the same hydration bug) |
+| Console errors | ~~**16**~~ → **0** ✅ (hydration bug fixed, PR #15) |
 | A11y serious/critical | **35** (all color-contrast) |
 | Pages wired to Supabase | **0 of 9** (login/middleware only) |
 | Dead primary buttons found | **~12** |
@@ -29,12 +46,12 @@ Screenshots + machine report: `assets/qa/2026-07-05T02-08-21/` (gitignored). Re-
 
 ## P0 — Blockers (fix before any real use)
 
-### 1. Dashboard shell is broken on mobile (all 16 coordinator + admin screens) 🔴 *verified visually*
+### 1. Dashboard shell is broken on mobile (all 16 coordinator + admin screens) 🔴 *verified visually* — ✅ RESUELTO (PR #15)
 The `DashboardShell` sidebar is a fixed-width `<aside>` with no responsive collapse, so at 390px it eats ~60% of the viewport and shoves content off-screen — headings clipped ("Facturación"→"Facturac", "Operación en vivo"→"Operació"), stat cards overlap (Pendiente/Vencida collide), tables cut off.
 - **Evidence:** `components/layout/DashboardShell.tsx` (the `<aside>` has no `hidden`/drawer behavior at `md:` breakpoints). Visible in `admin_facturacion_mobile_*.png`, `dashboard_operacion-en-vivo_mobile_*.png`, and every other coordinator/admin mobile shot.
 - **Fix:** collapse the sidebar into a Sheet/drawer below `md`, as the design handoff intends. (Driver app is unaffected — it has its own mobile layout and renders correctly.)
 
-### 2. ThemeToggle hydration mismatch on every authenticated page 🔴 *verified — root cause confirmed*
+### 2. ThemeToggle hydration mismatch on every authenticated page 🔴 *verified — root cause confirmed* — ✅ RESUELTO (PR #15)
 The **icon** is gated on `mounted` but the **aria-label** is not, so it renders `"Cambiar a modo oscuro"` (server) vs `"Cambiar a modo claro"` (client), producing a React hydration error on all dark-mode dashboard/admin pages (the 16 console errors).
 - **Evidence:** [`components/theme/ThemeToggle.tsx:19`](components/theme/ThemeToggle.tsx#L19) (label uses `isDark`) vs line 23 (icon guarded by `mounted`).
 - **Fix:** gate the label on `mounted` too (stable label until mounted), or `suppressHydrationWarning`.
@@ -55,15 +72,15 @@ The cumplido capture — the single most important driver action — records not
 - `components/driver/DriverApp.tsx:299,303` — **"Navegar"** and **"Llamar"** buttons have no handler (no `tel:`/maps link).
 - `components/driver/DriverApp.tsx:385-414` — **photo** capture is a toggle showing a hardcoded `FOTO_CARGA_01.jpg`; no `<input type=file>` / camera, no upload.
 - `components/driver/DriverApp.tsx:420-438` — **signature** is a toggle showing a hardcoded "Andrés R."; no signature pad.
-- `components/driver/DriverApp.tsx:363` — confirm button gates on `photo && signed` but **not** on the "Recibido por" name, so it enables with an empty receiver.
+- `components/driver/DriverApp.tsx:363` — confirm button gates on `photo && signed` but **not** on the "Recibido por" name, so it enables with an empty receiver. — ✅ RESUELTO (PR #15): ahora exige `receiver.trim()`.
 - Nothing persists: marking delivered only updates local React state (`:74`), lost on refresh.
 
 ---
 
 ## P1 — Security & robustness (auth) *(open-redirect verified)*
 
-- **Open redirect** 🟠 *verified* — [`app/(auth)/login/page.tsx:61`](app/(auth)/login/page.tsx#L61) accepts `?redirect=` validated only by `startsWith('/')`, so `//evil.com` (protocol-relative) passes and `router.replace` navigates off-site. Same pattern in `middleware.ts:51`. **Fix:** allowlist (`['/dashboard','/admin','/driver']`) or reject `//`.
-- **Silent role fallback** 🟠 — `login/page.tsx:59` and `middleware.ts:59` fetch the profile with `.single()` and no error handling; on failure `role` is `null` and the user is sent to `/dashboard` regardless of actual role. A user in `auth.users` but missing from `profiles` → unhandled throw / wrong panel. **Fix:** handle the error explicitly, redirect to login/error.
+- **Open redirect** 🟠 *verified* — ✅ **RESUELTO (PR #15)** — [`app/(auth)/login/page.tsx:61`](app/(auth)/login/page.tsx#L61) accepts `?redirect=` validated only by `startsWith('/')`, so `//evil.com` (protocol-relative) passes and `router.replace` navigates off-site. Same pattern in `middleware.ts:51`. **Fix aplicado:** `safeRedirect()` rechaza `//host` y `/\host`.
+- **Silent role fallback** 🟠 — ✅ **RESUELTO (PR #15)** — `login/page.tsx:59` and `middleware.ts:59` fetch the profile with `.single()` and no error handling; on failure `role` is `null` and the user is sent to `/dashboard` regardless of actual role. A user in `auth.users` but missing from `profiles` → unhandled throw / wrong panel. **Fix aplicado:** login cierra sesión y avisa; middleware redirige a `/login?error=perfil` (sin bucle).
 - **No password reset** 🟠 — `login/page.tsx:99` "¿Olvidaste tu contraseña?" is `href="#"`; no reset flow exists. Locked-out users need admin intervention.
 - **Logout has no error handling** 🟡 — `DashboardShell.tsx:184` / `LogoutButton` call `signOut()` + redirect with no try/catch; a failed signOut redirects to login while the session persists.
 - **No rate limiting / lockout feedback** 🟡 on login attempts.
