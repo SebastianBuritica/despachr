@@ -12,9 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ACTIVE_ROUTES, LIVE_ALERTS, ROUTE_STATUS } from '@/lib/mock/coordinator'
+import { ACTIVE_ROUTES, LIVE_ALERTS, routeBadge } from '@/lib/mock/coordinator'
 
-const liveRoutes = ACTIVE_ROUTES.filter((r) => r.status !== 'programada').slice(0, 4)
+const liveRoutes = ACTIVE_ROUTES.filter((r) => r.status !== 'pendiente').slice(0, 4)
 
 export default function OperacionEnVivoPage() {
   return (
@@ -71,9 +71,14 @@ export default function OperacionEnVivoPage() {
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">{r.eta}</TableCell>
                 <TableCell>
-                  <StatusBadge tone={ROUTE_STATUS[r.status].tone} dot>
-                    {ROUTE_STATUS[r.status].label}
-                  </StatusBadge>
+                  {(() => {
+                    const badge = routeBadge(r)
+                    return (
+                      <StatusBadge tone={badge.tone} dot>
+                        {badge.label}
+                      </StatusBadge>
+                    )
+                  })()}
                 </TableCell>
               </TableRow>
             ))}
