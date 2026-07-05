@@ -106,33 +106,45 @@ This system reflects an **actual operational workflow** from the pilot client:
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Next.js 14 (App Router) |
+| **Frontend** | Next.js 16 (App Router, Turbopack) |
 | **Language** | TypeScript (strict mode) |
-| **Styling** | Tailwind CSS 4 |
+| **Styling** | Tailwind CSS 4 (CSS `@theme`, sin config JS) |
+| **UI kit** | **shadcn/ui + Radix** (preset radix-nova) · `cn()` con `tailwind-merge` |
+| **Theming** | **next-themes** (light/dark, `system` por defecto, toggle sol/luna) |
+| **Icons** | `lucide-react` |
+| **Fonts** | Inter (UI) + JetBrains Mono (cifras/placas/montos) vía `next/font` |
 | **Database** | Supabase (PostgreSQL) |
 | **Auth** | Supabase Auth (email/password) |
-| **Storage** | Supabase Storage (cumplido photos) |
-| **Realtime** | Supabase Realtime (map updates) |
+| **Storage** | Supabase Storage (cumplido photos) — pendiente conectar |
+| **Realtime** | Supabase Realtime (map updates) — pendiente conectar |
 | **Deploy** | Vercel (auto-deploy from main) |
-| **Maps** | Google Maps API (future) |
+| **Maps** | Placeholder estilizado; en producción MapLibre/Mapbox (ver memoria) |
 | **Alerts** | Telegram Bot API (future) |
 
 ---
 
-## 🎨 Brand Colors
+## 🎨 Sistema de diseño (light/dark, escala Zinc)
+
+Definido con CSS custom properties en `app/globals.css` (`:root` = light, `.dark` = dark),
+mapeadas a las variables de shadcn. Verde de **marca constante** en ambos modos.
 
 ```
-Primary:    #0F6E56  (Dark green)
-Secondary:  #1D9E75  (Light green)
-Background: #F8FAFC  (Light gray)
+Marca:      #0F6E56 (primario) · #1D9E75 (brand-light / hover / destino)
+Neutros:    escala Zinc (bg #FAFAFA/#09090B, card #FFFFFF/#18181B, border #E4E4E7/#27272A…)
+Panel:      #18181B (--panel) → superficies oscuras intencionales
+            (login, header/timer del conductor, badge del mapa) en ambos modos
 ```
 
-### Tailwind Usage
+### Uso (utilidades por token, NO escalas `-600`)
 ```tsx
-className="bg-primary-600 text-white"     // Primary button
-className="bg-secondary-500"              // Secondary action
-className="bg-background"                 // Page background
+className="bg-primary text-primary-foreground"   // botón primario (verde)
+className="bg-card text-foreground border-border" // superficies (adaptan a tema)
+className="bg-brand / text-brand / bg-panel"      // acentos de marca / panel oscuro
+className="bg-muted text-muted-foreground"        // neutros
+// StatusBadge (components/ui/status-badge.tsx): tones success/neutral/danger/warning
 ```
+> El toggle sol/luna vive en el topbar del `DashboardShell`. La **landing es oscura fija**
+> (colores explícitos, no usa el toggle). Fuentes: `font-sans` (Inter) / `font-mono` (JetBrains).
 
 ---
 
@@ -141,38 +153,48 @@ className="bg-background"                 // Page background
 ### `/app` — Next.js Routes
 ```
 app/
-├── (auth)/          # Unauthenticated routes (public)
-│   ├── login/page.tsx
-│   ├── register/page.tsx
-│   └── layout.tsx
-├── dashboard/       # Coordinator/Admin panel (protected)
-│   ├── page.tsx
-│   └── layout.tsx
-├── driver/          # Driver mobile view (protected)
-│   ├── page.tsx
-│   └── layout.tsx
-├── page.tsx         # Landing page (public)
-└── layout.tsx       # Root layout
+├── (auth)/login/          # Login split público (registro público eliminado)
+├── dashboard/             # COORDINADOR (protegido, solo rol coordinador)
+│   ├── page.tsx           #   Operación en vivo
+│   ├── rutas/ conductores/ clientes/   # sub-páginas
+│   └── layout.tsx         #   → <DashboardShell variant="coordinator">
+├── admin/                 # ADMIN (protegido, solo rol admin)
+│   ├── page.tsx           #   Métricas
+│   ├── clientes/ facturacion/ reportes/
+│   └── layout.tsx         #   → <DashboardShell variant="admin">
+├── driver/                # CONDUCTOR (protegido) → <DriverApp/> (mobile)
+├── page.tsx               # Landing (pública, oscura fija)
+├── manifest.ts            # PWA manifest (iconos, standalone)
+└── layout.tsx             # Root: ThemeProvider + Tooltip + Toaster + metadata iconos
 ```
+> Ruteo por rol en `middleware.ts` — `homeForRole`: admin→`/admin`, coordinador→`/dashboard`,
+> conductor→`/driver`. Cada segmento protegido por su rol.
 
-### `/components` — React Components (13 total)
+### `/components` — React Components
 
-**UI Base Components** (`/components/ui/`):
-- `Button.tsx` — Variants: primary, secondary, outline, ghost
-- `Card.tsx` — With subcomponents: CardHeader, CardTitle, CardContent
-- `Input.tsx` — With label and error validation
-- `Alert.tsx` — Types: info, success, warning, error
-- `Badge.tsx` — Small labels (delivery status, etc)
+**UI (`/components/ui/`)** — primitivos **shadcn** en minúsculas (button, card, input, label,
+badge, table, tabs, avatar, progress, separator, dialog, sheet, dropdown-menu, skeleton,
+tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/warning).
 
-**Layout Components** (`/components/layout/`):
-- `Header.tsx` — Responsive header with navigation
-- `Sidebar.tsx` — Admin/coordinator sidebar nav
+**Layout (`/components/layout/`)**:
+- `DashboardShell.tsx` — shell reutilizable (frame 1320px + **sidebar claro** Linear + topbar
+  con toggle de tema + user card con logout). Prop `variant: 'coordinator' | 'admin'`.
+- `PageHeader.tsx` — header de página estándar (título + subtítulo + acción).
 
-**Feature Components**:
-- `components/driver/RouteList.tsx` — List of driver's today routes
-- `components/driver/DeliveryCard.tsx` — Single delivery card with actions
-- `components/dashboard/StatsCard.tsx` — Metric card with trend indicator
-- `components/dashboard/RouteMap.tsx` — Placeholder for map integration
+**Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveMap` (placeholder),
+`AlertsCard`, `DriverCard`, `RoutesTable` (filtros), `KpiCard`, `TonnageChart`, `ComplianceRing`,
+`PeriodToggle`.
+
+**Driver (`/components/driver/`)**: `DriverApp.tsx` — state machine `list→active→capture→done`
+(timer, captura foto/firma placeholder, confirmación).
+
+**Landing (`/components/landing/`)**: `LiveMapCard` (mapa real CARTO + ruta animada),
+`DemoMockup` (dashboard en light), `ProductFeatures`, `HowItWorks`, `Pricing`, `Reveal` (scroll).
+
+**Otros**: `theme/ThemeProvider` + `theme/ThemeToggle` · `brand/BrandMark` (isotipo Ruta-D) ·
+`auth/LogoutButton`.
+
+> Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
 
 ### `/lib` — Utilities & Clients
 - `supabase.ts` — Supabase client initialization
@@ -192,7 +214,7 @@ UserRole          // Enum: 'admin' | 'coordinator' | 'driver'
 ```
 
 ### `/hooks` — React Hooks
-- `useAuth.ts` — Returns `{ user, loading, error }` from Supabase
+- `useAuth.ts` — Returns `{ user, profile, rol, loading, error, signOut }` from Supabase
 
 ### `/scripts` — Automation (5 scripts)
 - `deploy.sh` — Validates build, then `vercel deploy --prod`
@@ -364,7 +386,16 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-07-04
+
+### 🧭 Estado actual (resumen)
+**Todo el rediseño visual está implementado con datos mock.** El login es real (Supabase
+Auth + ruteo por rol); todas las pantallas (login, coordinador ×4, admin ×4, conductor,
+landing) están construidas con shadcn/ui, con **light/dark mode** y **iconos de marca** oficiales.
+La landing es de marketing (oscura fija) con ritmo claro/oscuro. **Lo pendiente es conectar a
+datos reales de Supabase** (reemplazar `lib/mock/*`) + integraciones reales (cámara/firma en
+Storage, mapa real, Realtime). Credenciales de QA: `.env.qa-credentials` (git-ignored).
+Deploy vivo: https://despachr.vercel.app
 
 ### ✅ Completed
 - [x] Next.js 14 boilerplate with TypeScript + Tailwind
@@ -465,7 +496,10 @@ npm run lint             # ESLint validation
 
 ## ✨ Summary
 
-Despachr is a **real, solvable problem** for Colombian logistics companies. The codebase is **production-ready** in structure and conventions. The next phase is **data layer**: schema + auth. After that, the **driver app** (mobile delivery flow).
+Despachr is a **real, solvable problem** for Colombian logistics companies. La base (schema + RLS + auth
+por rol) y **toda la UI** (shadcn/ui, light/dark, iconos de marca, landing) ya están listas con datos
+**mock**. La **próxima fase es la capa de datos real**: reemplazar `lib/mock/*` por queries a Supabase,
+activar Realtime en el mapa del coordinador, y conectar captura de cámara/firma a Storage.
 
 **Key principle:** Every feature should map to actual user actions:
 - Driver marks "arrived" → Event created with timestamp + GPS → Alert to coordinator
