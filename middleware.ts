@@ -56,13 +56,25 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- Con sesión: leer rol del profile ------------------------------------
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single()
 
   const role = (profile?.role ?? null) as RolUsuario | null
+
+  // Sesión válida pero sin perfil/rol: estado roto. No adivinamos panel (evita mandar
+  // a un rol al panel equivocado y el bucle de redirección hacia homeForRole(null)).
+  if (profileError || !role) {
+    if (isDashboardRoute || isAdminRoute || isDriverRoute) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('error', 'perfil')
+      return NextResponse.redirect(loginUrl)
+    }
+    return response
+  }
+
   const home = homeForRole(role)
 
   // Usuario autenticado intentando entrar a /login → a su vista.

@@ -17,6 +17,15 @@ function homeForRole(role: RolUsuario | null): string {
   return '/dashboard'
 }
 
+// Solo aceptamos rutas internas: evita open-redirect (incluye protocol-relative //host y /\host,
+// que el navegador trata como absolutas).
+function safeRedirect(target: string | null): string | null {
+  if (!target) return null
+  if (!target.startsWith('/')) return null
+  if (target.startsWith('//') || target.startsWith('/\\')) return null
+  return target
+}
+
 // Traduce los errores de Supabase Auth a mensajes claros en español.
 function authErrorMessage(message: string): string {
   const m = message.toLowerCase()
@@ -31,7 +40,11 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    searchParams.get('error') === 'perfil'
+      ? 'Tu cuenta no tiene un perfil asignado. Contacta a tu administrador.'
+      : null
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,15 +63,24 @@ function LoginForm() {
     }
 
     // Lee el rol del profile para decidir la vista de destino.
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', data.user.id)
       .single()
 
     const role = (profile?.role ?? null) as RolUsuario | null
-    const redirect = searchParams.get('redirect')
-    const destination = redirect && redirect.startsWith('/') ? redirect : homeForRole(role)
+
+    // Sin perfil/rol no sabemos a qué panel enviar: no dejamos la sesión en un estado ambiguo.
+    if (profileError || !role) {
+      await supabase.auth.signOut()
+      setError('Tu cuenta no tiene un perfil asignado. Contacta a tu administrador.')
+      setLoading(false)
+      return
+    }
+
+    const redirect = safeRedirect(searchParams.get('redirect'))
+    const destination = redirect ?? homeForRole(role)
 
     // refresh() fuerza al middleware a revalidar con la sesión ya activa.
     router.replace(destination)
