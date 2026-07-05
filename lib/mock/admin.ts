@@ -1,5 +1,6 @@
 // Datos estáticos del prototipo (handoff admin). En producción vienen de API.
 import type { StatusTone } from '@/components/ui/status-badge'
+import type { EstadoFactura } from '@/types'
 
 export interface Kpi {
   key: string
@@ -77,11 +78,13 @@ export const CLIENT_SUMMARY = {
   monthlyRevenue: '$42.8M',
 }
 
-export type InvoiceStatus = 'pagada' | 'pendiente' | 'vencida'
-
-export const INVOICE_STATUS: Record<InvoiceStatus, { label: string; tone: StatusTone }> = {
+// Vocabulario del schema (types/index.ts → CHECK de client_invoices). Cubrimos los 4 valores.
+// Nota: no existe 'pendiente' en el schema; una factura por cobrar (no pagada ni vencida)
+// se almacena como 'enviada' y se muestra como "Pendiente".
+export const INVOICE_STATUS: Record<EstadoFactura, { label: string; tone: StatusTone }> = {
+  emitida: { label: 'Emitida', tone: 'neutral' },
+  enviada: { label: 'Pendiente', tone: 'warning' },
   pagada: { label: 'Pagada', tone: 'success' },
-  pendiente: { label: 'Pendiente', tone: 'warning' },
   vencida: { label: 'Vencida', tone: 'danger' },
 }
 
@@ -91,13 +94,13 @@ export interface Invoice {
   issued: string
   due: string
   amount: string
-  status: InvoiceStatus
+  status: EstadoFactura
 }
 
 export const INVOICES: Invoice[] = [
   { id: 'FAC-2026-0151', client: 'Justo & Bueno Medellín', issued: '14 ene', due: '29 ene', amount: '$0.9M', status: 'pagada' },
-  { id: 'FAC-2026-0150', client: 'Olímpica Soledad', issued: '13 ene', due: '28 ene', amount: '$1.4M', status: 'pendiente' },
-  { id: 'FAC-2026-0149', client: 'Tiendas D1 Cali', issued: '12 ene', due: '27 ene', amount: '$2.1M', status: 'pendiente' },
+  { id: 'FAC-2026-0150', client: 'Olímpica Soledad', issued: '13 ene', due: '28 ene', amount: '$1.4M', status: 'enviada' },
+  { id: 'FAC-2026-0149', client: 'Tiendas D1 Cali', issued: '12 ene', due: '27 ene', amount: '$2.1M', status: 'enviada' },
   { id: 'FAC-2026-0148', client: 'Grupo Éxito Barranquilla', issued: '08 ene', due: '23 ene', amount: '$3.6M', status: 'vencida' },
   { id: 'FAC-2026-0147', client: 'Makro Montería', issued: '05 ene', due: '20 ene', amount: '$4.2M', status: 'pagada' },
 ]

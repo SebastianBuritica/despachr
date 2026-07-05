@@ -58,12 +58,12 @@ export function DriverApp() {
 
   const active = deliveries.find((d) => d.id === activeId) ?? null
   const activeIndex = deliveries.findIndex((d) => d.id === activeId)
-  const doneCount = deliveries.filter((d) => d.status === 'delivered').length
+  const doneCount = deliveries.filter((d) => d.status === 'entregado').length
 
   const open = (d: DriverDelivery) => {
     setActiveId(d.id)
     // Las entregas "en punto" arrancan con tiempo acumulado (~6:12).
-    setSeconds(d.status === 'onsite' ? 372 : 0)
+    setSeconds(d.status === 'en_punto' ? 372 : 0)
     setPhoto(false)
     setSigned(false)
     setReceiver('')
@@ -72,7 +72,7 @@ export function DriverApp() {
 
   const confirm = () => {
     setDeliveries((prev) =>
-      prev.map((d) => (d.id === activeId ? { ...d, status: 'delivered' } : d))
+      prev.map((d) => (d.id === activeId ? { ...d, status: 'entregado' } : d))
     )
     setScreen('done')
   }
@@ -190,9 +190,9 @@ function ListScreen({
 function DeliveryListCard({ delivery, onOpen }: { delivery: DriverDelivery; onOpen: () => void }) {
   const s = DELIVERY_STATUS[delivery.status]
   const cta =
-    delivery.status === 'delivered'
+    delivery.status === 'entregado'
       ? 'Ver detalle'
-      : delivery.status === 'onsite'
+      : delivery.status === 'en_punto'
         ? 'Continuar'
         : 'Iniciar'
 
@@ -202,7 +202,7 @@ function DeliveryListCard({ delivery, onOpen }: { delivery: DriverDelivery; onOp
       onClick={onOpen}
       className={cn(
         'block w-full animate-fade-up rounded-xl border bg-card p-4 text-left shadow-card transition-colors',
-        delivery.status === 'onsite'
+        delivery.status === 'en_punto'
           ? 'border-brand ring-2 ring-brand/20'
           : 'border-border hover:bg-muted/40'
       )}

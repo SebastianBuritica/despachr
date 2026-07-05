@@ -1,12 +1,15 @@
 // Datos estáticos del prototipo (app del conductor). En producción vienen de API.
 import type { StatusTone } from '@/components/ui/status-badge'
+import type { EstadoEntrega } from '@/types'
 
-export type DeliveryStatus = 'delivered' | 'onsite' | 'pending'
-
-export const DELIVERY_STATUS: Record<DeliveryStatus, { label: string; tone: StatusTone }> = {
-  delivered: { label: 'Entregada', tone: 'success' },
-  onsite: { label: 'En punto', tone: 'warning' },
-  pending: { label: 'Pendiente', tone: 'neutral' },
+// Vocabulario del schema (types/index.ts → CHECK de deliveries). Cubrimos los 5
+// valores para que cualquier dato real de Supabase renderice sin ajustes.
+export const DELIVERY_STATUS: Record<EstadoEntrega, { label: string; tone: StatusTone }> = {
+  entregado: { label: 'Entregada', tone: 'success' },
+  en_punto: { label: 'En punto', tone: 'warning' },
+  pendiente: { label: 'Pendiente', tone: 'neutral' },
+  novedad: { label: 'Novedad', tone: 'danger' },
+  no_entregado: { label: 'No entregada', tone: 'danger' },
 }
 
 export interface DriverDelivery {
@@ -17,7 +20,7 @@ export interface DriverDelivery {
   window: string
   tons: string
   units: string
-  status: DeliveryStatus
+  status: EstadoEntrega
 }
 
 export const DRIVER_ROUTE = {
@@ -37,7 +40,7 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     window: '07:00 – 09:00',
     tons: '12.5 T',
     units: '18 pallets',
-    status: 'delivered',
+    status: 'entregado',
   },
   {
     id: 'e2',
@@ -47,7 +50,7 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     window: '10:00 – 12:00',
     tons: '8.2 T',
     units: '12 pallets',
-    status: 'onsite',
+    status: 'en_punto',
   },
   {
     id: 'e3',
@@ -57,6 +60,6 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     window: '13:00 – 15:00',
     tons: '6.4 T',
     units: '9 pallets',
-    status: 'pending',
+    status: 'pendiente',
   },
 ]

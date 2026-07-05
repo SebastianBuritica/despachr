@@ -1,13 +1,13 @@
 // Datos estáticos del prototipo (handoff). En producción vienen de Supabase/API.
 import type { StatusTone } from '@/components/ui/status-badge'
+import type { EstadoRuta } from '@/types'
 
-export type RouteStatus = 'en_ruta' | 'completada' | 'programada' | 'retrasada'
-
-export const ROUTE_STATUS: Record<RouteStatus, { label: string; tone: StatusTone }> = {
-  en_ruta: { label: 'En ruta', tone: 'success' },
+// Vocabulario del schema (types/index.ts → CHECK de routes). Cubrimos los 4 valores.
+export const ROUTE_STATUS: Record<EstadoRuta, { label: string; tone: StatusTone }> = {
+  pendiente: { label: 'Pendiente', tone: 'warning' },
+  en_curso: { label: 'En ruta', tone: 'success' },
   completada: { label: 'Completada', tone: 'neutral' },
-  programada: { label: 'Programada', tone: 'warning' },
-  retrasada: { label: 'Retrasada', tone: 'danger' },
+  cancelada: { label: 'Cancelada', tone: 'neutral' },
 }
 
 export interface ActiveRoute {
@@ -20,7 +20,16 @@ export interface ActiveRoute {
   total: number
   departure: string
   eta: string
-  status: RouteStatus
+  status: EstadoRuta
+  // 'retrasada' NO es un estado del schema: una ruta demorada sigue 'en_curso' en la BD.
+  // Es una condición derivada (hoy mock; en producción: ahora > ETA y no completada).
+  retrasada?: boolean
+}
+
+// Badge de estado con la condición derivada de retraso aplicada encima del estado.
+export function routeBadge(route: ActiveRoute): { label: string; tone: StatusTone } {
+  if (route.retrasada) return { label: 'Retrasada', tone: 'danger' }
+  return ROUTE_STATUS[route.status]
 }
 
 export const ACTIVE_ROUTES: ActiveRoute[] = [
@@ -34,7 +43,7 @@ export const ACTIVE_ROUTES: ActiveRoute[] = [
     total: 3,
     departure: '06:00',
     eta: '15:30',
-    status: 'en_ruta',
+    status: 'en_curso',
   },
   {
     id: 'r2',
@@ -46,7 +55,7 @@ export const ACTIVE_ROUTES: ActiveRoute[] = [
     total: 6,
     departure: '05:30',
     eta: '16:10',
-    status: 'en_ruta',
+    status: 'en_curso',
   },
   {
     id: 'r3',
@@ -70,7 +79,8 @@ export const ACTIVE_ROUTES: ActiveRoute[] = [
     total: 5,
     departure: '06:15',
     eta: '17:40',
-    status: 'retrasada',
+    status: 'en_curso',
+    retrasada: true,
   },
   {
     id: 'r5',
@@ -82,7 +92,7 @@ export const ACTIVE_ROUTES: ActiveRoute[] = [
     total: 4,
     departure: '07:00',
     eta: '18:00',
-    status: 'programada',
+    status: 'pendiente',
   },
   {
     id: 'r6',

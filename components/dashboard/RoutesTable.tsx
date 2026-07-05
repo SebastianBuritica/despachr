@@ -12,21 +12,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ROUTE_STATUS, type ActiveRoute, type RouteStatus } from '@/lib/mock/coordinator'
+import { routeBadge, type ActiveRoute } from '@/lib/mock/coordinator'
+import type { EstadoRuta } from '@/types'
 
-type Filter = 'todas' | RouteStatus
+// 'retrasada' es un filtro derivado (no un EstadoRuta); el resto son estados del schema.
+type Filter = 'todas' | EstadoRuta | 'retrasada'
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'todas', label: 'Todas' },
-  { key: 'en_ruta', label: 'En ruta' },
+  { key: 'en_curso', label: 'En ruta' },
   { key: 'completada', label: 'Completadas' },
-  { key: 'programada', label: 'Programadas' },
+  { key: 'pendiente', label: 'Pendientes' },
   { key: 'retrasada', label: 'Retrasadas' },
 ]
 
 export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
   const [filter, setFilter] = useState<Filter>('todas')
-  const rows = filter === 'todas' ? routes : routes.filter((r) => r.status === filter)
+  const rows =
+    filter === 'todas'
+      ? routes
+      : filter === 'retrasada'
+        ? routes.filter((r) => r.retrasada)
+        : routes.filter((r) => r.status === filter)
 
   return (
     <div className="space-y-4">
@@ -77,9 +84,14 @@ export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
                 <TableCell className="font-mono text-xs tabular-nums">{r.departure}</TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">{r.eta}</TableCell>
                 <TableCell>
-                  <StatusBadge tone={ROUTE_STATUS[r.status].tone} dot>
-                    {ROUTE_STATUS[r.status].label}
-                  </StatusBadge>
+                  {(() => {
+                    const badge = routeBadge(r)
+                    return (
+                      <StatusBadge tone={badge.tone} dot>
+                        {badge.label}
+                      </StatusBadge>
+                    )
+                  })()}
                 </TableCell>
               </TableRow>
             ))}
