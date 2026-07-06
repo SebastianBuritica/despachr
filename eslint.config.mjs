@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Deno edge functions: runtime distinto (Deno global, imports remotos).
+    "supabase/functions/**",
   ]),
   // Los scripts de automatización son Node CommonJS: `require` es válido ahí.
   {
