@@ -29,7 +29,7 @@ create extension if not exists "pgcrypto";   -- gen_random_uuid()
 
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
-  email       text not null,
+  email       text,   -- nullable: los usuarios solo-teléfono (OTP SMS) no tienen email
   name        text not null,
   role        text not null check (role in ('admin', 'coordinador', 'conductor')),
   phone       text,
@@ -409,8 +409,11 @@ create index if not exists idx_delivery_financials_delivery
 -- ============================================================================
 -- TRIGGER: handle_new_user()
 -- Crea el profile automáticamente al registrar un usuario en Auth.
--- El rol/nombre/teléfono se leen de raw_user_meta_data (lo defines al crear
--- el usuario en la UI de Supabase, en "User Metadata").
+-- Soporta signups por email/password (metadata) y por teléfono (OTP SMS):
+--   - email puede ser NULL (solo-teléfono); profiles.email es anulable.
+--   - name usa una cadena de fallbacks NULL-safe (name es NOT NULL).
+--   - phone lee la columna nativa new.phone primero (ahí llega el OTP), y cae
+--     a raw_user_meta_data->>'phone' para usuarios creados a mano.
 -- ============================================================================
 
 create or replace function public.handle_new_user()
@@ -423,10 +426,15 @@ begin
   insert into public.profiles (id, email, name, role, phone)
   values (
     new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    new.email,   -- puede ser NULL en signups por teléfono
+    coalesce(
+      new.raw_user_meta_data->>'name',
+      nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+      new.phone,
+      'Usuario'
+    ),
     coalesce(new.raw_user_meta_data->>'role', 'conductor'),
-    new.raw_user_meta_data->>'phone'
+    coalesce(new.phone, new.raw_user_meta_data->>'phone')
   )
   on conflict (id) do nothing;
   return new;

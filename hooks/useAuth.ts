@@ -17,7 +17,7 @@ interface UseAuthResult {
 // Mapea una fila de public.profiles (snake_case) al modelo de dominio User.
 function mapProfile(row: {
   id: string
-  email: string
+  email: string | null
   name: string
   role: RolUsuario
   phone: string | null
@@ -26,7 +26,8 @@ function mapProfile(row: {
 }): User {
   return {
     id: row.id,
-    email: row.email,
+    // email es NULL para usuarios solo-teléfono (OTP SMS); la app no lo usa como identidad.
+    email: row.email ?? '',
     name: row.name,
     role: row.role,
     phone: row.phone ?? '',
