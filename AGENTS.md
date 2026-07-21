@@ -386,19 +386,23 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-07-04
+**Last Updated:** 2026-07-21
 
 ### 🧭 Estado actual (resumen)
-**Todo el rediseño visual está implementado con datos mock.** El login es real (Supabase
-Auth + ruteo por rol); todas las pantallas (login, coordinador ×4, admin ×4, conductor,
-landing) están construidas con shadcn/ui, con **light/dark mode** y **iconos de marca** oficiales.
-La landing es de marketing (oscura fija) con ritmo claro/oscuro. **Lo pendiente es conectar a
-datos reales de Supabase** (reemplazar `lib/mock/*`) + integraciones reales (cámara/firma en
-Storage, mapa real, Realtime). Credenciales de QA: `.env.qa-credentials` (git-ignored).
-Deploy vivo: https://despachr.vercel.app
+**Fase 0 (fundación) COMPLETA — segments 1-5 mergeados.** Toda la UI está implementada con
+datos mock; el login es real (Supabase Auth + ruteo por rol, email/password **y phone OTP**).
+Backend listo para consumir: **11 tablas** (10 + `alerts`), Storage de cumplidos, y la edge
+function de alertas de 60 min. **Migraciones `001`-`003` ejecutadas en producción.** Todas las
+pantallas (login, coordinador ×4, admin ×4, conductor, landing) están en shadcn/ui con
+**light/dark** e **iconos de marca**. **Lo próximo es Fase 1: conectar `lib/mock/*` a datos
+reales de Supabase** (empezando por `DriverApp`) + captura real cámara/firma → Storage + mapa
+real. **Dos despliegues manuales pendientes** (código ya mergeado): (1) bot de Telegram
+(`supabase secrets set` + `functions deploy`) y (2) programar la función de alertas cada 5 min
+con `pg_cron`+`pg_net` — ambos documentados en `supabase/functions/check-tiempo-en-punto/README.md`.
+Credenciales de QA: `.env.qa-credentials` (git-ignored). Deploy vivo: https://despachr.vercel.app
 
 ### ✅ Completed
-- [x] Next.js 14 boilerplate with TypeScript + Tailwind
+- [x] Next.js 16 (React 19) boilerplate with TypeScript + Tailwind 4
 - [x] Folder structure designed for scalability
 - [x] 13 reusable UI components
 - [x] 9 TypeScript domain models (Spanish enums, aligned to schema)
@@ -411,11 +415,11 @@ Deploy vivo: https://despachr.vercel.app
 - [x] 10+ npm scripts for common tasks
 - [x] 10 Claude Code skills
 - [x] Complete documentation (README.md, AGENTS.md, scripts/README.md)
-- [x] DB schema live in Supabase: 11 tables (incl. `alerts`), 24 RLS policies, triggers
+- [x] DB schema live in Supabase: 11 tables (10 + `alerts`), 24 RLS policies, triggers. Migraciones `001` (storage cumplidos), `002` (tabla alerts), `003` (fix phone-auth) **ejecutadas en producción**.
 - [x] Seed data loaded + RLS verified per role (admin/coordinador/conductor)
 - [x] Keys de Supabase rotadas y actualizadas en Vercel
 - [x] Auth real con redirección por rol (login + middleware + useAuth + LogoutButton)
-- [x] **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova, base neutral). Tokens del handoff en `app/globals.css` (verde de marca `#0F6E56` como `--primary`, sidebar oscuro `#0A0A0A`, neutros slate, sombras, radios, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn (button, card, input, table, tabs, badge, avatar, progress, dialog, sheet, dropdown-menu, sonner, etc.). `cn()` con `tailwind-merge`. Boilerplate visual viejo eliminado; páginas como placeholders (login conserva su lógica de auth). Build verde. Handoff de diseño + screenshots en `assets/screenshots/`.
+- [x] **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova, base neutral). Tokens del handoff en `app/globals.css` (verde de marca `#0F6E56` como `--primary`, sidebar oscuro `#0A0A0A`, neutros slate, sombras, radios, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn (button, card, input, table, tabs, badge, avatar, progress, dialog, sheet, dropdown-menu, sonner, etc.). `cn()` con `tailwind-merge`. Boilerplate visual viejo eliminado; páginas como placeholders (login conserva su lógica de auth). Build verde. (Handoffs de diseño fuera del repo; brand kit en `/public/brand`.)
 
 - [x] **Rediseño UI — Fase 1 (shells + ruteo):** **login split** de 2 columnas (panel oscuro de marca + formulario shadcn, redirección por rol). **DashboardShell** reutilizable (frame centrado 1320px radius 14px + sidebar oscuro `#0A0A0A` con nav activo/hover + topbar + user card con logout vía dropdown). Segmentos separados por rol: `/dashboard/*` (coordinador: operación, rutas, conductores, clientes) y `/admin/*` (admin: métricas, clientes, facturación, reportes), con sub-páginas placeholder y `PageHeader` reutilizable. `homeForRole` y middleware actualizados (admin → `/admin`, protección por rol). Build verde (12 rutas).
 
@@ -445,8 +449,15 @@ Deploy vivo: https://despachr.vercel.app
 
 - [x] **Segment 4 — `feat/driver-phone-otp-login` (login del conductor por OTP SMS):** habilitado el signup/login solo-teléfono (Supabase Phone Auth + Twilio Verify) para los conductores. Bug de origen: fallaba con 500 "Database error saving new user" porque el trigger `handle_new_user()` insertaba `new.email` (NULL en OTP) en `profiles.email` **NOT NULL**, y el fallback de `name` (`split_part(new.email,'@',1)`) también daba NULL. `scripts/migrations/003-fix-handle-new-user-phone-auth.sql` (Opción B): `profiles.email` pasa a **anulable** + función corregida (email NULL-safe, cadena de fallbacks para `name`, y `phone` desde la columna nativa **`new.phone`** con fallback a metadata). Mismo fix plegado en `scripts/schema.sql` (instalaciones nuevas no reintroducen el bug). `useAuth` mapea `email: row.email ?? ''`. Nada en la app depende de `profiles.email` (no se muestra ni se usa como identidad; `id` es la clave). **Migración 003 ejecutada en producción; OTP por SMS verificado end-to-end** (signup por teléfono crea el profile con `email` NULL y `phone` E.164). Verificado: build verde · lint limpio · `npm run qa` 42/42, 0 excepciones.
 
-### 🔄 In Progress
-- [ ] Conectar pantallas a datos reales de Supabase (reemplazar mocks) + captura real de cámara/firma y mapa real (landing + app del conductor + coordinador)
+- [x] **Segment 5 — `chore/limpieza-docs` (limpieza + sync de docs):** sin cambios de código de producto. Removido `assets/Despachr v1/` del repo (git rm) y `/assets/` agregado a `.gitignore` (los handoffs de diseño y artefactos de QA viven fuera del repo; brand kit en `/public/brand`). `README.md` y `AGENTS.md` sincronizados con el stack real (Next.js 16 + React 19 + Tailwind 4; auth email/password + phone OTP) y estado real (11 tablas, migraciones 001-003 en producción, Fase 0 completa). **npm audit:** las 2 vulnerabilidades **high** (`brace-expansion`, `js-yaml`) corregidas con `npm audit fix` (solo `package-lock.json`, sin breaking). Las 2 **moderate** (`postcss` <8.5.10 vía `next`) quedan **known/accepted**: el único fix (`npm audit fix --force`) degrada Next 16→9.3.3 (major breaking); se resolverán con un patch futuro de Next que suba su `postcss` embebido. Verificado: build verde · lint limpio · `npm run qa` 42/42.
+
+### 🔄 In Progress / Roadmap
+**Fase 0 (fundación) — ✅ COMPLETA** (segments 1-5 mergeados: estados alineados al schema, storage de cumplidos, alertas de 60 min, phone OTP, limpieza de docs).
+
+- [ ] **Fase 1 — conectar a datos reales de Supabase** (reemplazar `lib/mock/*`), empezando por `DriverApp`; luego coordinador (mapa real + Realtime) y admin.
+- [ ] Captura real de cámara/firma → Storage (usar `lib/storage.ts`, ya listo).
+- [ ] **Deploy manual pendiente #1:** bot de Telegram — `supabase secrets set TELEGRAM_BOT_TOKEN/CHAT_ID` + `supabase functions deploy check-tiempo-en-punto`.
+- [ ] **Deploy manual pendiente #2:** programar la función de alertas cada 5 min con `pg_cron`+`pg_net` (ver `supabase/functions/check-tiempo-en-punto/README.md`).
 
 ### 📝 Pending (Priority Order)
 

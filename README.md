@@ -10,13 +10,19 @@ Despachr es una Progressive Web Application (PWA) moderna para gestión logísti
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14 con App Router
+- **Frontend**: Next.js 16 (App Router, Turbopack) + React 19
 - **Lenguaje**: TypeScript
-- **Estilos**: Tailwind CSS
+- **Estilos**: Tailwind CSS 4 + shadcn/ui (Radix)
 - **Base de datos**: Supabase (PostgreSQL)
-- **Autenticación**: Supabase Auth
+- **Autenticación**: Supabase Auth (email/password + phone OTP vía Twilio Verify)
 - **Deploy**: Vercel
 - **Storage**: Supabase Storage
+
+## Assets y diseño
+
+- **Brand kit** (isotipo, iconos PWA): versionado en [`/public/brand`](public/brand).
+- **Design handoffs** y artefactos de QA se mantienen **fuera del repo** —
+  `/assets` está en `.gitignore`.
 
 ## Instalación
 
@@ -58,9 +64,8 @@ Despachr es una Progressive Web Application (PWA) moderna para gestión logísti
 ```
 despachr/
 ├── app/
-│   ├── (auth)/              # Rutas de autenticación
+│   ├── (auth)/              # Rutas de autenticación (registro público eliminado)
 │   │   ├── login/
-│   │   ├── register/
 │   │   └── layout.tsx
 │   ├── (dashboard)/         # Panel coordinador/admin
 │   │   ├── page.tsx
@@ -83,7 +88,7 @@ despachr/
 │   └── index.ts             # Tipos TypeScript
 ├── hooks/                   # Custom hooks
 ├── public/                  # Assets estáticos
-├── tailwind.config.ts       # Configuración de Tailwind
+├── app/globals.css          # Tailwind 4 (@theme) + tokens de diseño (sin config JS)
 ├── next.config.ts           # Configuración de Next.js
 ├── middleware.ts            # Middleware de Next.js
 └── .env.local.example       # Variables de entorno ejemplo
