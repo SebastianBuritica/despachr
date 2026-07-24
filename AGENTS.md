@@ -386,7 +386,7 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-07-21
+**Last Updated:** 2026-07-24
 
 ### 🧭 Estado actual (resumen)
 **Fase 0 (fundación) COMPLETA — segments 1-5 mergeados.** Toda la UI está implementada con
@@ -506,8 +506,12 @@ Credenciales de QA: `.env.qa-credentials` (git-ignored). Deploy vivo: https://de
 
 ## 📚 Additional Documentation
 
+- **STATUS.md** — Shareable snapshot of current state + "what's next" (kept in sync with this file)
+- **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment
 - **scripts/README.md** — Detailed script documentation
+- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`003`** — hand-run, repo-tracked migrations (executed in prod)
+- **supabase/functions/check-tiempo-en-punto/README.md** — Deploy + `pg_cron` scheduling steps for the 60-min alert function (pending manual deploy)
 - **.env.local.example** — All environment variables
 - **.claude/settings.json** — AI agent skills configuration
 - **types/index.ts** — All TypeScript domain types
@@ -517,10 +521,14 @@ Credenciales de QA: `.env.qa-credentials` (git-ignored). Deploy vivo: https://de
 
 ## ✨ Summary
 
-Despachr is a **real, solvable problem** for Colombian logistics companies. La base (schema + RLS + auth
-por rol) y **toda la UI** (shadcn/ui, light/dark, iconos de marca, landing) ya están listas con datos
-**mock**. La **próxima fase es la capa de datos real**: reemplazar `lib/mock/*` por queries a Supabase,
-activar Realtime en el mapa del coordinador, y conectar captura de cámara/firma a Storage.
+Despachr is a **real, solvable problem** for Colombian logistics companies. **Fase 0 (fundación) está
+COMPLETA** (segments 1-5): schema + RLS + auth por rol (email/password **y phone OTP**), **toda la UI**
+con datos **mock**, y los backends listos para consumir — **11 tablas** (incl. `alerts`), Storage de
+cumplidos (`lib/storage.ts`) y la edge function de alertas de 60 min. Migraciones `001`-`003` en producción.
+La **próxima fase (Fase 1) es la capa de datos real**: reemplazar `lib/mock/*` por queries a Supabase
+(empezando por `DriverApp`), captura real de cámara/firma → Storage, y el mapa real + Realtime del
+coordinador. **Dos despliegues manuales pendientes** (código ya mergeado): bot de Telegram y el
+schedule `pg_cron` de la función de alertas (ver `supabase/functions/check-tiempo-en-punto/README.md`).
 
 **Key principle:** Every feature should map to actual user actions:
 - Driver marks "arrived" → Event created with timestamp + GPS → Alert to coordinator
