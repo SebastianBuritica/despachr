@@ -4,7 +4,7 @@
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr
 **In one line:** **Fase 0 (foundation) is complete** — real auth (incl. driver phone OTP), a live 11-table DB, and the storage + alerts backends are all in place; the screens still render **mock data**, so the next big step is **Fase 1: wiring them to Supabase** (starting with the driver app).
 
-> Sources of truth in the repo: `AGENTS.md` (full agent context) and `QA-E2E-AUDIT-2026-07-24.md` (latest audit). This file is a shareable snapshot.
+> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only history · `QA-E2E-AUDIT-2026-07-24.md` = latest audit.
 
 ---
 

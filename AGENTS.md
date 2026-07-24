@@ -1,19 +1,24 @@
 # Despachr — Agent Context File
 
-**This file is the single source of truth for all AI agents working on Despachr.**
-**READ THIS FILE COMPLETELY BEFORE WRITING ANY CODE.**
-**Update the "Project Status" section at the end of every work session.**
+**This file is the durable reference for all AI agents working on Despachr** (product, domain, stack,
+conventions). It is auto-loaded into every session via `CLAUDE.md`, so keep it **stable and flat** —
+it should only change when a durable fact does.
+
+- **Current state + what to do next → [STATUS.md](STATUS.md)** (a living snapshot, overwritten each session).
+- **History of completed work → [CHANGELOG.md](CHANGELOG.md)** (append-only; not auto-loaded).
 
 ---
 
 ## 🎯 Purpose of This Document
 
-This file consolidates everything an AI agent needs to understand Despachr:
+This file consolidates the **durable** things an AI agent needs to understand Despachr:
 - What the product is and why it exists
 - Who uses it and how they use it
-- Current code structure and architecture decisions
-- What's done, what's in progress, what's pending
-- Conventions, integrations, and terminology
+- Code structure, architecture decisions, and conventions
+- Domain terminology and planned integrations
+
+> For "what's done / in progress / next", do **not** look here — read STATUS.md. This keeps the
+> always-loaded context flat as the project grows.
 
 ---
 
@@ -386,127 +391,31 @@ npm run lint             # ESLint validation
 
 ## 📊 Project Status
 
-**Last Updated:** 2026-07-24
-
-### 🧭 Estado actual (resumen)
-**Fase 0 (fundación) COMPLETA — segments 1-5 mergeados.** Toda la UI está implementada con
-datos mock; el login es real (Supabase Auth + ruteo por rol, email/password **y phone OTP**).
-Backend listo para consumir: **11 tablas** (10 + `alerts`), Storage de cumplidos, y la edge
-function de alertas de 60 min. **Migraciones `001`-`003` ejecutadas en producción.** Todas las
-pantallas (login, coordinador ×4, admin ×4, conductor, landing) están en shadcn/ui con
-**light/dark** e **iconos de marca**. **Lo próximo es Fase 1: conectar `lib/mock/*` a datos
-reales de Supabase** (empezando por `DriverApp`) + captura real cámara/firma → Storage + mapa
-real. **Dos despliegues manuales pendientes** (código ya mergeado): (1) bot de Telegram
-(`supabase secrets set` + `functions deploy`) y (2) programar la función de alertas cada 5 min
-con `pg_cron`+`pg_net` — ambos documentados en `supabase/functions/check-tiempo-en-punto/README.md`.
-Credenciales de QA: `.env.qa-credentials` (git-ignored). Deploy vivo: https://despachr.vercel.app
-
-### ✅ Completed
-- [x] Next.js 16 (React 19) boilerplate with TypeScript + Tailwind 4
-- [x] Folder structure designed for scalability
-- [x] 13 reusable UI components
-- [x] 9 TypeScript domain models (Spanish enums, aligned to schema)
-- [x] Supabase client configured (client + server sides)
-- [x] `useAuth` hook for session management
-- [x] Middleware to protect routes by role
-- [x] GitHub repository (SebastianBuritica/despachr)
-- [x] Vercel deployment live with auto-deploy
-- [x] 5 automation scripts (deploy, GitHub, DB, env setup)
-- [x] 10+ npm scripts for common tasks
-- [x] 10 Claude Code skills
-- [x] Complete documentation (README.md, AGENTS.md, scripts/README.md)
-- [x] DB schema live in Supabase: 11 tables (10 + `alerts`), 24 RLS policies, triggers. Migraciones `001` (storage cumplidos), `002` (tabla alerts), `003` (fix phone-auth) **ejecutadas en producción**.
-- [x] Seed data loaded + RLS verified per role (admin/coordinador/conductor)
-- [x] Keys de Supabase rotadas y actualizadas en Vercel
-- [x] Auth real con redirección por rol (login + middleware + useAuth + LogoutButton)
-- [x] **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova, base neutral). Tokens del handoff en `app/globals.css` (verde de marca `#0F6E56` como `--primary`, sidebar oscuro `#0A0A0A`, neutros slate, sombras, radios, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn (button, card, input, table, tabs, badge, avatar, progress, dialog, sheet, dropdown-menu, sonner, etc.). `cn()` con `tailwind-merge`. Boilerplate visual viejo eliminado; páginas como placeholders (login conserva su lógica de auth). Build verde. (Handoffs de diseño fuera del repo; brand kit en `/public/brand`.)
-
-- [x] **Rediseño UI — Fase 1 (shells + ruteo):** **login split** de 2 columnas (panel oscuro de marca + formulario shadcn, redirección por rol). **DashboardShell** reutilizable (frame centrado 1320px radius 14px + sidebar oscuro `#0A0A0A` con nav activo/hover + topbar + user card con logout vía dropdown). Segmentos separados por rol: `/dashboard/*` (coordinador: operación, rutas, conductores, clientes) y `/admin/*` (admin: métricas, clientes, facturación, reportes), con sub-páginas placeholder y `PageHeader` reutilizable. `homeForRole` y middleware actualizados (admin → `/admin`, protección por rol). Build verde (12 rutas).
-
-- [x] **Rediseño UI — Fase 2 (coordinador):** 4 pantallas con datos mock — **operación en vivo** (mapa placeholder + 4 mini-stats + alertas + tabla rutas activas), **rutas** (4 cards resumen + chips de filtro interactivos + tabla 8 col), **conductores** (grid de cards con métricas), **clientes** (tabla on-time). Piezas reutilizables: `StatusBadge` (sistema de badges del handoff), `StatCard`, `RouteProgress`, `LiveMap`, `AlertsCard`, `DriverCard`, `RoutesTable`. Mock en `lib/mock/coordinator.ts`. Build verde.
-
-- [x] **Rediseño UI — Fase 3 (admin):** 4 pantallas — **métricas** (4 KPI cards + gráfico de barras CSS + anillo conic-gradient + tabla de rentabilidad), **clientes** (gestión: 4 cards + tabla 8 col), **facturación** (4 cards + tabla con estados pagada/pendiente/vencida), **reportes** (4 cards de generación + tabla recientes). Componentes: `KpiCard`, `TonnageChart`, `ComplianceRing`, `PeriodToggle` (segmented en topbar, solo en Métricas). Mock en `lib/mock/admin.ts`. **Verificación visual** con Chrome headless (login + 5 pantallas) ✓. Build verde.
-
-- [x] **Rediseño UI — App del conductor (mobile):** flujo completo `list → active → capture → done` en un state machine (`DriverApp`). Lista con header oscuro + progreso + cards por estado (entregada/en punto/pendiente); entrega activa con **timer en vivo** (mm:ss, arranca ~6:12 si "en punto"), dirección + Navegar/Llamar, carga; captura de **foto + firma** (placeholders con `animate-pop`) + "Recibido por", CTA habilitado solo con ambos; confirmación con check + resumen. Logout vía dropdown en avatar. Mock en `lib/mock/driver.ts`. Verificado visualmente (4 pantallas) con Chrome headless ✓.
-
-- [x] **Light/Dark mode (Zinc) + gráficas pulidas:** sistema de tokens reescrito a escala **Zinc** (light + dark) manteniendo el verde de marca; **next-themes** (`system` por defecto, override + persistencia) con switch sol/luna en el topbar. **Sidebar claro** estilo Linear/Notion (las superficies oscuras intencionales — login, header/timer del conductor, badge mapa — pasaron a token `--panel`). Badges, StatCard, AlertsCard, LiveMap adaptados a dark. **Gráficas**: barras con línea base + pico resaltado (resto a 0.5); donut más fino con leyenda y %. Verificado en ambos modos con Chrome headless.
-
-- [x] **Landing page (marketing oscuro):** página pública en `/` con tema oscuro fijo (colores explícitos, independiente del toggle de la app). Nav sticky con blur; hero 2 col con entrada escalonada (`fadeUp` + delays) y **mapa "EN VIVO" animado** (`LiveMapCard`: ruta SVG con dash animado, vehículo recorriéndola vía `animateMotion`, pines, chips, toast cíclico); banda de stats con **count-up** (`IntersectionObserver`, formato es-CO); sección demo con el **dashboard en LIGHT Zinc** dentro de marco de navegador (`DemoMockup`); CTA de cierre + footer. Scroll-reveal (`Reveal`) y `prefers-reduced-motion` respetado. Verificado con Chrome headless.
-
-- [x] **Marca / iconos oficiales:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx` (asta + nodo origen en `currentColor`, recorrido y destino en verde) reemplaza el placeholder de camión en sidebar, login, landing (nav+footer) y demo. **PWA**: `app/manifest.ts` (icons 192/512, standalone) + metadata de iconos en el layout (favicon svg/png, **apple-touch-icon 180**, `appleWebApp`). Assets en `public/brand/`. Arregla el icono genérico de la pantalla de inicio en iOS. Verificado con Chrome headless.
-
-- [x] **Landing v2 (ritmo claro/oscuro):** rediseño de la landing a 8 secciones alternando fondos (nav/hero oscuro → **Producto blanco** (4 cards) → **Cómo funciona oscuro** (3 pasos) → **Plataforma `#F8FAFC`** (mockup) → **Precios oscuro** (3 planes, Operación "Más popular") → **CTA gradiente verde** → footer). Componentes nuevos: `ProductFeatures`, `HowItWorks`, `Pricing`. Se quitó la banda de stats/`CountUp`. Anclas de nav (`#producto`/`#como-funciona`/`#preview`/`#precios`). Verificado con Chrome headless.
-
-- [x] **QA tooling (skill + subagent):** pase de QA de toda la app. `scripts/qa.mjs` (Playwright) hace login por rol (creds de prueba en `.env.local`: `QA_<ROL>_EMAIL/PASSWORD`) y recorre **todas las rutas** en desktop (1440×900) + mobile (390×844) y en **light/dark** (la landing `/` es dark-only), capturando screenshot full-page, errores de consola/JS y violaciones de accesibilidad (axe WCAG 2 A/AA, serias+críticas) → `assets/qa/<timestamp>/{report.md,results.json,*.png}` (gitignored). Skill `/qa [segmento]` (`.claude/skills/qa/`) orquesta lint+build → dev server → sweep → lectura de screenshots y veredicto PASS/WARN/FAIL. Subagente delegable `qa` (`.claude/agents/qa.md`). Script npm `npm run qa`. Tooling se instala al primer uso (`playwright`, `@axe-core/playwright`, `dotenv` como devDeps).
-
-- [x] **Bug-fix pass (post QA-E2E audit):** corregidos 5 bugs reales sin backend. (1) **Sidebar móvil** — `DashboardShell` colapsa a un `Sheet` lateral con botón hamburguesa `md:hidden`; el `<aside>` fijo queda `hidden md:flex` (arregla las 16 pantallas coord/admin en 390px). (2) **Hidratación de `ThemeToggle`** — el `aria-label` se estabiliza hasta `mounted` (elimina los 16 errores de consola). (3) **Gate de cumplido del conductor** — "Confirmar entrega" exige también "Recibido por" no vacío. (4) **Open-redirect** — `safeRedirect()` en login rechaza `//host` y `/\host` (protocol-relative). (5) **Rol nulo/silencioso** — login y `middleware.ts` manejan el fallo del fetch de `profiles`: login cierra sesión y avisa; el middleware manda a `/login?error=perfil` (evita panel equivocado y el bucle de redirección). Build verde.
-
-- [x] **Segment 1 — `refactor/estados-schema` (vocabulario de estados alineado al schema):** los mocks ahora usan los enums de dominio de `types/index.ts` (fuente de verdad = CHECK de `scripts/schema.sql`), para que conectar Supabase sea un cambio de fuente de datos y no un refactor. Eliminados los tipos duplicados `DeliveryStatus`/`RouteStatus`/`InvoiceStatus`. Mapeos: entrega `delivered→entregado`, `onsite→en_punto`, `pending→pendiente` (`EstadoEntrega`); ruta `en_ruta→en_curso`, `programada→pendiente`, `completada` igual (`EstadoRuta`); factura `pendiente→enviada`, `pagada`/`vencida` igual (`EstadoFactura`). **`retrasada` NO es un estado del schema** → condición derivada (`ActiveRoute.retrasada?: boolean` + helper `routeBadge()`; una ruta demorada sigue `en_curso`). Labels visibles en español natural intactas. Consumidores actualizados: `DriverApp`, `RoutesTable`, `dashboard/page`, `dashboard/rutas/page`, `admin/facturacion/page`. Verificado: build verde · lint limpio · `npm run qa` 42/42, 0 excepciones, 0 errores de consola · badges/filtros correctos.
-
-- [x] **Segment 2 — `feat/storage-cumplidos` (infraestructura de storage para cumplidos):** solo infraestructura, sin tocar la UI todavía (eso es Phase 1). `scripts/migrations/001-storage-cumplidos.sql` crea el bucket **privado** `cumplidos` (5 MB, MIME `image/jpeg|png|webp`) con políticas RLS sobre `storage.objects`: conductor **INSERT** solo en paths de sus rutas (`route_id` parseado del path vía `storage.foldername()` y validado contra `routes.driver_id = auth.uid()`, comparando como texto para no lanzar en paths malformados), coordinador/admin **SELECT** de todo, admin **DELETE**. Paths: `{routeId}/{deliveryId}/cumplido.jpg` y `firma.png`. `lib/storage.ts` expone helpers tipados: `uploadCumplido()` (comprime a JPEG ≤1920px si hace falta), `uploadFirma()` (PNG), `getCumplidoUrl()` (signed URL 1 h, nunca pública), con `StorageError`. El SQL se corre a mano en Supabase (no ejecutado por el agente). Verificado: build verde · lint limpio · `npm run qa` 42/42, 0 excepciones, 0 errores de consola.
-
-- [x] **Segment 3 — `feat/alerts-cron` (sistema de alertas de 60 min):** infraestructura backend (sin tocar UI). `scripts/migrations/002-alerts.sql` crea la **tabla `alerts`** (tabla #11: `delivery_id`/`route_id`/`tipo` ∈ `tiempo_en_punto|ruta_no_iniciada|novedad`/`mensaje`/`resuelta`/…), **índice único parcial** `uniq_alerts_activa (delivery_id, tipo) WHERE resuelta=false` (evita duplicados), RLS solo **SELECT+UPDATE** para coord/admin (sin INSERT → solo la edge function con service role), trigger `updated_at`. Edge function Deno `supabase/functions/check-tiempo-en-punto/index.ts`: busca entregas `en_punto` con `hora_llegada_punto < now()-60min`, salta si ya hay alerta activa, inserta alerta y **notifica a Telegram** (best-effort; si falla, la alerta persiste), devuelve `{checked, alerted, telegram_ok}`. `README.md` con pasos exactos (BotFather, chat_id, `supabase secrets set`, `functions deploy`, `pg_cron`+`pg_net` cada 5 min con Vault, prueba con curl). Timer server-side (el de `DriverApp` es solo visual). SQL/deploy los corre el usuario a mano. `supabase/functions/**` excluido de tsconfig+eslint (runtime Deno). Verificado: build verde · lint limpio · `npm run qa` 42/42, 0 excepciones, 0 errores de consola.
-
-- [x] **Segment 4 — `feat/driver-phone-otp-login` (login del conductor por OTP SMS):** habilitado el signup/login solo-teléfono (Supabase Phone Auth + Twilio Verify) para los conductores. Bug de origen: fallaba con 500 "Database error saving new user" porque el trigger `handle_new_user()` insertaba `new.email` (NULL en OTP) en `profiles.email` **NOT NULL**, y el fallback de `name` (`split_part(new.email,'@',1)`) también daba NULL. `scripts/migrations/003-fix-handle-new-user-phone-auth.sql` (Opción B): `profiles.email` pasa a **anulable** + función corregida (email NULL-safe, cadena de fallbacks para `name`, y `phone` desde la columna nativa **`new.phone`** con fallback a metadata). Mismo fix plegado en `scripts/schema.sql` (instalaciones nuevas no reintroducen el bug). `useAuth` mapea `email: row.email ?? ''`. Nada en la app depende de `profiles.email` (no se muestra ni se usa como identidad; `id` es la clave). **Migración 003 ejecutada en producción; OTP por SMS verificado end-to-end** (signup por teléfono crea el profile con `email` NULL y `phone` E.164). Verificado: build verde · lint limpio · `npm run qa` 42/42, 0 excepciones.
-
-- [x] **Segment 5 — `chore/limpieza-docs` (limpieza + sync de docs):** sin cambios de código de producto. Removido `assets/Despachr v1/` del repo (git rm) y `/assets/` agregado a `.gitignore` (los handoffs de diseño y artefactos de QA viven fuera del repo; brand kit en `/public/brand`). `README.md` y `AGENTS.md` sincronizados con el stack real (Next.js 16 + React 19 + Tailwind 4; auth email/password + phone OTP) y estado real (11 tablas, migraciones 001-003 en producción, Fase 0 completa). **npm audit:** las 2 vulnerabilidades **high** (`brace-expansion`, `js-yaml`) corregidas con `npm audit fix` (solo `package-lock.json`, sin breaking). Las 2 **moderate** (`postcss` <8.5.10 vía `next`) quedan **known/accepted**: el único fix (`npm audit fix --force`) degrada Next 16→9.3.3 (major breaking); se resolverán con un patch futuro de Next que suba su `postcss` embebido. Verificado: build verde · lint limpio · `npm run qa` 42/42.
-
-### 🔄 In Progress / Roadmap
-**Fase 0 (fundación) — ✅ COMPLETA** (segments 1-5 mergeados: estados alineados al schema, storage de cumplidos, alertas de 60 min, phone OTP, limpieza de docs).
-
-- [ ] **Fase 1 — conectar a datos reales de Supabase** (reemplazar `lib/mock/*`), empezando por `DriverApp`; luego coordinador (mapa real + Realtime) y admin.
-- [ ] Captura real de cámara/firma → Storage (usar `lib/storage.ts`, ya listo).
-- [ ] **Deploy manual pendiente #1:** bot de Telegram — `supabase secrets set TELEGRAM_BOT_TOKEN/CHAT_ID` + `supabase functions deploy check-tiempo-en-punto`.
-- [ ] **Deploy manual pendiente #2:** programar la función de alertas cada 5 min con `pg_cron`+`pg_net` (ver `supabase/functions/check-tiempo-en-punto/README.md`).
-
-### 📝 Pending (Priority Order)
-
-**WEEK 1 — Foundation**
-- [x] Create DB schema with RLS policies
-- [x] Seed test data (sample routes, clients, drivers)
-- [x] Activate Supabase Realtime (routes, deliveries, delivery_events)
-- [x] Implement real Auth — login + role-based redirects (admin/coordinador → /dashboard, conductor → /driver), protected routes via middleware, `useAuth` (user/profile/rol/signOut), reusable `LogoutButton`. Public registration removed (admin-only user creation).
-
-**WEEK 2-3 — Driver App**
-- [ ] List today's deliveries (mobile-first view)
-- [ ] Mark arrival/departure with GPS
-- [ ] Capture cumplido photo
-- [ ] Report issues (novedades)
-- [ ] Digital signature for receiver
-
-**WEEK 4 — Coordinator Panel**
-- [ ] Real-time map with truck positions
-- [ ] Alerts: "Truck at point X for >60 min"
-- [ ] Delivery status timeline
-- [ ] Weekly malla management
-
-**MONTH 2 — Admin Dashboard**
-- [ ] KPI metrics (on-time %, tonnage, margin by client)
-- [ ] Client management
-- [ ] Driver management
-- [ ] Reports (exportable to CSV/PDF)
-
-**FUTURE**
-- [ ] Telegram Bot for push alerts
-- [ ] Google Maps optimization
-- [ ] Sistran integration (if API available)
-- [ ] WhatsApp Business alerts (backup)
-- [ ] Payment processing (Wompi for Colombia, Stripe for others)
+> **Current state & what to do next → [STATUS.md](STATUS.md).**
+> **Full change history → [CHANGELOG.md](CHANGELOG.md).**
+>
+> AGENTS.md is *durable reference* — product, domain, stack, conventions. It should rarely change.
+> Do **not** grow a per-session status log here: overwrite STATUS.md for current state, and append
+> a short paragraph to CHANGELOG.md for history. That keeps this always-loaded file flat as the
+> project grows.
 
 ---
 
 ## 🚀 Quick Start for New Sessions
 
-1. **Read this file** (you are here)
-2. **Check "Project Status"** section above for current state
-3. **Confirm with user** what will be worked on today
-4. **Update "Project Status"** at end of session
+1. **Read this file** (AGENTS.md) — durable product / domain / stack / conventions reference.
+2. **Read [STATUS.md](STATUS.md)** — current build state + exactly what to do next.
+3. **Confirm with the user** what will be worked on today.
+4. **At end of session:** *overwrite* STATUS.md with the new state, and append a short paragraph to
+   [CHANGELOG.md](CHANGELOG.md). Leave AGENTS.md unchanged unless a **durable** fact changed
+   (stack, conventions, architecture, terminology).
 
 ---
 
 ## 📚 Additional Documentation
 
-- **STATUS.md** — Shareable snapshot of current state + "what's next" (kept in sync with this file)
+- **STATUS.md** — Living snapshot of current state + "what's next" (overwritten each session; read this for state)
+- **CHANGELOG.md** — Append-only history of completed work (PR ledger + per-segment detail; not auto-loaded)
 - **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment
 - **scripts/README.md** — Detailed script documentation
@@ -521,14 +430,9 @@ Credenciales de QA: `.env.qa-credentials` (git-ignored). Deploy vivo: https://de
 
 ## ✨ Summary
 
-Despachr is a **real, solvable problem** for Colombian logistics companies. **Fase 0 (fundación) está
-COMPLETA** (segments 1-5): schema + RLS + auth por rol (email/password **y phone OTP**), **toda la UI**
-con datos **mock**, y los backends listos para consumir — **11 tablas** (incl. `alerts`), Storage de
-cumplidos (`lib/storage.ts`) y la edge function de alertas de 60 min. Migraciones `001`-`003` en producción.
-La **próxima fase (Fase 1) es la capa de datos real**: reemplazar `lib/mock/*` por queries a Supabase
-(empezando por `DriverApp`), captura real de cámara/firma → Storage, y el mapa real + Realtime del
-coordinador. **Dos despliegues manuales pendientes** (código ya mergeado): bot de Telegram y el
-schedule `pg_cron` de la función de alertas (ver `supabase/functions/check-tiempo-en-punto/README.md`).
+Despachr is a **real, solvable problem** for Colombian logistics companies: a role-based logistics PWA
+(schema + RLS + auth + a full UI) that replaces the Excel/WhatsApp workflow. **For the current build
+state and the next step, see [STATUS.md](STATUS.md); for history, [CHANGELOG.md](CHANGELOG.md).**
 
 **Key principle:** Every feature should map to actual user actions:
 - Driver marks "arrived" → Event created with timestamp + GPS → Alert to coordinator

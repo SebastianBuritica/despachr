@@ -1,0 +1,58 @@
+# Despachr — Changelog
+
+Append-only history of completed work. **This file is NOT auto-loaded into agent context** —
+it exists so the "why" of past changes is recoverable on demand. To know the *current* state and
+what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventions, [AGENTS.md](AGENTS.md).
+
+> Convention: newest first. When you finish a unit of work, add a short paragraph here and
+> overwrite STATUS.md — do **not** grow a status log inside AGENTS.md.
+
+---
+
+## PR ledger
+
+| PR | Work |
+|----|------|
+| #21 | docs: sync agent context to end-of-session state |
+| #20 | Segment 5 — assets cleanup + docs sync |
+| #19 | Segment 4 — driver phone OTP login |
+| #18 | Segment 3 — `alerts` table + 60-min edge function |
+| #17 | Segment 2 — storage bucket + `lib/storage.ts` helpers |
+| #16 | Segment 1 — mock state vocabulary aligned to schema |
+| #15 | Bug-fix pass — 5 real bugs |
+
+---
+
+## Fase 0 — foundation (segments 1-5)
+
+- **Segment 5 — `chore/limpieza-docs` (limpieza + sync de docs):** sin cambios de código de producto. Removido `assets/Despachr v1/` del repo (git rm) y `/assets/` agregado a `.gitignore` (los handoffs de diseño y artefactos de QA viven fuera del repo; brand kit en `/public/brand`). `README.md` y `AGENTS.md` sincronizados con el stack real (Next.js 16 + React 19 + Tailwind 4; auth email/password + phone OTP) y estado real (11 tablas, migraciones 001-003 en producción, Fase 0 completa). **npm audit:** las 2 vulnerabilidades **high** (`brace-expansion`, `js-yaml`) corregidas con `npm audit fix` (solo `package-lock.json`, sin breaking). Las 2 **moderate** (`postcss` <8.5.10 vía `next`) quedan **known/accepted**: el único fix (`npm audit fix --force`) degrada Next 16→9.3.3 (major breaking); se resolverán con un patch futuro de Next que suba su `postcss` embebido.
+
+- **Segment 4 — `feat/driver-phone-otp-login` (login del conductor por OTP SMS):** habilitado el signup/login solo-teléfono (Supabase Phone Auth + Twilio Verify) para los conductores. Bug de origen: fallaba con 500 "Database error saving new user" porque el trigger `handle_new_user()` insertaba `new.email` (NULL en OTP) en `profiles.email` **NOT NULL**, y el fallback de `name` (`split_part(new.email,'@',1)`) también daba NULL. `scripts/migrations/003-fix-handle-new-user-phone-auth.sql` (Opción B): `profiles.email` pasa a **anulable** + función corregida (email NULL-safe, cadena de fallbacks para `name`, y `phone` desde la columna nativa **`new.phone`** con fallback a metadata). Mismo fix plegado en `scripts/schema.sql` (instalaciones nuevas no reintroducen el bug). `useAuth` mapea `email: row.email ?? ''`. Nada en la app depende de `profiles.email` (no se muestra ni se usa como identidad; `id` es la clave). **Migración 003 ejecutada en producción; OTP por SMS verificado end-to-end** (signup por teléfono crea el profile con `email` NULL y `phone` E.164).
+
+- **Segment 3 — `feat/alerts-cron` (sistema de alertas de 60 min):** infraestructura backend (sin tocar UI). `scripts/migrations/002-alerts.sql` crea la **tabla `alerts`** (tabla #11: `delivery_id`/`route_id`/`tipo` ∈ `tiempo_en_punto|ruta_no_iniciada|novedad`/`mensaje`/`resuelta`/…), **índice único parcial** `uniq_alerts_activa (delivery_id, tipo) WHERE resuelta=false` (evita duplicados), RLS solo **SELECT+UPDATE** para coord/admin (sin INSERT → solo la edge function con service role), trigger `updated_at`. Edge function Deno `supabase/functions/check-tiempo-en-punto/index.ts`: busca entregas `en_punto` con `hora_llegada_punto < now()-60min`, salta si ya hay alerta activa, inserta alerta y **notifica a Telegram** (best-effort; si falla, la alerta persiste), devuelve `{checked, alerted, telegram_ok}`. `README.md` con pasos exactos (BotFather, chat_id, `supabase secrets set`, `functions deploy`, `pg_cron`+`pg_net` cada 5 min con Vault, prueba con curl). Timer server-side (el de `DriverApp` es solo visual). SQL/deploy los corre el usuario a mano. `supabase/functions/**` excluido de tsconfig+eslint (runtime Deno).
+
+- **Segment 2 — `feat/storage-cumplidos` (infraestructura de storage para cumplidos):** solo infraestructura, sin tocar la UI todavía (eso es Phase 1). `scripts/migrations/001-storage-cumplidos.sql` crea el bucket **privado** `cumplidos` (5 MB, MIME `image/jpeg|png|webp`) con políticas RLS sobre `storage.objects`: conductor **INSERT** solo en paths de sus rutas (`route_id` parseado del path vía `storage.foldername()` y validado contra `routes.driver_id = auth.uid()`, comparando como texto para no lanzar en paths malformados), coordinador/admin **SELECT** de todo, admin **DELETE**. Paths: `{routeId}/{deliveryId}/cumplido.jpg` y `firma.png`. `lib/storage.ts` expone helpers tipados: `uploadCumplido()` (comprime a JPEG ≤1920px si hace falta), `uploadFirma()` (PNG), `getCumplidoUrl()` (signed URL 1 h, nunca pública), con `StorageError`. El SQL se corre a mano en Supabase.
+
+- **Segment 1 — `refactor/estados-schema` (vocabulario de estados alineado al schema):** los mocks ahora usan los enums de dominio de `types/index.ts` (fuente de verdad = CHECK de `scripts/schema.sql`), para que conectar Supabase sea un cambio de fuente de datos y no un refactor. Eliminados los tipos duplicados `DeliveryStatus`/`RouteStatus`/`InvoiceStatus`. Mapeos: entrega `delivered→entregado`, `onsite→en_punto`, `pending→pendiente` (`EstadoEntrega`); ruta `en_ruta→en_curso`, `programada→pendiente`, `completada` igual (`EstadoRuta`); factura `pendiente→enviada`, `pagada`/`vencida` igual (`EstadoFactura`). **`retrasada` NO es un estado del schema** → condición derivada (`ActiveRoute.retrasada?: boolean` + helper `routeBadge()`; una ruta demorada sigue `en_curso`). Consumidores actualizados: `DriverApp`, `RoutesTable`, `dashboard/page`, `dashboard/rutas/page`, `admin/facturacion/page`.
+
+- **Bug-fix pass (post QA-E2E audit):** corregidos 5 bugs reales sin backend. (1) **Sidebar móvil** — `DashboardShell` colapsa a un `Sheet` lateral con botón hamburguesa `md:hidden`; el `<aside>` fijo queda `hidden md:flex` (arregla las 16 pantallas coord/admin en 390px). (2) **Hidratación de `ThemeToggle`** — el `aria-label` se estabiliza hasta `mounted` (elimina los 16 errores de consola). (3) **Gate de cumplido del conductor** — "Confirmar entrega" exige también "Recibido por" no vacío. (4) **Open-redirect** — `safeRedirect()` en login rechaza `//host` y `/\host` (protocol-relative). (5) **Rol nulo/silencioso** — login y `middleware.ts` manejan el fallo del fetch de `profiles`: login cierra sesión y avisa; el middleware manda a `/login?error=perfil` (evita panel equivocado y el bucle de redirección).
+
+---
+
+## Earlier — base + UI redesign (pre-segments)
+
+- DB schema live in Supabase: 11 tables (10 + `alerts`), 24 RLS policies, triggers. Migraciones `001` (storage cumplidos), `002` (tabla alerts), `003` (fix phone-auth) ejecutadas en producción.
+- Seed data loaded + RLS verified per role (admin/coordinador/conductor).
+- Keys de Supabase rotadas y actualizadas en Vercel.
+- Auth real con redirección por rol (login + middleware + useAuth + LogoutButton). Public registration removed (admin-only user creation).
+- Next.js 16 (React 19) boilerplate; folder structure; 9 TypeScript domain models (Spanish enums, aligned to schema); Supabase client (client + server); `useAuth`; middleware; 5 automation scripts; npm scripts; Claude Code skills.
+
+- **Rediseño UI — Fase 0 (fundación):** migración a **shadcn/ui + Radix** (preset radix-nova). Tokens del handoff en `app/globals.css` (verde `#0F6E56` como `--primary`, animaciones `fadeUp`/`pop`). Fuentes Inter + JetBrains Mono. 16 primitivos shadcn. `cn()` con `tailwind-merge`. (Handoffs de diseño fuera del repo; brand kit en `/public/brand`.)
+- **Rediseño UI — Fase 1 (shells + ruteo):** **login split** de 2 columnas; **DashboardShell** reutilizable (sidebar + topbar + user card con logout). Segmentos por rol: `/dashboard/*` (coordinador) y `/admin/*` (admin) con `PageHeader`. `homeForRole` y middleware.
+- **Rediseño UI — Fase 2 (coordinador):** 4 pantallas mock — operación en vivo, rutas, conductores, clientes. Piezas: `StatusBadge`, `StatCard`, `RouteProgress`, `LiveMap`, `AlertsCard`, `DriverCard`, `RoutesTable`. Mock en `lib/mock/coordinator.ts`.
+- **Rediseño UI — Fase 3 (admin):** 4 pantallas — métricas (KPIs + barras + anillo), clientes, facturación, reportes. Componentes: `KpiCard`, `TonnageChart`, `ComplianceRing`, `PeriodToggle`. Mock en `lib/mock/admin.ts`.
+- **App del conductor (mobile):** flujo `list → active → capture → done` (`DriverApp`) con timer en vivo, captura foto+firma (placeholders) + "Recibido por". Mock en `lib/mock/driver.ts`.
+- **Light/Dark mode (Zinc) + gráficas:** tokens Zinc (light+dark) con verde de marca; **next-themes** (`system` default) + switch sol/luna; sidebar claro (superficies oscuras intencionales → token `--panel`).
+- **Landing (marketing):** `/` con tema oscuro; v2 de 8 secciones (nav/hero → Producto → Cómo funciona → Plataforma → Precios → CTA → footer). Componentes: `LiveMapCard`, `DemoMockup`, `ProductFeatures`, `HowItWorks`, `Pricing`, `Reveal`.
+- **Marca / iconos:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx`. **PWA**: `app/manifest.ts` (icons 192/512) + apple-touch-icon 180. Assets en `public/brand/`.
+- **QA tooling (skill + subagent):** `scripts/qa.mjs` (Playwright) login por rol y recorre todas las rutas en desktop+mobile y light/dark, capturando screenshots + errores consola/JS + axe → `assets/qa/<timestamp>/` (gitignored). Skill `/qa [segmento]`, subagente `qa`, `npm run qa`.
