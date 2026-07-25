@@ -119,7 +119,7 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **Icons** | `lucide-react` |
 | **Fonts** | Inter (UI) + JetBrains Mono (cifras/placas/montos) vía `next/font` |
 | **Database** | Supabase (PostgreSQL) |
-| **Auth** | Supabase Auth (email/password) |
+| **Auth** | Supabase Auth — **email/password** is the only login UI today. Phone/SMS-OTP **backend** is ready & verified (Twilio Verify + `handle_new_user` for phone-only users), but the **OTP login UI is not built** → Fase 1.3b. `profiles.phone` is stored **without** the leading `+` (e.g. `573229596618`). |
 | **Storage** | Supabase Storage (cumplido photos) — pendiente conectar |
 | **Realtime** | Supabase Realtime (map updates) — pendiente conectar |
 | **Deploy** | Vercel (auto-deploy from main) |
@@ -344,14 +344,21 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 
 ### Sequence
 ```
-Fase 1.0 — infra scaffolding (error/loading/not-found + empty states + UX hardening)
-Fase 1.1 — driver: real data + GPS
-Fase 1.2 — driver: real photo + signature capture
-Fase 1.3 — driver: novedades UI
-Fase 1.4 — service worker + offline event queue
-Manual   — Telegram bot + pg_cron deploy (owner runs these)
-Fase 2   — coordinator: real data + map + alerts
+Fase 1.0  — infra scaffolding (error/loading/not-found + empty states + UX hardening)   [done]
+Fase 1.1  — driver: real data + GPS                                                     [done]
+Fase 1.2  — driver: real photo + signature capture
+Fase 1.3  — driver: novedades UI
+Fase 1.3b — driver: OTP login UI (phone sign-in) — before offline, so 1.4 builds its
+            session handling on the final auth path, not on email/password swapped later
+Fase 1.4  — service worker + offline event queue
+Manual    — Telegram bot + pg_cron deploy (owner runs these)
+Fase 2    — coordinator: real data + map + alerts   (blocked on migration 005: peso_kg/volumen_m3)
 ```
+
+> **Auth reality (do not overstate):** phone/SMS-OTP is **backend-only** today (verified via console);
+> there is **no OTP login UI** — drivers sign in with **email/password at `/login`** until Fase 1.3b.
+> `profiles.phone` has **no leading `+`** (Supabase Auth format, e.g. `573229596618`) — 1.3b's phone
+> input and any `tel:` links must normalize.
 
 > Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"

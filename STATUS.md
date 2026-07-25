@@ -16,7 +16,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 
 ## ✅ What actually works today
 
-- **Real role-based auth.** Login (Supabase Auth) + middleware that protects routes and redirects by role: admin → `/admin`, coordinator → `/dashboard`, driver → `/driver`. No public sign-up (admin creates users). **Drivers can now log in by SMS OTP** (Supabase Phone Auth + Twilio Verify). Verified in production.
+- **Real role-based auth.** Login (Supabase Auth, **email/password**) at `/login` + middleware that protects routes and redirects by role: admin → `/admin`, coordinator → `/dashboard`, driver → `/driver`. No public sign-up (admin creates users).
+- **Phone-auth (SMS OTP) — backend live, UI not built yet.** The *backend* is configured and verified: Twilio Verify set up, `handle_new_user` creates profiles for phone-only users (email nullable), and `signInWithOtp`/`verifyOtp` confirmed working via the Supabase console. **But there is no OTP login screen in the app** — the repo has no `signInWithOtp`/`verifyOtp` call, and `/login` offers only email/password. So **drivers currently sign in with email/password at `/login`**; the phone-OTP login UI is **Fase 1.3b** (after novedades, before the service worker). *(Do not read this as "drivers log in by OTP today" — that's the gap 1.3b closes.)*
 - **Live database — 11 tables**, 24 RLS policies, triggers, seed data. RLS verified per role: a driver sees only their own data; the coordinator sees everything **except** financials; the admin sees all. Driver pay/margin isolated in admin-only tables (`delivery_financials`, `client_invoices`). **Migrations `001`–`004` executed in production** (`004` = `deliveries.telefono_receptor` for the "Llamar" button).
 - **Driver app on REAL data (Fase 1.1).** The phone-authed driver loads their own route for today and its deliveries from Supabase (`lib/queries/driver.ts`), marks **`Llegué`/`Salí`** which insert `delivery_events` (`lib/queries/events.ts`) — the DB triggers derive `hora_llegada_punto`/`en_punto` and `tiempo_en_punto_minutos` (app re-reads, never recomputes). **GPS** is captured on those events (`lib/geo.ts`) and **never blocks**: on denial/timeout the event is saved without coords + a subtle notice. The visual timer **seeds from `hora_llegada_punto`** so a refresh doesn't reset it. `lib/mock/driver.ts` is **deleted**. Camera/signature stay simulated (Fase 1.2).
 - **Storage backend ready** — private `cumplidos` bucket (5 MB, jpeg/png/webp) with RLS (driver INSERT own routes, coord/admin SELECT, admin DELETE) + typed helpers in `lib/storage.ts` (`uploadCumplido`, `uploadFirma`, `getCumplidoUrl`). Not yet wired into the UI.
@@ -34,7 +35,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 | #16 | Segment 1 — mock state vocabulary aligned to schema enums (`retrasada` derived; invoice `pendiente`→`enviada`) |
 | #17 | Segment 2 — storage bucket + `lib/storage.ts` helpers |
 | #18 | Segment 3 — `alerts` table + 60-min edge function |
-| #19 | Segment 4 — driver phone OTP login (fix `handle_new_user()`; `profiles.email` nullable) |
+| #19 | Segment 4 — driver phone-auth **backend** (fix `handle_new_user()`; `profiles.email` nullable) — **backend only, no login UI** (that's Fase 1.3b) |
 | #20 | Segment 5 — assets cleanup + docs sync (this file, README, AGENTS) |
 
 ---
@@ -58,17 +59,18 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 **Done — Fase 1.0 (PR #23, merged):** error/loading/not-found boundaries, empty states, login
 hardening, `signOut` try/catch, dead CTAs disabled behind "Próximamente", driver quick wins.
 
-**Done pending PR — Fase 1.1 (branch `feat/driver-datos-reales`):** DriverApp on real Supabase data
-(`lib/queries/driver.ts` + `events.ts`), `Llegué`/`Salí` GPS events (`lib/geo.ts`), timer seeded from
-`hora_llegada_punto`, mock deleted. Needed **migration `004-telefono-receptor.sql`** (run in prod).
-Camera/signature stay simulated.
+**Done — Fase 1.1 (PR #24, merged):** DriverApp on real Supabase data (`lib/queries/driver.ts` +
+`events.ts`), `Llegué`/`Salí` GPS events (`lib/geo.ts`), timer seeded from `hora_llegada_punto`, mock
+deleted. Needed **migration `004-telefono-receptor.sql`** (run in prod). Camera/signature stay simulated.
 
 **Next — continue the driver vertical, then coordinator:**
 
 1. **Fase 1.2 — driver real capture:** camera + signature → Storage via `lib/storage.ts`; emit the `cumplido` event; persist `foto_cumplido_url`. (Replaces the simulated photo/signature in `DriverApp`.)
-2. **Fase 1.3 — novedades UI** (issue reporting); **Fase 1.4 — service worker + offline event queue.**
-3. **Fase 2 — Coordinator** — real routes/deliveries + **real map** + Realtime + surface the `alerts` table (acknowledge/resolve).
-4. **v1.1 — Admin** depth (KPIs, client CRUD, invoice workflow) — out of v1 scope.
+2. **Fase 1.3 — novedades UI** (issue reporting).
+3. **Fase 1.3b — driver OTP login UI** (phone sign-in): `signInWithOtp`/`verifyOtp` screen so phone-only drivers can authenticate. Sequenced here **on purpose** — Fase 1.4's offline session handling must be built on the *final* auth path, not on email/password that then gets swapped for OTP (would be double work). Note: `profiles.phone` stores the number **without** the leading `+` (Supabase Auth format, e.g. `573229596618`) → phone inputs and `tel:` links must normalize.
+4. **Fase 1.4 — service worker + offline event queue.**
+5. **Fase 2 — Coordinator** — real routes/deliveries + **real map** + Realtime + surface the `alerts` table (acknowledge/resolve). **Blocked on migration `005` (`peso_kg`/`volumen_m3`)** — queued, pending pilot-client requirements.
+6. **v1.1 — Admin** depth (KPIs, client CRUD, invoice workflow) — out of v1 scope.
 
 **Two pending manual deploys (code already merged in #18 — the alert system isn't *live* until these are done):**
 - **Telegram bot** — create via BotFather, then `supabase secrets set TELEGRAM_BOT_TOKEN=… TELEGRAM_CHAT_ID=…` + `supabase functions deploy check-tiempo-en-punto`.
