@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,7 +80,7 @@ function initials(name: string): string {
 }
 
 export function DriverApp() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [route, setRoute] = useState<RutaDelDia | null>(null)
   const [deliveries, setDeliveries] = useState<EntregaConductor[]>([])
   const [loading, setLoading] = useState(true)
@@ -103,29 +104,62 @@ export function DriverApp() {
     return ds
   }, [])
 
-  // Carga inicial: ruta del día + sus entregas. Los errores se re-lanzan en
-  // render para que los capture la frontera de error (app/driver/error.tsx).
-  useEffect(() => {
-    let active = true
-    ;(async () => {
-      try {
-        const r = await getRutaDelDia()
-        if (!active) return
-        setRoute(r)
-        if (r) {
-          const ds = await getEntregasDeRuta(r.id)
-          if (active) setDeliveries(ds)
-        }
-      } catch (e) {
-        if (active) setError(e instanceof Error ? e : new Error('Error al cargar la ruta'))
-      } finally {
-        if (active) setLoading(false)
-      }
-    })()
-    return () => {
-      active = false
+  // Carga (ruta del día + sus entregas). `silent` = recarga en background por
+  // Realtime: no escala el error a la frontera (un fallo transitorio de una
+  // suscripción no debe tumbar la app; la carga inicial sí). `loading` arranca
+  // en true y solo la carga inicial lo apaga, así no hay setState síncrono en el
+  // efecto ni parpadeo del esqueleto en las recargas.
+  const load = useCallback(async (silent = false) => {
+    try {
+      const r = await getRutaDelDia()
+      setRoute(r)
+      setDeliveries(r ? await getEntregasDeRuta(r.id) : [])
+    } catch (e) {
+      if (!silent) setError(e instanceof Error ? e : new Error('Error al cargar la ruta'))
+      else console.warn('Recarga por Realtime falló:', e)
+    } finally {
+      if (!silent) setLoading(false)
     }
   }, [])
+
+  // Carga inicial. Los errores se re-lanzan en render → app/driver/error.tsx.
+  // La IIFE async evita el falso positivo de set-state-in-effect: los setState
+  // de load() ocurren tras un await, no de forma síncrona en el cuerpo del efecto.
+  useEffect(() => {
+    void (async () => {
+      await load()
+    })()
+  }, [load])
+
+  // Realtime: el coordinador puede asignar/cambiar la ruta o una entrega a mitad
+  // de jornada; el conductor debe verlo sin recargar a mano (si no, el coordinador
+  // termina avisando por WhatsApp — justo el hábito que este producto elimina).
+  // Suscripción acotada a ESTE conductor: cambios en sus routes (incluye una ruta
+  // recién asignada, aunque hoy no tenga ninguna) y en las deliveries de su ruta.
+  // Una re-lectura por cambio basta; sin parcheo granular de filas. Limpia el
+  // canal al desmontar. La RLS aplica a Realtime, así que solo llegan sus filas.
+  const uid = user?.id
+  const routeId = route?.id
+  useEffect(() => {
+    if (!uid) return
+    const channel = supabase.channel(`driver-${uid}`)
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'routes', filter: `driver_id=eq.${uid}` },
+      () => load(true)
+    )
+    if (routeId) {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries', filter: `route_id=eq.${routeId}` },
+        () => load(true)
+      )
+    }
+    channel.subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [uid, routeId, load])
 
   // Timer visual: corre solo mientras la entrega activa está "en punto".
   useEffect(() => {

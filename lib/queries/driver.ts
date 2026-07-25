@@ -68,34 +68,39 @@ export async function getRutaDelDia(): Promise<RutaDelDia | null> {
   }
 }
 
-// Entregas de una ruta, ordenadas por numero_secuencia (el "orden de entrega"
-// del punto), con el nombre del cliente y el teléfono del receptor.
+// Fila que devuelve la RPC public.entregas_de_ruta (columnas en lista blanca).
+interface EntregaRpcRow {
+  id: string
+  route_id: string
+  numero_secuencia: number
+  address: string
+  city: string
+  telefono_receptor: string | null
+  estado: EstadoEntrega
+  hora_llegada_punto: string | null
+  cliente_nombre: string | null
+}
+
+// Entregas de una ruta, ordenadas por numero_secuencia, con el nombre del
+// cliente. Va por RPC SECURITY DEFINER (migración 005): el conductor no puede
+// leer public.clients por RLS (row-level → filtraría tarifa_flete), así que la
+// función devuelve SOLO columnas seguras y valida que la ruta sea suya.
 export async function getEntregasDeRuta(routeId: string): Promise<EntregaConductor[]> {
-  const { data, error } = await supabase
-    .from('deliveries')
-    .select(
-      'id, route_id, numero_secuencia, address, city, telefono_receptor, estado, hora_llegada_punto, clients(name)'
-    )
-    .eq('route_id', routeId)
-    .order('numero_secuencia', { ascending: true })
+  const { data, error } = await supabase.rpc('entregas_de_ruta', { p_route_id: routeId })
 
   if (error) throw error
 
-  return (data ?? []).map((row) => {
-    const clients = row.clients as { name: string } | { name: string }[] | null
-    const cliente = Array.isArray(clients) ? (clients[0]?.name ?? '—') : (clients?.name ?? '—')
-    return {
-      id: row.id,
-      routeId: row.route_id,
-      secuencia: row.numero_secuencia,
-      cliente,
-      direccion: row.address,
-      ciudad: row.city,
-      telefono: row.telefono_receptor,
-      estado: row.estado as EstadoEntrega,
-      horaLlegada: row.hora_llegada_punto,
-    }
-  })
+  return ((data ?? []) as EntregaRpcRow[]).map((row) => ({
+    id: row.id,
+    routeId: row.route_id,
+    secuencia: row.numero_secuencia,
+    cliente: row.cliente_nombre ?? '—',
+    direccion: row.address,
+    ciudad: row.city,
+    telefono: row.telefono_receptor,
+    estado: row.estado,
+    horaLlegada: row.hora_llegada_punto,
+  }))
 }
 
 // Marca la entrega como entregada. El estado 'entregado' NO lo pone ningún

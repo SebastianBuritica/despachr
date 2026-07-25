@@ -352,7 +352,8 @@ Fase 1.3b — driver: OTP login UI (phone sign-in) — before offline, so 1.4 bu
             session handling on the final auth path, not on email/password swapped later
 Fase 1.4  — service worker + offline event queue
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
-Fase 2    — coordinator: real data + map + alerts   (blocked on migration 005: peso_kg/volumen_m3)
+Fase 2    — coordinator: real data + map + alerts   (blocked on migration 006: peso_kg/volumen_m3;
+            needs its OWN deliveries path — entregas_de_ruta RPC is driver-only, do not reuse)
 ```
 
 > **Auth reality (do not overstate):** phone/SMS-OTP is **backend-only** today (verified via console);
@@ -462,7 +463,7 @@ npm run lint             # ESLint validation
 - **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment
 - **scripts/README.md** — Detailed script documentation
-- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`003`** — hand-run, repo-tracked migrations (executed in prod)
+- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`005`** — hand-run, repo-tracked migrations (executed in prod). `005` adds the driver-only `entregas_de_ruta` SECURITY DEFINER RPC (client name without leaking pricing) and hardens `get_my_role()`'s `search_path`.
 - **supabase/functions/check-tiempo-en-punto/README.md** — Deploy + `pg_cron` scheduling steps for the 60-min alert function (pending manual deploy)
 - **.env.local.example** — All environment variables
 - **.claude/settings.json** — AI agent skills configuration
