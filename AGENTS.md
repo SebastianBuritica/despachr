@@ -323,6 +323,42 @@ const checkInactivityInterval = ...
 
 ---
 
+## 🚦 v1 Scope — what "done" means
+
+**v1 is the minimum that replaces the pilot client's WhatsApp + Excel daily operation. Nothing more.**
+Work is executed **one segment = one branch = one PR**; each PR must pass `build` + `lint` + `qa`
+before it's proposed. Current state and the active segment live in **STATUS.md**.
+
+**In scope for v1:**
+- **Driver app on real data** — today's own deliveries, GPS on arrival/departure, real photo +
+  signature capture to Storage, **novedades** reporting, offline resilience.
+- **Coordinator panel on real data** — live route status, real map, visible alerts.
+- **Alerts live end-to-end** — Telegram + `pg_cron`.
+- **Resilience/UX baseline** — error/loading/not-found boundaries and empty states.
+
+**Out of scope for v1 (deferred):**
+- **Admin panel depth** — KPIs, charts, billing workflow, reports, client CRUD → **v1.1**, once real
+  data has accumulated (the pilot doesn't need ROA/ROE to stop using Excel).
+- Multi-tenant, pricing, route optimization, Sistran/Cigo integration → **post-v1**.
+- The a11y contrast backlog (35 axe warnings) → tracked, **not v1**.
+
+### Sequence
+```
+Fase 1.0 — infra scaffolding (error/loading/not-found + empty states + UX hardening)
+Fase 1.1 — driver: real data + GPS
+Fase 1.2 — driver: real photo + signature capture
+Fase 1.3 — driver: novedades UI
+Fase 1.4 — service worker + offline event queue
+Manual   — Telegram bot + pg_cron deploy (owner runs these)
+Fase 2   — coordinator: real data + map + alerts
+```
+
+> Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
+> action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
+> tooltip so unbuilt CTAs read as pending, not broken).
+
+---
+
 ## 🔌 Future Integrations (Planned)
 
 | Integration | Purpose | Status |

@@ -9,6 +9,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ComingSoon } from '@/components/ui/coming-soon'
 import {
   Table,
   TableBody,
@@ -57,9 +58,11 @@ export default function ReportesPage() {
               </span>
               <h3 className="mt-4 font-semibold">{g.title}</h3>
               <p className="mt-1 flex-1 text-[13px] text-muted-foreground">{g.desc}</p>
-              <Button variant="outline" size="sm" className="mt-4 w-full">
-                Generar
-              </Button>
+              <ComingSoon className="mt-4 w-full">
+                <Button variant="outline" size="sm" className="w-full" disabled>
+                  Generar
+                </Button>
+              </ComingSoon>
             </Card>
           )
         })}
@@ -89,13 +92,16 @@ export default function ReportesPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{r.format}</TableCell>
                 <TableCell className="text-right">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
-                  >
-                    <Download className="size-4" />
-                    Descargar
-                  </button>
+                  <ComingSoon>
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-brand disabled:opacity-50"
+                    >
+                      <Download className="size-4" />
+                      Descargar
+                    </button>
+                  </ComingSoon>
                 </TableCell>
               </TableRow>
             ))}

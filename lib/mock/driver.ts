@@ -21,6 +21,8 @@ export interface DriverDelivery {
   tons: string
   units: string
   status: EstadoEntrega
+  // Teléfono del contacto en el punto (para el botón "Llamar"). E.164.
+  phone: string
 }
 
 export const DRIVER_ROUTE = {
@@ -41,6 +43,7 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     tons: '12.5 T',
     units: '18 pallets',
     status: 'entregado',
+    phone: '+573001234567',
   },
   {
     id: 'e2',
@@ -51,6 +54,7 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     tons: '8.2 T',
     units: '12 pallets',
     status: 'en_punto',
+    phone: '+573012345678',
   },
   {
     id: 'e3',
@@ -61,5 +65,6 @@ export const DRIVER_DELIVERIES: DriverDelivery[] = [
     tons: '6.4 T',
     units: '9 pallets',
     status: 'pendiente',
+    phone: '+573023456789',
   },
 ]

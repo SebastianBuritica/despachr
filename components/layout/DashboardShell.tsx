@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   LayoutGrid,
   Route as RouteIcon,
@@ -25,6 +26,7 @@ import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { ComingSoon } from '@/components/ui/coming-soon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -231,22 +233,24 @@ function Topbar({
     <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
       <div className="flex min-w-0 items-center gap-2">
         <MenuButton onOpenMenu={onOpenMenu} />
-        <div className="hidden h-9 w-[300px] max-w-full items-center gap-2 rounded-full bg-muted px-3 text-sm text-muted-foreground sm:flex">
-          <Search className="size-4 shrink-0" />
-          <span className="truncate">Buscar ruta, conductor o cliente…</span>
-        </div>
+        <ComingSoon className="hidden max-w-full sm:inline-flex" label="Búsqueda — próximamente">
+          <div className="flex h-9 w-[300px] max-w-full items-center gap-2 rounded-full bg-muted px-3 text-sm text-muted-foreground">
+            <Search className="size-4 shrink-0" />
+            <span className="truncate">Buscar ruta, conductor o cliente…</span>
+          </div>
+        </ComingSoon>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-          aria-label="Notificaciones"
-        >
-          <Bell className="size-[18px]" />
-          <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-white">
-            3
-          </span>
-        </button>
+        <ComingSoon label="Notificaciones — próximamente">
+          <button
+            type="button"
+            disabled
+            className="relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            aria-label="Notificaciones"
+          >
+            <Bell className="size-[18px]" />
+          </button>
+        </ComingSoon>
         <ThemeToggle />
       </div>
     </header>
@@ -260,9 +264,14 @@ function UserCard({ name, roleLabel }: { name: string; roleLabel: string }) {
 
   const handleLogout = async () => {
     setLoading(true)
-    await signOut()
-    router.replace('/login')
-    router.refresh()
+    try {
+      await signOut()
+      router.replace('/login')
+      router.refresh()
+    } catch {
+      toast.error('No se pudo cerrar sesión. Inténtalo de nuevo.')
+      setLoading(false)
+    }
   }
 
   return (

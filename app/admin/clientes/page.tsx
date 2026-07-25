@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
+import { ComingSoon } from '@/components/ui/coming-soon'
 import {
   Table,
   TableBody,
@@ -20,10 +21,12 @@ export default function ClientesGestionPage() {
         title="Clientes"
         subtitle="Cartera de clientes y contratos activos"
         action={
-          <Button>
-            <Plus className="size-4" />
-            Nuevo cliente
-          </Button>
+          <ComingSoon>
+            <Button disabled>
+              <Plus className="size-4" />
+              Nuevo cliente
+            </Button>
+          </ComingSoon>
         }
       />
 

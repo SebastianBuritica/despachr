@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
   Phone,
   Check,
   LogOut,
+  PackageOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
@@ -19,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +51,7 @@ export function DriverApp() {
   const [photo, setPhoto] = useState(false)
   const [signed, setSigned] = useState(false)
   const [receiver, setReceiver] = useState('')
+  const [completedAt, setCompletedAt] = useState('')
 
   // DECISIÓN: el timer solo corre mientras la pantalla activa es la entrega.
   useEffect(() => {
@@ -73,6 +77,10 @@ export function DriverApp() {
   const confirm = () => {
     setDeliveries((prev) =>
       prev.map((d) => (d.id === activeId ? { ...d, status: 'entregado' } : d))
+    )
+    // Hora real de confirmación (se calcula al confirmar, no en render → sin hydration mismatch).
+    setCompletedAt(
+      new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
     )
     setScreen('done')
   }
@@ -107,7 +115,14 @@ export function DriverApp() {
   }
 
   if (screen === 'done' && active) {
-    return <DoneScreen delivery={active} seconds={seconds} onBack={() => setScreen('list')} />
+    return (
+      <DoneScreen
+        delivery={active}
+        seconds={seconds}
+        completedAt={completedAt}
+        onBack={() => setScreen('list')}
+      />
+    )
   }
 
   return <ListScreen deliveries={deliveries} doneCount={doneCount} onOpen={open} />
@@ -127,12 +142,16 @@ function ListScreen({
   const router = useRouter()
   const { signOut } = useAuth()
   const total = deliveries.length
-  const pct = Math.round((doneCount / total) * 100)
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
 
   const handleSignOut = async () => {
-    await signOut()
-    router.replace('/login')
-    router.refresh()
+    try {
+      await signOut()
+      router.replace('/login')
+      router.refresh()
+    } catch {
+      toast.error('No se pudo cerrar sesión. Inténtalo de nuevo.')
+    }
   }
 
   return (
@@ -179,9 +198,18 @@ function ListScreen({
         <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Entregas del día
         </p>
-        {deliveries.map((d) => (
-          <DeliveryListCard key={d.id} delivery={d} onOpen={() => onOpen(d)} />
-        ))}
+        {deliveries.length === 0 ? (
+          <EmptyState
+            icon={PackageOpen}
+            title="Sin entregas para hoy"
+            message="No tienes entregas asignadas. Cuando coordinación arme tu ruta, aparecerá aquí."
+            className="mt-2"
+          />
+        ) : (
+          deliveries.map((d) => (
+            <DeliveryListCard key={d.id} delivery={d} onOpen={() => onOpen(d)} />
+          ))
+        )}
       </div>
     </div>
   )
@@ -296,13 +324,23 @@ function ActiveScreen({
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <Button variant="outline">
-              <Navigation className="size-4" />
-              Navegar
+            <Button variant="outline" asChild>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  `${delivery.address}, ${delivery.city}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation className="size-4" />
+                Navegar
+              </a>
             </Button>
-            <Button variant="outline">
-              <Phone className="size-4" />
-              Llamar
+            <Button variant="outline" asChild>
+              <a href={`tel:${delivery.phone}`}>
+                <Phone className="size-4" />
+                Llamar
+              </a>
             </Button>
           </div>
         </div>
@@ -464,10 +502,12 @@ function CaptureScreen({
 function DoneScreen({
   delivery,
   seconds,
+  completedAt,
   onBack,
 }: {
   delivery: DriverDelivery
   seconds: number
+  completedAt: string
   onBack: () => void
 }) {
   return (
@@ -485,7 +525,7 @@ function DoneScreen({
         <Row label="Tiempo en sitio" value={mmss(seconds)} mono />
         <Row label="Carga entregada" value={`${delivery.tons} · ${delivery.units}`} />
         <Row label="Evidencia" value="Foto + firma ✓" />
-        <Row label="Hora" value="11:32 a. m." mono />
+        <Row label="Hora" value={completedAt} mono />
       </div>
 
       <Button className="mt-8 h-12 w-full max-w-xs" onClick={onBack}>

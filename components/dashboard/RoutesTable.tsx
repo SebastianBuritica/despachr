@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { Route as RouteIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RouteProgress } from '@/components/dashboard/RouteProgress'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   Table,
   TableBody,
@@ -28,6 +30,18 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
   const [filter, setFilter] = useState<Filter>('todas')
+
+  // Sin rutas programadas: estado vacío completo (no la tabla con filtros vacíos).
+  if (routes.length === 0) {
+    return (
+      <EmptyState
+        icon={RouteIcon}
+        title="Sin rutas programadas"
+        message="Cuando armes la malla de la semana, las rutas del día aparecerán aquí."
+      />
+    )
+  }
+
   const rows =
     filter === 'todas'
       ? routes
