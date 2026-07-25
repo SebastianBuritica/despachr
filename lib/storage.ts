@@ -31,6 +31,24 @@ function firmaPath(routeId: string, deliveryId: string): string {
   return `${routeId}/${deliveryId}/firma.png`
 }
 
+// Con upsert:false, si ya hay un objeto en el path Supabase responde 409
+// "Duplicate". Como el path es DETERMINISTA por entrega, un objeto ahí ES la
+// evidencia de esta entrega → la subida anterior SÍ tuvo éxito (falla típica en
+// móvil: el request llega al servidor pero la respuesta no vuelve al cliente).
+// Se trata como éxito. NO usamos upsert:true: el bucket concede al conductor
+// solo INSERT (no UPDATE, ver migración 001); un upsert intentaría UPDATE y la
+// RLS lo bloquearía, volviendo un fallo raro en uno seguro en cada reintento.
+function isDuplicateError(error: unknown): boolean {
+  const e = error as
+    | { message?: string; statusCode?: string | number; status?: number; error?: string }
+    | null
+    | undefined
+  if (!e) return false
+  const code = String(e.statusCode ?? e.status ?? '')
+  const msg = (e.message ?? '').toLowerCase()
+  return code === '409' || e.error === 'Duplicate' || msg.includes('already exists')
+}
+
 // Comprime/redimensiona a JPEG. Devuelve el original solo si ya es un JPEG
 // dentro de límite y dimensión (así los bytes siguen coincidiendo con el .jpg).
 async function compressImage(file: File): Promise<Blob> {
@@ -101,6 +119,8 @@ export async function uploadCumplido(
     .upload(path, blob, { contentType: 'image/jpeg', upsert: false })
 
   if (error) {
+    // Ya existe en este path (determinista por entrega) = ya se había subido.
+    if (isDuplicateError(error)) return path
     throw new StorageError(`No se pudo subir el cumplido: ${error.message}`)
   }
   return path
@@ -125,6 +145,8 @@ export async function uploadFirma(
     .upload(path, blob, { contentType: 'image/png', upsert: false })
 
   if (error) {
+    // Ya existe en este path (determinista por entrega) = ya se había subido.
+    if (isDuplicateError(error)) return path
     throw new StorageError(`No se pudo subir la firma: ${error.message}`)
   }
   return path
