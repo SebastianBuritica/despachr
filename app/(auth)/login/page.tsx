@@ -31,8 +31,13 @@ function authErrorMessage(message: string): string {
   const m = message.toLowerCase()
   if (m.includes('invalid login credentials')) return 'Correo o contraseña incorrectos.'
   if (m.includes('email not confirmed')) return 'Tu correo aún no ha sido verificado.'
+  if (m.includes('rate limit') || m.includes('too many'))
+    return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
   return 'No fue posible iniciar sesión. Inténtalo de nuevo.'
 }
+
+// Validación de formato básica en cliente (el servidor sigue siendo la fuente de verdad).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function LoginForm() {
   const router = useRouter()
@@ -40,6 +45,8 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(
     searchParams.get('error') === 'perfil'
       ? 'Tu cuenta no tiene un perfil asignado. Contacta a tu administrador.'
@@ -49,6 +56,19 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Validación en cliente antes de tocar la red.
+    const emailTrim = email.trim()
+    const nextEmailError = !emailTrim
+      ? 'Ingresa tu correo.'
+      : !EMAIL_RE.test(emailTrim)
+        ? 'Ingresa un correo válido.'
+        : null
+    const nextPasswordError = !password ? 'Ingresa tu contraseña.' : null
+    setEmailError(nextEmailError)
+    setPasswordError(nextPasswordError)
+    if (nextEmailError || nextPasswordError) return
+
     setLoading(true)
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -110,9 +130,19 @@ function LoginForm() {
             autoComplete="email"
             placeholder="correo@empresa.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (emailError) setEmailError(null)
+            }}
+            aria-invalid={!!emailError}
+            aria-describedby={emailError ? 'email-error' : undefined}
             required
           />
+          {emailError && (
+            <p id="email-error" className="text-xs text-destructive">
+              {emailError}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -129,9 +159,19 @@ function LoginForm() {
             autoComplete="current-password"
             placeholder="••••••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              if (passwordError) setPasswordError(null)
+            }}
+            aria-invalid={!!passwordError}
+            aria-describedby={passwordError ? 'password-error' : undefined}
             required
           />
+          {passwordError && (
+            <p id="password-error" className="text-xs text-destructive">
+              {passwordError}
+            </p>
+          )}
         </div>
 
         <Button type="submit" className="h-[42px] w-full" disabled={loading}>

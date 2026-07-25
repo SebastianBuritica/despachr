@@ -93,7 +93,9 @@ export function useAuth(): UseAuthResult {
   }, [loadProfile])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    const { error: signOutError } = await supabase.auth.signOut()
+    // Propaga el fallo para que el llamador no redirija con la sesión aún viva.
+    if (signOutError) throw signOutError
     // Limpieza inmediata del estado; onAuthStateChange también disparará.
     setUser(null)
     setProfile(null)

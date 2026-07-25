@@ -1,7 +1,9 @@
-import { Plus } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DriverCard } from '@/components/dashboard/DriverCard'
 import { Button } from '@/components/ui/button'
+import { ComingSoon } from '@/components/ui/coming-soon'
+import { EmptyState } from '@/components/ui/empty-state'
 import { DRIVERS } from '@/lib/mock/coordinator'
 
 export default function ConductoresPage() {
@@ -13,18 +15,28 @@ export default function ConductoresPage() {
         title="Conductores"
         subtitle={`${DRIVERS.length} conductores · ${onRoute} en ruta`}
         action={
-          <Button>
-            <Plus className="size-4" />
-            Agregar conductor
-          </Button>
+          <ComingSoon>
+            <Button disabled>
+              <Plus className="size-4" />
+              Agregar conductor
+            </Button>
+          </ComingSoon>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {DRIVERS.map((d) => (
-          <DriverCard key={d.id} driver={d} />
-        ))}
-      </div>
+      {DRIVERS.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Sin conductores"
+          message="Aún no hay conductores registrados para tu operación."
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {DRIVERS.map((d) => (
+            <DriverCard key={d.id} driver={d} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

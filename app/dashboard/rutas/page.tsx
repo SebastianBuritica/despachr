@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { RoutesTable } from '@/components/dashboard/RoutesTable'
 import { Button } from '@/components/ui/button'
+import { ComingSoon } from '@/components/ui/coming-soon'
 import { ACTIVE_ROUTES } from '@/lib/mock/coordinator'
 
 export default function RutasPage() {
@@ -18,10 +19,12 @@ export default function RutasPage() {
         title="Rutas"
         subtitle={`${ACTIVE_ROUTES.length} rutas programadas hoy · Lunes 15 de enero`}
         action={
-          <Button>
-            <Plus className="size-4" />
-            Nueva ruta
-          </Button>
+          <ComingSoon>
+            <Button disabled>
+              <Plus className="size-4" />
+              Nueva ruta
+            </Button>
+          </ComingSoon>
         }
       />
 

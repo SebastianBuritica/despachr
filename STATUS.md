@@ -2,7 +2,7 @@
 
 **What it is:** A PWA for cargo-logistics management (Colombia / LATAM) that replaces the Excel + WhatsApp workflow.
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr
-**In one line:** **Fase 0 (foundation) is complete** — real auth (incl. driver phone OTP), a live 11-table DB, and the storage + alerts backends are all in place; the screens still render **mock data**, so the next big step is **Fase 1: wiring them to Supabase** (starting with the driver app).
+**In one line:** **Fase 0 (foundation) is complete**; **Fase 1.0 (infra scaffolding) is in progress** — real auth (incl. driver phone OTP), a live 11-table DB, and the storage + alerts backends are all in place; the screens still render **mock data**. v1 scope + sequence now live in AGENTS.md; the active step is making the app safe for real network calls (error/loading/not-found boundaries, empty states, UX hardening) before wiring Supabase.
 
 > **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only history · `QA-E2E-AUDIT-2026-07-24.md` = latest audit.
 
@@ -51,7 +51,17 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 
 ## ▶️ Next phase — what the next agent should do
 
-**Fase 1 — wire the screens to real Supabase data** (replace `lib/mock/*`), in order:
+> **v1 scope + the full Fase 1.x → Fase 2 sequence now live in AGENTS.md** (durable). This section
+> tracks the current step.
+
+**In progress — Fase 1.0 (infra scaffolding, branch `chore/infra-scaffolding`):** error/loading/not-found
+boundaries (root + driver-scoped), empty states (driver list, coordinator routes + drivers), login
+hardening (client validation + clearer auth errors), `signOut` try/catch with toast feedback, dead
+CTAs disabled behind a "Próximamente" tooltip, and driver quick wins (real Navegar/Llamar links +
+real confirmation time). **No Supabase wiring in this segment** — it only makes the app safe to put
+real network calls into next.
+
+**After 1.0 — wire the screens to real Supabase data** (replace `lib/mock/*`), in order:
 
 1. **Driver app first** — load today's own deliveries for the logged-in driver; wire real **camera + signature → Storage** via `lib/storage.ts`; emit `llegada_punto`/`salida_punto`/`cumplido` events (which drive the DB triggers and the 60-min alert timer); capture GPS on arrival/departure.
 2. **Coordinator** — real routes/deliveries + **real map** with truck positions + Realtime subscriptions; surface the `alerts` table in the alerts card (acknowledge/resolve).
