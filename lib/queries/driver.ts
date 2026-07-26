@@ -26,6 +26,10 @@ export interface EntregaConductor {
   telefono: string | null
   estado: EstadoEntrega
   horaLlegada: string | null
+  // Evidencia del cumplido (migración 006). Paths en el bucket 'cumplidos'.
+  fotoUrl: string | null
+  firmaUrl: string | null
+  recibidoPor: string | null
 }
 
 // Fecha "hoy" en la zona de la operación (Colombia, sin horario de verano).
@@ -79,6 +83,9 @@ interface EntregaRpcRow {
   estado: EstadoEntrega
   hora_llegada_punto: string | null
   cliente_nombre: string | null
+  foto_cumplido_url: string | null
+  firma_url: string | null
+  recibido_por: string | null
 }
 
 // Entregas de una ruta, ordenadas por numero_secuencia, con el nombre del
@@ -100,17 +107,36 @@ export async function getEntregasDeRuta(routeId: string): Promise<EntregaConduct
     telefono: row.telefono_receptor,
     estado: row.estado,
     horaLlegada: row.hora_llegada_punto,
+    fotoUrl: row.foto_cumplido_url,
+    firmaUrl: row.firma_url,
+    recibidoPor: row.recibido_por,
   }))
 }
 
-// Marca la entrega como entregada. El estado 'entregado' NO lo pone ningún
-// trigger (los triggers solo derivan hora_llegada/en_punto y hora_salida/tiempo
-// desde los eventos); cerrar la entrega es responsabilidad de la app. Esto, a su
-// vez, dispara check_route_completion en la BD si es el último punto.
-export async function marcarEntregada(deliveryId: string): Promise<void> {
+export interface EvidenciaCumplido {
+  fotoUrl: string | null
+  firmaUrl: string | null
+  recibidoPor: string
+}
+
+// Cierra la entrega: persiste la evidencia y marca estado 'entregado' en un solo
+// update. El estado 'entregado' NO lo pone ningún trigger (los triggers solo
+// derivan hora_llegada/en_punto y hora_salida/tiempo desde los eventos); cerrar
+// la entrega es responsabilidad de la app. Es el ÚLTIMO paso del cumplido — así,
+// si la subida de evidencia falla antes, la entrega sigue 'en_punto' y se puede
+// reintentar. Esto, además, dispara check_route_completion si es el último punto.
+export async function marcarEntregada(
+  deliveryId: string,
+  evidencia: EvidenciaCumplido
+): Promise<void> {
   const { error } = await supabase
     .from('deliveries')
-    .update({ estado: 'entregado' })
+    .update({
+      foto_cumplido_url: evidencia.fotoUrl,
+      firma_url: evidencia.firmaUrl,
+      recibido_por: evidencia.recibidoPor,
+      estado: 'entregado',
+    })
     .eq('id', deliveryId)
   if (error) throw error
 }

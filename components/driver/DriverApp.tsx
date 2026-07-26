@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -14,6 +14,9 @@ import {
   LogOut,
   PackageOpen,
   Loader2,
+  RotateCcw,
+  Eraser,
+  WifiOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -25,6 +28,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DriverSkeleton } from '@/components/driver/DriverSkeleton'
+import { SignaturePad, type SignaturePadHandle } from '@/components/driver/SignaturePad'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +43,7 @@ import {
   type EntregaConductor,
 } from '@/lib/queries/driver'
 import { registrarEvento } from '@/lib/queries/events'
+import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
 import { capturarUbicacion } from '@/lib/geo'
 import type { EstadoEntrega } from '@/types'
 
@@ -90,11 +95,12 @@ export function DriverApp() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [, setTick] = useState(0)
-  const [photo, setPhoto] = useState(false)
-  const [signed, setSigned] = useState(false)
-  const [receiver, setReceiver] = useState('')
   const [completedAt, setCompletedAt] = useState('')
   const [doneSeconds, setDoneSeconds] = useState(0)
+
+  // Estado de la conexión Realtime (indicador sutil de "sync en vivo caído").
+  const [syncDown, setSyncDown] = useState(false)
+  const [reconnectNonce, setReconnectNonce] = useState(0)
 
   const active = deliveries.find((d) => d.id === activeId) ?? null
 
@@ -136,8 +142,9 @@ export function DriverApp() {
   // termina avisando por WhatsApp — justo el hábito que este producto elimina).
   // Suscripción acotada a ESTE conductor: cambios en sus routes (incluye una ruta
   // recién asignada, aunque hoy no tenga ninguna) y en las deliveries de su ruta.
-  // Una re-lectura por cambio basta; sin parcheo granular de filas. Limpia el
-  // canal al desmontar. La RLS aplica a Realtime, así que solo llegan sus filas.
+  // Una re-lectura por cambio basta; sin parcheo granular de filas. La RLS aplica
+  // a Realtime, así que solo llegan sus filas. En CHANNEL_ERROR/TIMED_OUT se marca
+  // el sync como caído (indicador sutil) y se reintenta reconectar (bump del nonce).
   const uid = user?.id
   const routeId = route?.id
   useEffect(() => {
@@ -155,11 +162,21 @@ export function DriverApp() {
         () => load(true)
       )
     }
-    channel.subscribe()
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setSyncDown(false)
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setSyncDown(true)
+        // Reintento con respiro (no martillar): re-monta el canal vía el nonce.
+        reconnectTimer = setTimeout(() => setReconnectNonce((n) => n + 1), 3000)
+      }
+    })
     return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer)
       supabase.removeChannel(channel)
     }
-  }, [uid, routeId, load])
+  }, [uid, routeId, load, reconnectNonce])
 
   // Timer visual: corre solo mientras la entrega activa está "en punto".
   useEffect(() => {
@@ -176,9 +193,6 @@ export function DriverApp() {
 
   const open = (d: EntregaConductor) => {
     setActiveId(d.id)
-    setPhoto(false)
-    setSigned(false)
-    setReceiver('')
     setScreen('active')
   }
 
@@ -199,27 +213,14 @@ export function DriverApp() {
     }
   }
 
-  // "Confirmar entrega" → salida_punto (+GPS) + cierre de la entrega. El trigger
-  // calcula tiempo_en_punto_minutos; la app marca estado 'entregado'.
-  const handleConfirm = async () => {
-    if (!active) return
-    setBusy(true)
-    try {
-      const coords = await capturarUbicacion()
-      await registrarEvento('salida_punto', active.id, active.routeId, coords)
-      await marcarEntregada(active.id)
-      setDoneSeconds(elapsedSeconds(active.horaLlegada))
-      setCompletedAt(
-        new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-      )
-      await refetch(active.routeId)
-      if (!coords) toast('Evento registrado sin ubicación')
-      setScreen('done')
-    } catch {
-      toast.error('No se pudo confirmar la entrega. Inténtalo de nuevo.')
-    } finally {
-      setBusy(false)
-    }
+  // Tras confirmar el cumplido (CaptureScreen ya subió evidencia + cerró la
+  // entrega): re-lee para que la lista/DoneScreen reflejen la evidencia real, y
+  // pasa a la pantalla de confirmación.
+  const handleConfirmed = async (result: { seconds: number; completedAt: string }) => {
+    setDoneSeconds(result.seconds)
+    setCompletedAt(result.completedAt)
+    if (route) await refetch(route.id)
+    setScreen('done')
   }
 
   if (screen === 'active' && active) {
@@ -241,15 +242,8 @@ export function DriverApp() {
     return (
       <CaptureScreen
         delivery={active}
-        photo={photo}
-        signed={signed}
-        receiver={receiver}
-        busy={busy}
-        onPhoto={() => setPhoto(true)}
-        onSign={() => setSigned(true)}
-        onReceiver={setReceiver}
         onBack={() => setScreen('active')}
-        onConfirm={handleConfirm}
+        onConfirmed={handleConfirmed}
       />
     )
   }
@@ -271,6 +265,7 @@ export function DriverApp() {
       driverName={profile?.name ?? 'Conductor'}
       deliveries={deliveries}
       doneCount={doneCount}
+      syncDown={syncDown}
       onOpen={open}
     />
   )
@@ -283,12 +278,14 @@ function ListScreen({
   driverName,
   deliveries,
   doneCount,
+  syncDown,
   onOpen,
 }: {
   route: RutaDelDia | null
   driverName: string
   deliveries: EntregaConductor[]
   doneCount: number
+  syncDown: boolean
   onOpen: (d: EntregaConductor) => void
 }) {
   const router = useRouter()
@@ -347,6 +344,13 @@ function ListScreen({
             {doneCount}/{total}
           </span>
         </div>
+
+        {syncDown && (
+          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-panel-muted">
+            <WifiOff className="size-3" />
+            Sin conexión en vivo · reintentando…
+          </p>
+        )}
       </header>
 
       <div className="flex-1 space-y-3 p-4">
@@ -564,28 +568,118 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 
 function CaptureScreen({
   delivery,
-  photo,
-  signed,
-  receiver,
-  busy,
-  onPhoto,
-  onSign,
-  onReceiver,
   onBack,
-  onConfirm,
+  onConfirmed,
 }: {
   delivery: EntregaConductor
-  photo: boolean
-  signed: boolean
-  receiver: string
-  busy: boolean
-  onPhoto: () => void
-  onSign: () => void
-  onReceiver: (v: string) => void
   onBack: () => void
-  onConfirm: () => void
+  onConfirmed: (r: { seconds: number; completedAt: string }) => void | Promise<void>
 }) {
-  const ready = photo && signed && receiver.trim().length > 0
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const signatureRef = useRef<SignaturePadHandle>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [hasSignature, setHasSignature] = useState(false)
+  const [receiver, setReceiver] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [stage, setStage] = useState<string | null>(null)
+
+  // Paths ya subidos con éxito: un reintento tras un fallo NO re-sube lo que ya
+  // funcionó (y evita el choque con upsert:false del helper).
+  const fotoPathRef = useRef<string | null>(null)
+  const firmaPathRef = useRef<string | null>(null)
+  const salidaRef = useRef(false)
+
+  // Libera el object URL del preview al reemplazar/desmontar (evita fuga).
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+    }
+  }, [photoPreview])
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+    fotoPathRef.current = null // foto nueva → invalida una subida previa
+    e.target.value = '' // permite volver a elegir el mismo archivo
+  }
+
+  const retomarFoto = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    fotoPathRef.current = null
+    fileInputRef.current?.click()
+  }
+
+  const limpiarFirma = () => {
+    signatureRef.current?.clear()
+    setHasSignature(false)
+    firmaPathRef.current = null
+  }
+
+  // Foto requerida (evidencia legal) + nombre de quien recibe. Firma OPCIONAL.
+  const ready = !!photoFile && receiver.trim().length > 0
+
+  const confirm = async () => {
+    if (!photoFile) return
+    setBusy(true)
+    try {
+      const coords = await capturarUbicacion()
+
+      // 1. Foto (requerida). Skip si ya se subió en un intento anterior.
+      if (!fotoPathRef.current) {
+        setStage('Subiendo foto…')
+        fotoPathRef.current = await uploadCumplido(delivery.routeId, delivery.id, photoFile)
+      }
+
+      // 2. Firma (opcional). Solo si hay trazo.
+      if (!firmaPathRef.current && hasSignature) {
+        setStage('Subiendo firma…')
+        const blob = await signatureRef.current?.toBlob()
+        if (blob) firmaPathRef.current = await uploadFirma(delivery.routeId, delivery.id, blob)
+      }
+
+      // 3. Evento de salida (+GPS). El trigger calcula tiempo_en_punto_minutos.
+      if (!salidaRef.current) {
+        setStage('Registrando salida…')
+        await registrarEvento('salida_punto', delivery.id, delivery.routeId, coords)
+        salidaRef.current = true
+      }
+
+      // 4. ÚLTIMO paso: persistir evidencia + estado 'entregado' (el flip). Si algo
+      //    falló antes, la entrega sigue 'en_punto' y el reintento reusa lo hecho.
+      setStage('Guardando…')
+      await marcarEntregada(delivery.id, {
+        fotoUrl: fotoPathRef.current,
+        firmaUrl: firmaPathRef.current,
+        recibidoPor: receiver.trim(),
+      })
+
+      if (!coords) toast('Evento registrado sin ubicación')
+      await onConfirmed({
+        seconds: elapsedSeconds(delivery.horaLlegada),
+        completedAt: new Date().toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      })
+    } catch (e) {
+      const msg =
+        e instanceof StorageError
+          ? e.message
+          : 'No se pudo guardar el cumplido. Revisa tu conexión y reintenta — no perdiste la captura.'
+      toast.error(msg)
+      // photoFile, firma y los paths ya subidos se conservan → el reintento reusa.
+    } finally {
+      setBusy(false)
+      setStage(null)
+    }
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="flex-1 space-y-5 p-4">
@@ -593,7 +687,8 @@ function CaptureScreen({
           <button
             type="button"
             onClick={onBack}
-            className="flex size-9 items-center justify-center rounded-full border border-border bg-card"
+            disabled={busy}
+            className="flex size-9 items-center justify-center rounded-full border border-border bg-card disabled:opacity-50"
             aria-label="Volver"
           >
             <ChevronLeft className="size-4" />
@@ -604,63 +699,73 @@ function CaptureScreen({
           </div>
         </div>
 
-        {/* Foto (simulada — Fase 1.2) */}
+        {/* Foto — cámara trasera en móvil, selector en desktop */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Evidencia fotográfica</p>
-          <button
-            type="button"
-            onClick={onPhoto}
-            className={cn(
-              'flex h-44 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors',
-              photo ? 'border-brand' : 'border-border text-muted-foreground'
-            )}
-          >
-            {photo ? (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={onPickPhoto}
+          />
+          {photoPreview ? (
+            <div className="space-y-2">
               <div
-                className="relative flex h-full w-full items-center justify-center rounded-[10px]"
+                className="relative h-44 w-full overflow-hidden rounded-xl border-2 border-brand bg-muted"
                 style={{
-                  backgroundImage:
-                    'repeating-linear-gradient(45deg, #eef2f6 0 10px, #f8fafc 10px 20px)',
+                  backgroundImage: `url(${photoPreview})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
                 }}
               >
-                <span className="rounded-md border border-border bg-card px-2 py-1 font-mono text-xs text-muted-foreground">
-                  FOTO_CARGA_01.jpg
-                </span>
-                <span className="absolute right-3 top-3 flex size-6 animate-pop items-center justify-center rounded-full bg-brand text-white">
+                <span className="absolute right-3 top-3 flex size-6 items-center justify-center rounded-full bg-brand text-white">
                   <Check className="size-3.5" />
                 </span>
               </div>
-            ) : (
-              <>
-                <Camera className="size-6" />
-                <span className="text-sm">Tomar foto de la carga entregada</span>
-              </>
-            )}
-          </button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={retomarFoto}
+                disabled={busy}
+              >
+                <RotateCcw className="size-4" />
+                Volver a tomar
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-44 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-brand"
+            >
+              <Camera className="size-6" />
+              <span className="text-sm">Tomar foto de la carga entregada</span>
+            </button>
+          )}
         </div>
 
-        {/* Firma (simulada — Fase 1.2) */}
+        {/* Firma — opcional (hay receptores que no firman) */}
         <div className="space-y-2">
-          <p className="text-sm font-semibold">Firma de quien recibe</p>
-          <button
-            type="button"
-            onClick={onSign}
-            className={cn(
-              'flex h-32 w-full items-center justify-center rounded-xl border-2 border-dashed transition-colors',
-              signed ? 'border-brand' : 'border-border text-muted-foreground'
-            )}
-          >
-            {signed ? (
-              <span
-                className="animate-pop text-3xl text-foreground"
-                style={{ fontFamily: 'Snell Roundhand, Brush Script MT, cursive' }}
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">
+              Firma de quien recibe{' '}
+              <span className="font-normal text-muted-foreground">(opcional)</span>
+            </p>
+            {hasSignature && (
+              <button
+                type="button"
+                onClick={limpiarFirma}
+                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
               >
-                Andrés R.
-              </span>
-            ) : (
-              <span className="text-sm">Toca para firmar</span>
+                <Eraser className="size-3.5" />
+                Limpiar
+              </button>
             )}
-          </button>
+          </div>
+          <SignaturePad ref={signatureRef} onChange={setHasSignature} />
         </div>
 
         {/* Recibido por */}
@@ -670,19 +775,19 @@ function CaptureScreen({
             id="receiver"
             placeholder="Nombre de quien recibe"
             value={receiver}
-            onChange={(e) => onReceiver(e.target.value)}
+            onChange={(e) => setReceiver(e.target.value)}
           />
         </div>
       </div>
 
       <footer className="sticky bottom-0 border-t border-border bg-card p-4">
-        <Button className="h-12 w-full" disabled={!ready || busy} onClick={onConfirm}>
+        <Button className="h-12 w-full" disabled={!ready || busy} onClick={confirm}>
           {busy && <Loader2 className="size-4 animate-spin" />}
           {busy
-            ? 'Confirmando…'
+            ? (stage ?? 'Guardando…')
             : ready
               ? 'Confirmar entrega'
-              : 'Completa foto, firma y quién recibe'}
+              : 'Completa foto y quién recibe'}
         </Button>
       </footer>
     </div>
@@ -702,6 +807,12 @@ function DoneScreen({
   completedAt: string
   onBack: () => void
 }) {
+  // Evidencia HONESTA: refleja lo realmente persistido, no un check fijo.
+  const partes: string[] = []
+  if (delivery.fotoUrl) partes.push('Foto')
+  if (delivery.firmaUrl) partes.push('firma')
+  const evidencia = partes.length ? `${partes.join(' + ')} ✓` : 'Sin evidencia'
+
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
       <span className="flex size-20 animate-pop items-center justify-center rounded-full bg-[#DCFCE7] text-brand dark:bg-green-500/15 dark:text-brand-light">
@@ -717,7 +828,8 @@ function DoneScreen({
         <Row label="Tiempo en sitio" value={mmss(seconds)} mono />
         <Row label="Cliente" value={delivery.cliente} />
         <Row label="Ciudad" value={delivery.ciudad} />
-        <Row label="Evidencia" value="Foto + firma ✓" />
+        {delivery.recibidoPor && <Row label="Recibió" value={delivery.recibidoPor} />}
+        <Row label="Evidencia" value={evidencia} />
         <Row label="Hora" value={completedAt} mono />
       </div>
 

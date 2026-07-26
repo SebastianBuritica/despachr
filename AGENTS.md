@@ -120,8 +120,8 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **Fonts** | Inter (UI) + JetBrains Mono (cifras/placas/montos) vía `next/font` |
 | **Database** | Supabase (PostgreSQL) |
 | **Auth** | Supabase Auth — **email/password** is the only login UI today. Phone/SMS-OTP **backend** is ready & verified (Twilio Verify + `handle_new_user` for phone-only users), but the **OTP login UI is not built** → Fase 1.3b. `profiles.phone` is stored **without** the leading `+` (e.g. `573229596618`). |
-| **Storage** | Supabase Storage (cumplido photos) — pendiente conectar |
-| **Realtime** | Supabase Realtime (map updates) — pendiente conectar |
+| **Storage** | Supabase Storage — bucket privado `cumplidos`; **conectado** al cumplido del conductor (foto + firma, Fase 1.2) vía `lib/storage.ts` |
+| **Realtime** | Supabase Realtime — **conectado** en la app del conductor (routes/deliveries, Fase 1.1/1.2); el mapa del coordinador es pendiente (Fase 2) |
 | **Deploy** | Vercel (auto-deploy from main) |
 | **Maps** | Placeholder estilizado; en producción MapLibre/Mapbox (ver memoria) |
 | **Alerts** | Telegram Bot API (future) |
@@ -346,13 +346,13 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 ```
 Fase 1.0  — infra scaffolding (error/loading/not-found + empty states + UX hardening)   [done]
 Fase 1.1  — driver: real data + GPS                                                     [done]
-Fase 1.2  — driver: real photo + signature capture
+Fase 1.2  — driver: real photo + signature capture                                     [done]
 Fase 1.3  — driver: novedades UI
 Fase 1.3b — driver: OTP login UI (phone sign-in) — before offline, so 1.4 builds its
             session handling on the final auth path, not on email/password swapped later
 Fase 1.4  — service worker + offline event queue
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
-Fase 2    — coordinator: real data + map + alerts   (blocked on migration 006: peso_kg/volumen_m3;
+Fase 2    — coordinator: real data + map + alerts   (blocked on migration 007: peso_kg/volumen_m3;
             needs its OWN deliveries path — entregas_de_ruta RPC is driver-only, do not reuse)
 ```
 
@@ -463,7 +463,7 @@ npm run lint             # ESLint validation
 - **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment
 - **scripts/README.md** — Detailed script documentation
-- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`005`** — hand-run, repo-tracked migrations (executed in prod). `005` adds the driver-only `entregas_de_ruta` SECURITY DEFINER RPC (client name without leaking pricing) and hardens `get_my_role()`'s `search_path`.
+- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`006`** — hand-run, repo-tracked migrations (executed in prod). `005` adds the driver-only `entregas_de_ruta` SECURITY DEFINER RPC (client name without leaking pricing) + hardens `get_my_role()`'s `search_path`; `006` adds `deliveries.recibido_por`/`firma_url` and extends the RPC to return the cumplido evidence.
 - **supabase/functions/check-tiempo-en-punto/README.md** — Deploy + `pg_cron` scheduling steps for the 60-min alert function (pending manual deploy)
 - **.env.local.example** — All environment variables
 - **.claude/settings.json** — AI agent skills configuration
