@@ -1,10 +1,10 @@
-# Despachr — Current Status (2026-07-25)
+# Despachr — Current Status (2026-08-06)
 
 **What it is:** A PWA for cargo-logistics management (Colombia / LATAM) that replaces the Excel + WhatsApp workflow.
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr
-**In one line:** **Fase 0 + 1.0 + 1.1 complete; Fase 1.2 (real cumplido capture) done pending PR** — the **driver app runs the full cumplido on live Supabase data**: real photo (device camera) + optional canvas signature upload to Storage, receiver name persisted, `Llegué`/`Salí` GPS events, realtime sync. The done screen's evidence claim is now truthful. Coordinator + admin screens are still on mock data. Next: Fase 1.3 (novedades UI).
+**In one line:** **Fase 0 + 1.0 + 1.1 + 1.2 complete (Fase 1.2 merged — PR #27)** — the **driver app runs the full cumplido on live Supabase data**: real photo (device camera) + optional canvas signature upload to Storage, receiver name persisted, `Llegué`/`Salí` GPS events, realtime sync. The done screen's evidence claim is now truthful. Coordinator + admin screens are still on mock data. Next: Fase 1.3 (novedades UI).
 
-> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only history · `QA-E2E-AUDIT-2026-07-24.md` = latest audit.
+> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only history · `QA-E2E-AUDIT.md` = latest audit.
 
 ---
 
@@ -21,12 +21,12 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 - **Live database — 11 tables**, 24 RLS policies, triggers, seed data. RLS verified per role: a driver sees only their own data; the coordinator sees everything **except** financials; the admin sees all. Driver pay/margin isolated in admin-only tables (`delivery_financials`, `client_invoices`). **Migrations `001`–`006` executed in production** (`004` = `deliveries.telefono_receptor`; `005` = the `entregas_de_ruta` RPC + hardened `get_my_role()` `search_path`; `006` = `deliveries.recibido_por`/`firma_url` + RPC returns the evidence columns).
 - **Driver app on REAL data (Fase 1.1 + fixes).** The phone-authed driver loads their own route for today and its deliveries from Supabase (`lib/queries/driver.ts`), marks **`Llegué`/`Salí`** which insert `delivery_events` (`lib/queries/events.ts`) — the DB triggers derive `hora_llegada_punto`/`en_punto` and `tiempo_en_punto_minutos` (app re-reads, never recomputes). **GPS** is captured on those events (`lib/geo.ts`) and **never blocks**: on denial/timeout the event is saved without coords + a subtle notice. The visual timer **seeds from `hora_llegada_punto`** so a refresh doesn't reset it. **Client name comes via the `entregas_de_ruta` SECURITY DEFINER RPC** (drivers can't read `clients` by RLS, and a plain grant would leak `tarifa_flete`; the RPC returns only safe columns, ownership-checked — `LEFT join` so an orphaned `client_id` never drops the delivery). **Realtime**: a channel scoped to this driver re-fetches on changes to their `routes`/`deliveries`, so a route assigned mid-session appears without a manual refresh (with a subtle "sin conexión en vivo" indicator + auto-reconnect on channel error). `lib/mock/driver.ts` is **deleted**.
 - **Real cumplido capture (Fase 1.2).** Photo via the device camera (`<input capture="environment">`, rear camera on mobile / file picker on desktop) → compressed by `uploadCumplido` (canvas, ≤1920px/JPEG) → `deliveries.foto_cumplido_url`. **Optional** canvas signature pad (`SignaturePad`, Pointer Events, white-paper/black-ink PNG) → `uploadFirma` → `firma_url` (confirmation never blocks on a missing signature). Receiver name → `recibido_por`. **Upload is resilient**: on failure the capture is kept and retry reuses already-uploaded parts; `estado='entregado'` is the *last* step, so a failed upload leaves the delivery `en_punto`. The done screen's **evidence line is now honest** (reflects what was actually stored, not a hardcoded "✓").
-- **Storage backend ready** — private `cumplidos` bucket (5 MB, jpeg/png/webp) with RLS (driver INSERT own routes, coord/admin SELECT, admin DELETE) + typed helpers in `lib/storage.ts` (`uploadCumplido`, `uploadFirma`, `getCumplidoUrl`). Not yet wired into the UI.
+- **Storage backend ready** — private `cumplidos` bucket (5 MB, jpeg/png/webp) with RLS (driver INSERT own routes, coord/admin SELECT, admin DELETE) + typed helpers in `lib/storage.ts` (`uploadCumplido`, `uploadFirma`, `getCumplidoUrl`). **Wired into the driver capture flow (Fase 1.2 — see above).**
 - **60-min alert backend ready** — `alerts` table + Deno edge function `check-tiempo-en-punto` (detects a driver >60 min at a point → in-app alert + Telegram). Code merged; **deploy + scheduling are pending manual steps** (see below).
 - **Realtime enabled** on the map tables (routes, deliveries, delivery_events) — at the DB level.
 - **Full, polished UI**: marketing landing (v2), split login, **Coordinator ×4** + **Admin ×4** (still mock data), **Driver** (mobile flow list → active → capture → done, now on **real data**), light/dark, brand icons, installable PWA.
 - **Mock data already speaks the schema vocabulary** (`EstadoEntrega`/`EstadoRuta`/`EstadoFactura`) — so wiring Supabase is a data-source swap, not a refactor.
-- **In-house QA tooling** — Playwright sweep of 42 screens (desktop + mobile, light + dark) + axe. Last run: **0 JS exceptions, 0 console errors, build green, lint clean**.
+- **In-house QA tooling** — Playwright sweep of 42 screens (desktop + mobile, light + dark) + axe. Last run (2026-08-06, `QA-E2E-AUDIT.md`): **42/42 captured · 0 JS exceptions · 0 console errors · 0 nav failures · build green · lint clean** (30 axe color-contrast warnings = P2 backlog).
 
 ### This session's shipped work (Fase 0, all merged)
 
@@ -48,7 +48,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 - Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and the **OTP login UI** (Fase 1.3b).
 - The **map** is a styled placeholder (no real map yet).
 - Landing **pricing** is mock.
-- Accessibility backlog: 35 serious axe warnings (color-contrast + keyboard-scrollable regions) — P2.
+- **Known minor bugs** (from the 2026-08-06 audit, non-blocking): coordinator "Completadas" home stat is hardcoded `"1"` (`app/dashboard/page.tsx:38`) instead of derived; admin margin bar under-scales (`margin * 2.5`, `app/admin/page.tsx:101`). Full list + file:line in `QA-E2E-AUDIT.md`.
+- Accessibility backlog: 30 serious axe warnings (all color-contrast; worst on the dark landing + admin) — P2.
 
 ---
 
@@ -63,10 +64,10 @@ hardening, `signOut` try/catch, dead CTAs disabled behind "Próximamente", drive
 **Done — Fase 1.1 (PR #24 + fixes #26, merged):** DriverApp on real Supabase data, `Llegué`/`Salí`
 GPS events, timer seeded from `hora_llegada_punto`, client-name RPC, realtime. Migrations `004`+`005`.
 
-**Done pending PR — Fase 1.2 (branch `feat/driver-captura-cumplido`):** real photo (device camera) +
+**Done — Fase 1.2 (PR #27, merged):** real photo (device camera) +
 optional canvas signature → Storage (`lib/storage.ts` wired), `recibido_por` persisted, honest
 evidence claim, resilient upload with retry, realtime `subscribe()` error handling + reconnect, and
-`lib/supabase.ts` throws on missing env. Needed **migration `006-recibido-por.sql`** (run in prod).
+`lib/supabase.ts` throws on missing env. Migration `006-recibido-por.sql` run in prod.
 
 **Next — finish the driver vertical, then coordinator:**
 

@@ -1,166 +1,101 @@
 # Despachr — End-to-End QA Audit
 
-**Date:** 2026-07-04
-**Build:** `main` @ commit `9ada140` · Next.js 16.2.9 · React 19
-**Method:** Automated Playwright sweep (42 screens, all roles, desktop+mobile, light+dark, axe WCAG 2 A/AA) + full code audit of every interactive element across the 4 app areas + manual visual inspection of screenshots.
-**Environment:** local dev server, real Supabase seed logins (`admin@`/`coord@`/`driver@despachr.test`).
-
----
-
-## Update — fixes applied (2026-07-05, PR #15)
-
-A first bug-fix pass resolved the **5 genuinely-broken items** (no backend needed). Feature gaps (dead buttons, faked capture, Supabase wiring) remain open by design and are tracked in `AGENTS.md`.
-
-| Finding | Status |
-|---------|--------|
-| P0 #1 — Dashboard shell broken on mobile | ✅ **Resuelto** — sidebar colapsa a un `Sheet` (hamburguesa `md:hidden`) |
-| P0 #2 — ThemeToggle hydration mismatch (16 console errors) | ✅ **Resuelto** — `aria-label` estabilizado hasta `mounted`; re-QA = **0 console errors** |
-| P0 #4 — Driver confirm gate ignores receiver name | ✅ **Resuelto** — "Confirmar entrega" exige "Recibido por" no vacío |
-| P1 sec — Open redirect (`//host`) | ✅ **Resuelto** — `safeRedirect()` rechaza `//host` y `/\host` |
-| P1 sec — Silent role fallback | ✅ **Resuelto** — login cierra sesión + avisa; middleware → `/login?error=perfil` |
-| P0 #3 (dead buttons), P0 #4 (camera/signature/GPS), P1 infra, P2 a11y, Supabase wiring | ⏳ **Abierto** — fuera del alcance de este pase |
-
-Re-verified with `npm run qa` (42 screens): **0 JS exceptions · 0 console errors** (was 16) · 0 navigation failures · build green · lint clean. Remaining warnings are the pre-existing a11y backlog (P2).
+**Date:** 2026-08-06
+**Build:** `main` @ `48ac867` (through PR #27) · Next.js 16.2.9 · React 19
+**Method:** Automated Playwright sweep (42 screens · all roles · desktop+mobile · light+dark · axe WCAG 2 A/AA) + 4-area code audit (driver / coordinator / admin / auth+infra) + manual visual inspection.
+**Environment:** local dev server, real Supabase seed logins.
 
 ---
 
 ## Verdict
 
-**⚠ The app is a high-fidelity UI prototype, not a working product yet.**
+**The driver vertical is now functionally complete; coordinator + admin remain mock by design (Fase 2).** With PR #27, the driver's **cumplido capture is real end-to-end** — real camera, real signature pad, uploads to Supabase Storage, evidence persisted to the delivery row. Combined with earlier PRs, the entire driver flow (real data → GPS → capture → persist → realtime) now works against the live backend. What's left is smaller: driver *novedades* + OTP-login UI, a handful of auth-hardening gaps, and the (documented) Fase-2 wiring of the coordinator/admin panels.
 
-The structure, design system, and navigation are solid and the build is green (0 JS exceptions, 0 navigation failures across 42 screens). But **almost nothing is functional**: the coordinator and admin panels are 100% static mock data with zero Supabase reads/writes, most primary action buttons are dead, the driver's camera/signature/GPS are fakes, and the shared dashboard shell is broken on mobile.
+| Signal | 07-04 | 07-24 | 07-25 | 08-06 |
+|--------|:--:|:--:|:--:|:--:|
+| Screens captured | 42/42 | 42/42 | 42/42 | **42/42** ✅ |
+| JS exceptions | 0 | 0 | 0 | **0** ✅ |
+| Console errors | 16 | 0 | 0 | **0** ✅ |
+| Navigation failures | 0 | 0 | 0 | **0** ✅ |
+| A11y serious/critical | 35 | 35 | 34 | **30** ↓ |
+| Driver cumplido (photo/sig) | faked | faked | faked | **✅ real + persisted** |
+| Driver data / GPS / realtime | mock | mock | ✅ | **✅** |
+| Infra (error/loading/404/empty) | ❌ | ❌ | ✅ | **✅** |
+| Coordinator / admin data | mock | mock | mock | mock *(Fase 2)* |
 
-| Signal | Result |
-|--------|--------|
-| Screens captured | 42 / 42 |
-| JS exceptions | **0** ✅ |
-| Navigation failures | **0** ✅ |
-| Console errors | ~~**16**~~ → **0** ✅ (hydration bug fixed, PR #15) |
-| A11y serious/critical | **35** (all color-contrast) |
-| Pages wired to Supabase | **0 of 9** (login/middleware only) |
-| Dead primary buttons found | **~12** |
-
-Screenshots + machine report: `assets/qa/2026-07-05T02-08-21/` (gitignored). Re-run anytime with `npm run qa`.
-
----
-
-## P0 — Blockers (fix before any real use)
-
-### 1. Dashboard shell is broken on mobile (all 16 coordinator + admin screens) 🔴 *verified visually* — ✅ RESUELTO (PR #15)
-The `DashboardShell` sidebar is a fixed-width `<aside>` with no responsive collapse, so at 390px it eats ~60% of the viewport and shoves content off-screen — headings clipped ("Facturación"→"Facturac", "Operación en vivo"→"Operació"), stat cards overlap (Pendiente/Vencida collide), tables cut off.
-- **Evidence:** `components/layout/DashboardShell.tsx` (the `<aside>` has no `hidden`/drawer behavior at `md:` breakpoints). Visible in `admin_facturacion_mobile_*.png`, `dashboard_operacion-en-vivo_mobile_*.png`, and every other coordinator/admin mobile shot.
-- **Fix:** collapse the sidebar into a Sheet/drawer below `md`, as the design handoff intends. (Driver app is unaffected — it has its own mobile layout and renders correctly.)
-
-### 2. ThemeToggle hydration mismatch on every authenticated page 🔴 *verified — root cause confirmed* — ✅ RESUELTO (PR #15)
-The **icon** is gated on `mounted` but the **aria-label** is not, so it renders `"Cambiar a modo oscuro"` (server) vs `"Cambiar a modo claro"` (client), producing a React hydration error on all dark-mode dashboard/admin pages (the 16 console errors).
-- **Evidence:** [`components/theme/ThemeToggle.tsx:19`](components/theme/ThemeToggle.tsx#L19) (label uses `isDark`) vs line 23 (icon guarded by `mounted`).
-- **Fix:** gate the label on `mounted` too (stable label until mounted), or `suppressHydrationWarning`.
-
-### 3. Dead primary buttons across admin + coordinator 🔴
-The main call-to-action on almost every management screen does nothing — no `onClick`, no `href`, no modal:
-- `app/admin/clientes/page.tsx:23` — **"Nuevo cliente"** no-op
-- `app/admin/facturacion/page.tsx:23` — **"Generar factura"** no-op
-- `app/admin/reportes/page.tsx:60` — **"Generar"** (×4 report cards) no-op
-- `app/admin/reportes/page.tsx:92` — **"Descargar"** (recent reports) no-op
-- `app/dashboard/rutas/page.tsx:20` — **"Nueva ruta"** no-op
-- `app/dashboard/conductores/page.tsx:16` — **"Agregar conductor"** no-op
-- `components/layout/DashboardShell.tsx:158` — **search bar** is a static `<div>`, not an input
-- `components/layout/DashboardShell.tsx:163` — **notification bell** no handler; badge hardcoded "3"
-
-### 4. Driver: proof-of-delivery flow is faked 🔴
-The cumplido capture — the single most important driver action — records nothing real:
-- `components/driver/DriverApp.tsx:299,303` — **"Navegar"** and **"Llamar"** buttons have no handler (no `tel:`/maps link).
-- `components/driver/DriverApp.tsx:385-414` — **photo** capture is a toggle showing a hardcoded `FOTO_CARGA_01.jpg`; no `<input type=file>` / camera, no upload.
-- `components/driver/DriverApp.tsx:420-438` — **signature** is a toggle showing a hardcoded "Andrés R."; no signature pad.
-- `components/driver/DriverApp.tsx:363` — confirm button gates on `photo && signed` but **not** on the "Recibido por" name, so it enables with an empty receiver. — ✅ RESUELTO (PR #15): ahora exige `receiver.trim()`.
-- Nothing persists: marking delivered only updates local React state (`:74`), lost on refresh.
+Screenshots: `assets/qa/2026-08-06T21-42-57/` (gitignored). Re-run: `npm run qa`.
 
 ---
 
-## P1 — Security & robustness (auth) *(open-redirect verified)*
+## ✅ Fixed since last audit — verified this run
 
-- **Open redirect** 🟠 *verified* — ✅ **RESUELTO (PR #15)** — [`app/(auth)/login/page.tsx:61`](app/(auth)/login/page.tsx#L61) accepts `?redirect=` validated only by `startsWith('/')`, so `//evil.com` (protocol-relative) passes and `router.replace` navigates off-site. Same pattern in `middleware.ts:51`. **Fix aplicado:** `safeRedirect()` rechaza `//host` y `/\host`.
-- **Silent role fallback** 🟠 — ✅ **RESUELTO (PR #15)** — `login/page.tsx:59` and `middleware.ts:59` fetch the profile with `.single()` and no error handling; on failure `role` is `null` and the user is sent to `/dashboard` regardless of actual role. A user in `auth.users` but missing from `profiles` → unhandled throw / wrong panel. **Fix aplicado:** login cierra sesión y avisa; middleware redirige a `/login?error=perfil` (sin bucle).
-- **No password reset** 🟠 — `login/page.tsx:99` "¿Olvidaste tu contraseña?" is `href="#"`; no reset flow exists. Locked-out users need admin intervention.
-- **Logout has no error handling** 🟡 — `DashboardShell.tsx:184` / `LogoutButton` call `signOut()` + redirect with no try/catch; a failed signOut redirects to login while the session persists.
-- **No rate limiting / lockout feedback** 🟡 on login attempts.
+**Driver cumplido capture (PR #27) — all five sub-claims verified with file:line:**
+- **Real photo** — `<input type="file" accept="image/*" capture="environment">` (`DriverApp.tsx:705`) + JPEG compression pipeline (`lib/storage.ts:54-96`). No more hardcoded `FOTO_CARGA_01.jpg`.
+- **Real signature** — new `components/driver/SignaturePad.tsx` canvas component (pointer events, `toBlob()` → PNG). No more hardcoded "Andrés R.".
+- **Both uploaded** — `uploadCumplido()` / `uploadFirma()` called on confirm (`DriverApp.tsx:636,643`); deterministic paths, idempotent 409-as-success retry.
+- **Persisted** — `marcarEntregada()` now writes `foto_cumplido_url`, `firma_url`, `recibido_por`, then flips `estado='entregado'` last (`lib/queries/driver.ts:128-142`; migration `006-recibido-por.sql`).
+- **Done-screen evidence is now truthful** — computed from real `fotoUrl`/`firmaUrl` after a refetch (`DriverApp.tsx:810-816`), not hardcoded.
 
----
+**Bonus fixes that closed prior findings:**
+- Realtime `subscribe()` **now handles errors** — `CHANNEL_ERROR`/`TIMED_OUT` → "Sin conexión en vivo · reintentando…" + auto-reconnect (`DriverApp.tsx:166-174`). *(was a prior minor bug)*
+- **Receiver name persists** (`recibido_por`). *(was open)*
+- **Env vars validated** — `lib/supabase.ts:11-16` throws on missing URL/key instead of silent `''`. *(was open)*
+- **A11y improved** — 34 → 30 serious/critical.
 
-## P1 — Missing infrastructure (whole app)
-
-- **No `error.tsx`** anywhere → unhandled errors show the raw Next.js error page.
-- **No `loading.tsx`** → no skeletons for when real data fetching lands.
-- **No `not-found.tsx`** → default 404, off-brand.
-- **No client-side form validation** on login (only `required`); `Input` supports `aria-invalid` but it's unused.
-- **No empty states** — pages assume data exists; a day with zero routes renders blank tables with no guidance.
-- **PWA is cosmetic** — `app/manifest.ts` + icons exist (installable) but there's **no service worker**, so zero offline support despite the "works offline" claim in AGENTS.md. Most critical for the driver app (GPS/capture in low-signal areas).
+**No regressions** — all prior fixes intact (safeRedirect, silent-role-fallback in login+middleware, ThemeToggle aria-label guard, error/loading/not-found boundaries, login validation, logout try/catch in DashboardShell + driver).
 
 ---
 
-## P2 — Accessibility (35 serious/critical, all contrast)
+## Bugs found this run
 
-All violations are `color-contrast` (WCAG 2 AA). Worst offenders:
-- Landing `/` dark: 13 (desktop) / 12 (mobile) — muted grey text on near-black.
-- `/admin` light: 9; several `/dashboard/*` light: 5–7 each.
-- `/login` dark, `/driver`: 1 each.
-
-**Fix:** bump muted-foreground tokens to meet 4.5:1 (large text 3:1), especially the dark-mode landing captions and admin secondary text.
+- **[minor] Coordinator "Completadas" stat is hardcoded** — `app/dashboard/page.tsx:38` shows `value="1"` while the mock has 2 `completada` routes (the rutas page computes it correctly via `.filter(...)`). Home-page stats (`En ruta`/`Completadas`/`Paradas hoy`/`Retrasadas`) are static literals. Low impact today (mock data), but will mislead once wired.
+- **[minor] Admin margin bar under-scales** — `app/admin/page.tsx:101` uses `width: ${p.margin * 2.5}%`, so a 26% margin fills only 65% of the bar. Should normalize to the max (`margin / maxMargin * 100`).
+- **[minor] Driver capture edge cases** — receiver input has no `maxLength`/validation beyond non-empty (`DriverApp.tsx:774`); signature `toBlob()` returning null is skipped silently with no toast (`:643`); photo `input.value=''` reset is brittle on some browsers (`:607`).
+- **[minor] Orphaned-upload risk** — if `marcarEntregada()` fails *after* the photo/signature upload, the files live in Storage unlinked to any delivery; retry re-runs the final step but DB state is ambiguous. Acceptable for MVP; worth monitoring/cleanup in prod (`DriverApp.tsx:627-681`).
 
 ---
 
-## Missing functionality by role (the build backlog)
+## Still open — by priority
 
-Everything below is *absent or faked*, mapped to the AGENTS.md product spec.
+### P1 — Driver vertical remainder (Fase 1.3 / 1.3b / 1.4)
+- **Novedades (issue reporting) UI absent** — `TipoNovedad`/`issues` exist in schema/types, but there's no driver screen to file rechazo/faltante/dañado/etc. A delivery in `estado='novedad'` only shows a badge.
+- **Driver OTP login UI absent** — backend ready (PR #19, Twilio), but `/login` is email/password only; no `signInWithOtp`.
+- **No PWA service worker / offline queue** — manifest exists but there's no offline capture/sync (most relevant for drivers in low-signal areas).
 
-### Driver
-- GPS capture on arrival/departure (schema has `latitude`/`longitude`, never written) — `DriverApp.tsx` has no `navigator.geolocation`.
-- Real photo → Supabase Storage upload; real signature pad → persisted.
-- **Novedades** (issue reporting: rechazo/faltante/dañado/cliente ausente) — no UI at all.
-- "Only today's own deliveries" — loads a hardcoded mock array, no date/driver filter, `useAuth()` result unused for scoping.
-- Real-time status sync (coordinator changes don't reach the driver).
+### P1 — Auth / hardening (remaining)
+- **Password reset dead** — `login/page.tsx:151` "¿Olvidaste tu contraseña?" is `href="#"`; no `/reset-password`. Highest-impact remaining auth gap — implement or remove.
+- **Middleware doesn't validate env vars** — `middleware.ts:19-20` uses `!` non-null assertions; `lib/supabase.ts` throws but the middleware path doesn't. Add an explicit check.
+- **No `global-error.tsx`**, and **no admin/dashboard-scoped `error.tsx`/`loading.tsx`** (only root + driver are scoped).
+- **`components/auth/LogoutButton.tsx` is dead code** (unused, no try/catch) — delete or align with the DashboardShell pattern.
+- **Hardening (medium):** no CSP headers; login relies on Supabase's default auth rate-limiting (no app-level throttle).
 
-### Coordinator
-- **Real map** — `components/dashboard/LiveMap.tsx` is a static SVG placeholder (its own comment says "En producción se integra un mapa real"). No live truck positions.
-- **Alert escalation** — `AlertsCard.tsx` alerts are read-only labels; no "Llamar"/"Escalar"/acknowledge. The core "truck stopped >60 min → escalate" loop is not met.
-- **Route detail drill-down** — `RoutesTable.tsx` rows have no click/detail; no delivery timeline, no cumplido viewer.
-- **"Malla" weekly planner** — entire feature missing (no `/dashboard/malla`).
-- Hardcoded, non-updating live data: `dashboard/page.tsx:24` date is the static string "Lunes 15 de enero · 11:24 a. m."; stat counts and the "3" notification badge are hardcoded.
+### Deferred by design — Coordinator + Admin (Fase 2)
+Still **0 Supabase wiring** on these 8 pages (all `lib/mock/*`); dead CTAs are correctly disabled via `<ComingSoon>`.
+- **Coordinator:** real map (`LiveMap` is a static SVG), **alert escalation** (`AlertsCard` read-only — the ">60 min → escalate" loop unmet, and the 60-min edge function isn't deployed/scheduled), route/driver/client **detail drill-downs** (rows not clickable), weekly **malla** planner (absent), Realtime, live date/counts (`dashboard/page.tsx:24` static).
+- **Admin:** client CRUD, invoice creation + status + **AR aging/DSO** (absent), report generation/export, **PeriodToggle not wired**, **`/admin/conductores` driver-management page doesn't exist**.
+- Blocker for Fase-2 capacity checks: migration `007` (`peso_kg`/`volumen_m3`) queued, not run.
 
-### Admin
-- **Client CRUD** — no add/edit/delete; table is read-only mock.
-- **Invoice workflow** — no creation, no pagada/pendiente/vencida transitions, no AR aging / DSO.
-- **Report generation + export** — no params, no `/api/reports`, no file download; "Generar"/"Descargar" are decorative.
-- **PeriodToggle (Hoy/Semana/Mes) is not wired** — local state in the topbar that no page reads, so KPIs/chart/ring never change.
-- Charts (`TonnageChart`, `ComplianceRing`) are CSS renderings of hardcoded numbers.
+### P2 — Accessibility (30 serious/critical, all `color-contrast`)
+Worst: landing `/` dark 13/12; `/admin` dark 11 / light 9; `/dashboard/*` light 5–7. Fix muted-foreground tokens to 4.5:1 (3:1 large), especially dark-mode landing captions + admin secondary text.
 
-### Systemic
-**0 of 9 dashboard/admin/driver pages issue a single `supabase.from()` query or Realtime subscription.** All data comes from `lib/mock/{admin,coordinator,driver}.ts`. This is the #1 gap — it's tracked as the "In Progress" item in AGENTS.md and everything above depends on it.
+### Minor / polish
+- Wide admin tables (clientes, facturación) still **clip on mobile** — add horizontal scroll affordance or a card layout at `sm`.
+- `manifest.ts` `theme_color:#0A0A0A` shows a dark status bar in light mode.
 
 ---
 
-## What already works ✅
-
-- Auth: real Supabase login, role-based redirect, middleware route protection (all 3 roles logged in cleanly for this audit).
-- Logout (dropdown → `signOut()` → `/login`).
-- Theme toggle functionally switches + persists (only the aria-label hydration is buggy).
-- Navigation between all segments.
-- Route filter chips (work locally; just don't fetch).
-- Driver flow *as a demo*: `list → active → capture → done` state machine with live timer renders correctly on mobile.
-- Landing + login are responsive and render fully in all themes.
-- Build is green; TypeScript strict; 0 runtime exceptions across 42 screens.
+## What works ✅
+Real Supabase auth + role routing + middleware protection (RLS verified; SECURITY DEFINER RPC for safe client-name joins); **complete driver flow on live data** — today's route/deliveries by driver, GPS events, realtime with reconnect, live timer, **real photo + signature capture → Storage → persisted evidence**, Navegar/Llamar (Maps + `tel:`), empty state, error boundary; logout (try/catch); mobile sidebar drawer; theme toggle (no hydration error); login validation; env-var validation; navigation; landing + login responsive; **build green · 0 runtime exceptions · 0 console errors across 42 screens**.
 
 ---
 
 ## Recommended order of work
-
-1. **Fix the 4 P0 bugs** — mobile sidebar (Sheet), ThemeToggle label guard, wire (or disable-with-tooltip) dead buttons, gate driver confirm on receiver name. Small, high-impact, no backend needed.
-2. **Harden auth** — redirect allowlist, profile-fetch error handling, password-reset flow. Security + lockout risk.
-3. **Add infra scaffolding** — `error.tsx` / `loading.tsx` / `not-found.tsx`, form validation, empty states.
-4. **Connect Supabase** (the big one) — replace `lib/mock/*` with queries + Realtime, per role. Unlocks nearly every "missing functionality" item.
-5. **Build the real capture + map** — camera/signature/GPS + Storage for the driver; Google Maps/Mapbox + live positions for the coordinator.
-6. **A11y pass** — contrast tokens.
+1. **Finish the driver vertical** — novedades UI (Fase 1.3), then OTP login UI (Fase 1.3b). Add the small capture-flow guards (receiver `maxLength`, signature-null toast, orphaned-upload check).
+2. **Close auth gaps** — password reset flow, middleware env-var check, `global-error.tsx`, delete/fix dead `LogoutButton`.
+3. **Quick correctness fixes** — hardcoded "Completadas" stat; admin margin-bar scaling.
+4. **Begin coordinator wiring (Fase 2)** — run migration 007; replace `lib/mock/coordinator.ts` with queries + Realtime; route detail + alert escalation; deploy the 60-min alert function. Then admin (CRUD, invoicing, `/admin/conductores`, AR aging/DSO, PeriodToggle).
+5. **A11y contrast pass** + admin mobile-table affordance + offline/service-worker (Fase 1.4).
 
 ---
 
-*Generated from `npm run qa` (Playwright + axe) plus a 4-area code audit. Every finding cites file:line; P0/security items were re-verified by hand. Re-run the automated portion with `npm run qa` (or `npm run qa driver`, etc.).*
+*Generated from `npm run qa` (Playwright + axe) + a 4-area code audit; every finding cites file:line. PR #27 and all prior fixes were re-verified against current code; the driver real-data/capture path was confirmed by inspecting screenshots this run. This file supersedes the earlier dated audit reports.*
