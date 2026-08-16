@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 
 interface PageHeaderProps {
   title: string
-  subtitle?: string
+  // ReactNode y no string: el subtítulo a veces es un componente vivo
+  // (p. ej. <LiveClock/> en la operación en vivo), no sólo texto.
+  subtitle?: ReactNode
   action?: ReactNode
 }
 

@@ -94,11 +94,24 @@ export default function MetricasPage() {
                 <TableCell className="text-right font-mono tabular-nums">{p.tons}</TableCell>
                 <TableCell className="text-right font-mono tabular-nums">{p.revenue}</TableCell>
                 <TableCell>
+                  {/* La barra representa el margen TAL CUAL: 26% de margen =
+                      26% de barra. Antes iba × 2.5, que pintaba ese mismo 26%
+                      como una barra al 65% — inflar visualmente un margen es
+                      justo lo que no se debe hacer en la vista financiera del
+                      dueño. Sí, las barras quedan cortas: los márgenes son
+                      cortos. */}
                   <div className="flex items-center gap-2.5">
-                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-1.5 w-24 overflow-hidden rounded-full bg-muted"
+                      role="meter"
+                      aria-valuenow={p.margin}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Margen de ${p.client}`}
+                    >
                       <div
                         className="h-full rounded-full bg-brand"
-                        style={{ width: `${p.margin * 2.5}%` }}
+                        style={{ width: `${Math.min(100, Math.max(0, p.margin))}%` }}
                       />
                     </div>
                     <span className="font-mono text-xs tabular-nums">{p.margin}%</span>

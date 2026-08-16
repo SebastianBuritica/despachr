@@ -48,7 +48,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 - Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and **offline** (Fase 1.4).
 - The **map** is a styled placeholder (no real map yet).
 - Landing **pricing** is mock.
-- **Known minor bugs** (from the 2026-08-06 audit, non-blocking): coordinator "Completadas" home stat is hardcoded `"1"` (`app/dashboard/page.tsx:38`) instead of derived; admin margin bar under-scales (`margin * 2.5`, `app/admin/page.tsx:101`). Full list + file:line in `QA-E2E-AUDIT.md`.
+- ~~**Known minor bugs**~~ **[fixed — Segmento C]**: the coordinator's four home stats were all hardcoded and **three of them were wrong** (Completadas said 1 with 2 completed routes; Paradas hoy said 20 with 27 stops) — now derived from the same list the table renders. The subtitle was frozen at "Lunes 15 de enero" because the page is statically prerendered, so any date computed server-side freezes at build → `LiveClock` (client, `useSyncExternalStore`, America/Bogota). "Actualizado hace 12 s" removed: there is no real refresh in this view yet, so it was a false claim about data freshness. Admin margin bar no longer multiplies by 2.5 (it painted a 26% margin as a 65%-full bar — inflating a margin in the owner's financial view is precisely what not to do).
 - Accessibility backlog: 30 serious axe warnings (all color-contrast; worst on the dark landing + admin) — P2.
 
 ---
