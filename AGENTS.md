@@ -119,7 +119,7 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **Icons** | `lucide-react` |
 | **Fonts** | Inter (UI) + JetBrains Mono (cifras/placas/montos) vía `next/font` |
 | **Database** | Supabase (PostgreSQL) |
-| **Auth** | Supabase Auth — **email/password** is the only login UI today. Phone/SMS-OTP **backend** is ready & verified (Twilio Verify + `handle_new_user` for phone-only users), but the **OTP login UI is not built** → Fase 1.3b. `profiles.phone` is stored **without** the leading `+` (e.g. `573229596618`). |
+| **Auth** | Supabase Auth — **two login paths at `/login`, in tabs**: **phone/SMS-OTP** (default; drivers) and **email/password** (admin/coordinator), plus password reset. OTP calls `signInWithOtp` with **`shouldCreateUser: false`** — sign-in never creates accounts; users are admin-provisioned and public signup is off. `profiles.phone` / `auth.users.phone` are stored **without** the leading `+` (e.g. `573229596618`) — always go through `lib/phone.ts` (`normalizePhone` to send, `formatPhoneDisplay` to show, `toTelHref` for dialing). |
 | **Storage** | Supabase Storage — bucket privado `cumplidos`; **conectado** al cumplido del conductor (foto + firma, Fase 1.2) vía `lib/storage.ts` |
 | **Realtime** | Supabase Realtime — **conectado** en la app del conductor (routes/deliveries, Fase 1.1/1.2); el mapa del coordinador es pendiente (Fase 2) |
 | **Deploy** | Vercel (auto-deploy from main) |
@@ -350,8 +350,7 @@ Fase 1.0  — infra scaffolding (error/loading/not-found + empty states + UX har
 Fase 1.1  — driver: real data + GPS                                                     [done]
 Fase 1.2  — driver: real photo + signature capture                                     [done]
 Fase 1.3  — driver: novedades UI
-Fase 1.3b — driver: OTP login UI (phone sign-in) — before offline, so 1.4 builds its
-            session handling on the final auth path, not on email/password swapped later
+Fase 1.3b — driver: OTP login UI (phone sign-in)                                        [done]
 Fase 1.4  — service worker + offline event queue
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliveries/estados/map/
@@ -361,18 +360,19 @@ Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliv
             entregas_de_ruta RPC is driver-only by construction, do not reuse)
 ```
 
-> **Auth reality (do not overstate):** phone/SMS-OTP is **backend-only** today (verified via console);
-> there is **no OTP login UI** — drivers sign in with **email/password at `/login`** until Fase 1.3b.
-> `profiles.phone` has **no leading `+`** (Supabase Auth format, e.g. `573229596618`) — 1.3b's phone
-> input and any `tel:` links must normalize.
+> **Auth reality:** phone/SMS-OTP login **is built** (Fase 1.3b) — `/login` shows two tabs, phone
+> first. Phone numbers have **no leading `+`** anywhere in the DB (`573229596618`); never build a
+> number by hand, use `lib/phone.ts`. `telefono_receptor` is coordinator-typed free text, so it must
+> be normalized before it becomes a `tel:` href.
 >
 > **Public signup must stay OFF.** "Allow new users to sign up" is a project-level Supabase setting,
 > independent of the app having no signup UI. It was ON from project creation until 2026-08-16; with
 > the pre-`007` `handle_new_user` that meant anyone holding the anon key (it ships in the JS bundle)
-> could sign up as `admin`. It is now OFF and stays OFF: users are admin-provisioned. **Fase 1.3b
-> must therefore call `signInWithOtp` with `shouldCreateUser: false`** — otherwise sign-in attempts
-> from unprovisioned numbers fail confusingly instead of being rejected cleanly. Phone provider stays
-> enabled (it's the OTP transport); disabling *signup* is what closes the hole, not disabling phone.
+> could sign up as `admin`. It is now OFF and stays OFF: users are admin-provisioned. **This is why
+> `signInWithOtp` passes `shouldCreateUser: false`** — the two are halves of one decision. A number
+> that isn't provisioned gets "pídele a tu coordinador que te dé de alta", not a silently created
+> account. Phone provider stays enabled (it's the OTP transport); disabling *signup* is what closed
+> the hole, not disabling phone.
 
 > Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
