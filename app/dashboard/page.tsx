@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import { LiveClock } from '@/components/dashboard/LiveClock'
 import { ACTIVE_ROUTES, LIVE_ALERTS, routeBadge } from '@/lib/mock/coordinator'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 const liveRoutes = ACTIVE_ROUTES.filter((r) => r.status !== 'pendiente').slice(0, 4)
 
@@ -30,6 +31,7 @@ const retrasadas = ACTIVE_ROUTES.filter((r) => r.retrasada).length
 export default function OperacionEnVivoPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       {/* "Actualizado hace 12 s" se quitó a propósito: no hay refresco real en
           esta vista todavía (mock, sin Realtime hasta la Fase 2), así que era
           una afirmación falsa sobre la frescura del dato. */}

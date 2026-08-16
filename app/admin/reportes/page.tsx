@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { RECENT_REPORTS } from '@/lib/mock/admin'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 interface Generator {
   key: string
@@ -39,6 +40,7 @@ const GENERATORS: Generator[] = [
 export default function ReportesPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader title="Reportes" subtitle="Genera y descarga reportes de operación" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -13,10 +13,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { CLIENT_ACCOUNTS, CLIENT_SUMMARY } from '@/lib/mock/admin'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 export default function ClientesGestionPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader
         title="Clientes"
         subtitle="Cartera de clientes y contratos activos"

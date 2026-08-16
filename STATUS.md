@@ -45,6 +45,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 
 - **Coordinator + admin screens** still read from mock data (`lib/mock/{coordinator,admin}.ts`) — the **driver app is now the exception** (real Supabase). Coordinator/admin wiring is Fase 2 / v1.1.
 - **~12 primary action buttons** are no-ops → disabled behind a "Próximamente" tooltip since Fase 1.0.
+- The 8 still-mock screens now carry a **"Datos de demostración"** notice (`components/ui/demo-data-notice.tsx`) — same principle as `<ComingSoon>`, applied to the data. A dead button is visibly dead; an invented KPI reads exactly like a real one, which is how a demo turns into a wrong decision. Added per page, so Fase 2 removes it one view at a time.
 - Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and **offline** (Fase 1.4).
 - The **map** is a styled placeholder (no real map yet).
 - Landing **pricing** is mock.

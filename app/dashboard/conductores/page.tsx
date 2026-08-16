@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button'
 import { ComingSoon } from '@/components/ui/coming-soon'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DRIVERS } from '@/lib/mock/coordinator'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 export default function ConductoresPage() {
   const onRoute = DRIVERS.filter((d) => d.onRoute).length
 
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader
         title="Conductores"
         subtitle={`${DRIVERS.length} conductores · ${onRoute} en ruta`}

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 import {
   KPIS,
   TONNAGE_BY_DAY,
@@ -32,6 +33,7 @@ const totalTons = TONNAGE_BY_DAY.reduce((s, d) => s + d.tons, 0).toFixed(1)
 export default function MetricasPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader
         title="Desempeño de operación"
         subtitle="Esta semana · Semana del 15 al 21 de enero, 2026"

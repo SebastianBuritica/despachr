@@ -9,10 +9,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { CLIENTS } from '@/lib/mock/coordinator'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 export default function ClientesOperativosPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader title="Clientes" subtitle="5 clientes con operación esta semana" />
 
       <div className="rounded-lg border border-border bg-card shadow-card">
