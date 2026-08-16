@@ -159,6 +159,8 @@ className="bg-muted text-muted-foreground"        // neutros
 ```
 app/
 ├── (auth)/login/          # Login split público (registro público eliminado)
+│   ├── forgot-password/   #   Pide el enlace de recuperación (no revela si el correo existe)
+│   └── reset-password/    #   Fija la contraseña nueva (sesión de recuperación vía ?code=)
 ├── dashboard/             # COORDINADOR (protegido, solo rol coordinador)
 │   ├── page.tsx           #   Operación en vivo
 │   ├── rutas/ conductores/ clientes/   # sub-páginas
@@ -196,8 +198,8 @@ tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/
 **Landing (`/components/landing/`)**: `LiveMapCard` (mapa real CARTO + ruta animada),
 `DemoMockup` (dashboard en light), `ProductFeatures`, `HowItWorks`, `Pricing`, `Reveal` (scroll).
 
-**Otros**: `theme/ThemeProvider` + `theme/ThemeToggle` · `brand/BrandMark` (isotipo Ruta-D) ·
-`auth/LogoutButton`.
+**Otros**: `theme/ThemeProvider` + `theme/ThemeToggle` · `brand/BrandMark` (isotipo Ruta-D).
+El logout vive en el user card del `DashboardShell`; no hay componente `LogoutButton` suelto.
 
 > Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
 

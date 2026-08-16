@@ -81,10 +81,13 @@ same root: *RLS is row-level and was used as if it were column-level.*
    `schema.sql` published `password123` in a **public repo**, so the credential is in git history
    forever and rotation is mandatory. (b) Confirm Authentication → Providers → Email →
    "Enable signup" stays **disabled** (second layer for C2).
-2. **Segment A — auth/infra hardening**: real `/reset-password` (the `href="#"` at
-   `login/page.tsx:151` is the last place the UI promises something it can't do), env validation in
-   `middleware.ts:19-20`, `global-error.tsx`, scoped `error.tsx`/`loading.tsx` for admin+dashboard,
-   delete the dead `components/auth/LogoutButton.tsx`.
+2. ~~**Segment A — auth/infra hardening**~~ **[done]** — real password reset (`/forgot-password` →
+   `/reset-password`, replacing the `href="#"` that was the last place the UI promised something it
+   couldn't do), fail-closed env validation in `middleware.ts`, `global-error.tsx`, scoped
+   `error.tsx`/`loading.tsx` for admin+dashboard, dead `LogoutButton` deleted, `homeForRole`
+   de-duplicated into `lib/roles.ts` (it had three copies drifting apart).
+   ⚠️ **Requires a dashboard step:** the reset callback URL must be in Supabase → Authentication →
+   URL Configuration → Redirect URLs, or the emailed link bounces.
 
 **Then — finish the driver vertical, then coordinator:**
 

@@ -1,23 +1,44 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import { homeForRole } from '@/lib/roles'
 import type { RolUsuario } from '@/types'
 
 // Protegemos /dashboard/* (coordinador), /admin/* (admin) y /driver/* (conductor);
-// el resto (/, /login) es público.
-// A dónde va cada rol tras autenticarse o al pisar una ruta que no le toca.
-function homeForRole(role: RolUsuario | null): string {
-  if (role === 'conductor') return '/driver'
-  if (role === 'admin') return '/admin'
-  return '/dashboard'
-}
+// el resto (/, /login, /forgot-password, /reset-password) es público.
 
 export async function middleware(request: NextRequest) {
   // Respuesta base: el cliente de Supabase puede refrescar tokens y reescribir cookies aquí.
   let response = NextResponse.next({ request })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // DECISIÓN: sin config, FALLAR CERRADO. Con `!` (lo anterior) el cliente se
+  // creaba apuntando a undefined, getUser() devolvía null y el middleware
+  // interpretaba "no hay sesión" → todo el mundo al login, en bucle. Peor aún
+  // sería el fallo abierto. Aquí se distingue: las rutas protegidas se cortan
+  // con un 503 explícito y el resto del sitio (landing) sigue en pie.
+  // `lib/supabase.ts` hace lo equivalente para el cliente del navegador.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const { pathname } = request.nextUrl
+    const isProtected =
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/driver')
+    if (isProtected) {
+      console.error(
+        'Faltan NEXT_PUBLIC_SUPABASE_URL y/o NEXT_PUBLIC_SUPABASE_ANON_KEY: ' +
+          'no se puede verificar la sesión. Configúralas en Vercel (Production, ' +
+          'Preview y Development).'
+      )
+      return new NextResponse('Configuración del servidor incompleta.', { status: 503 })
+    }
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
