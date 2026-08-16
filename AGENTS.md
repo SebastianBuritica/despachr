@@ -363,6 +363,14 @@ Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliv
 > there is **no OTP login UI** — drivers sign in with **email/password at `/login`** until Fase 1.3b.
 > `profiles.phone` has **no leading `+`** (Supabase Auth format, e.g. `573229596618`) — 1.3b's phone
 > input and any `tel:` links must normalize.
+>
+> **Public signup must stay OFF.** "Allow new users to sign up" is a project-level Supabase setting,
+> independent of the app having no signup UI. It was ON from project creation until 2026-08-16; with
+> the pre-`007` `handle_new_user` that meant anyone holding the anon key (it ships in the JS bundle)
+> could sign up as `admin`. It is now OFF and stays OFF: users are admin-provisioned. **Fase 1.3b
+> must therefore call `signInWithOtp` with `shouldCreateUser: false`** — otherwise sign-in attempts
+> from unprovisioned numbers fail confusingly instead of being rejected cleanly. Phone provider stays
+> enabled (it's the OTP transport); disabling *signup* is what closes the hole, not disabling phone.
 
 > Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
