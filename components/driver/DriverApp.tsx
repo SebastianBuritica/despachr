@@ -603,13 +603,18 @@ function CaptureScreen({
   }, [photoPreview])
 
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const input = e.currentTarget
+    const file = input.files?.[0]
+    // Se limpia SIEMPRE y desde el input, no desde el evento: si el conductor
+    // cancela y vuelve a elegir la MISMA foto, el navegador sólo dispara
+    // `change` cuando el valor cambió. Sin este reset, reintentar la misma
+    // captura no hace nada — y es justo lo que hace quien cree que falló.
+    input.value = ''
     if (!file) return
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
     fotoPathRef.current = null // foto nueva → invalida una subida previa
-    e.target.value = '' // permite volver a elegir el mismo archivo
   }
 
   const retomarFoto = () => {
@@ -645,7 +650,18 @@ function CaptureScreen({
       if (!firmaPathRef.current && hasSignature) {
         setStage('Subiendo firma…')
         const blob = await signatureRef.current?.toBlob()
-        if (blob) firmaPathRef.current = await uploadFirma(delivery.routeId, delivery.id, blob)
+        if (blob) {
+          firmaPathRef.current = await uploadFirma(delivery.routeId, delivery.id, blob)
+        } else {
+          // toBlob puede devolver null (canvas sin contexto, memoria). Antes se
+          // descartaba en silencio: el conductor firmaba, veía "entregado" y la
+          // firma no existía. NO se bloquea la entrega — la evidencia legal es
+          // la foto de la factura sellada, y la firma es opcional por diseño —
+          // pero sí se le dice, porque si no, nadie se entera nunca.
+          toast.warning('No pudimos guardar la firma', {
+            description: 'La entrega se registra con la foto. Puedes pedir la firma en el papel.',
+          })
+        }
       }
 
       // 3. Evento de salida (+GPS). El trigger calcula tiempo_en_punto_minutos.
@@ -779,6 +795,12 @@ function CaptureScreen({
           <Input
             id="receiver"
             placeholder="Nombre de quien recibe"
+            // `recibido_por` es text sin límite en la BD, pero esto se teclea
+            // en un celular a la carrera: 80 caracteres sobran para un nombre y
+            // evitan que un teclado trabado mande medio párrafo al cumplido.
+            maxLength={80}
+            autoComplete="name"
+            autoCapitalize="words"
             value={receiver}
             onChange={(e) => setReceiver(e.target.value)}
           />
