@@ -26,6 +26,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 - **Realtime enabled** on the map tables (routes, deliveries, delivery_events) — at the DB level.
 - **Full, polished UI**: marketing landing (v2), split login, **Coordinator ×4** + **Admin ×4** (still mock data), **Driver** (mobile flow list → active → capture → done, now on **real data**), light/dark, brand icons, installable PWA.
 - **Mock data already speaks the schema vocabulary** (`EstadoEntrega`/`EstadoRuta`/`EstadoFactura`) — so wiring Supabase is a data-source swap, not a refactor.
+- **Pruebas de lógica (Vitest) — 27 casos.** `npm test`. Cubren lo que se rompe **en silencio**: el cierre del cumplido (`lib/cumplido.ts` — orden real, el flip a `entregado` siempre de último, y que un reintento *reanude* sin re-subir la foto ni duplicar el evento de salida) y la normalización de teléfonos (`lib/phone.ts`, con el número real de producción como caso de referencia). La orquestación del cumplido se **extrajo de `DriverApp`** para poder probarla; la Fase 1.4 hereda ese punto único para la cola offline.
 - **In-house QA tooling** — Playwright sweep of 42 screens (desktop + mobile, light + dark) + axe. Last run (2026-08-06, `QA-E2E-AUDIT.md`): **42/42 captured · 0 JS exceptions · 0 console errors · 0 nav failures · build green · lint clean** (30 axe color-contrast warnings = P2 backlog).
 
 ### This session's shipped work (Fase 0, all merged)

@@ -290,6 +290,25 @@ className={cn(
 className={`px-4 py-2 ${isActive ? "bg-primary-600" : ""}`}
 ```
 
+### Tests
+```
+lib/[module].test.ts     # Vitest, entorno node, junto al módulo que prueban
+npm test                 # corre todo
+```
+Se prueba **lógica que se rompe en silencio**, no pantallas: el orden y la
+reanudación del cumplido (`lib/cumplido.ts`) y la normalización de teléfonos
+(`lib/phone.ts`). El recorrido visual de las 42 pantallas ya lo cubre el barrido
+de Playwright (`npm run qa`), que es otra herramienta para otro problema.
+
+> **Por qué `lib/cumplido.ts` existe:** cerrar la entrega es el paso menos
+> perdonable de la app — si falla a medias, el conductor cree que entregó y la
+> operación cree que no. Dentro de `DriverApp` estaba enredado con refs y estado
+> de React, así que no había forma de probar el reintento sin montar la pantalla
+> entera. Con las dependencias inyectadas se verifica el orden real (el flip a
+> `entregado` SIEMPRE de último) y que un reintento **reanude** en vez de
+> reiniciar. La Fase 1.4 lo hereda: la cola offline necesita interceptar
+> exactamente esas cuatro operaciones.
+
 ### Environment Variables
 ```
 // ✅ Always in .env.local, never hardcoded
@@ -429,6 +448,8 @@ Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliv
 npm run dev              # Next.js dev server (localhost:3000)
 npm run build            # TypeScript + build check
 npm run start            # Prod server
+npm test                 # Vitest — pruebas de lógica (lib/**/*.test.ts)
+npm run test:watch       # Vitest en watch
 
 # Deployment
 npm run deploy           # Deploy to Vercel (prod)
