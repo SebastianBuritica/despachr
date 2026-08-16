@@ -45,6 +45,7 @@ import {
 import { registrarEvento } from '@/lib/queries/events'
 import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
 import { capturarUbicacion } from '@/lib/geo'
+import { normalizePhone, toTelHref } from '@/lib/phone'
 import type { EstadoEntrega } from '@/types'
 
 type Screen = 'list' | 'active' | 'capture' | 'done'
@@ -509,7 +510,11 @@ function ActiveScreen({
             </Button>
             {delivery.telefono ? (
               <Button variant="outline" asChild>
-                <a href={`tel:${delivery.telefono}`}>
+                {/* telefono_receptor lo escribe el coordinador a mano, así que
+                    llega como sea ("320 123 4567", con guiones, sin indicativo).
+                    Se normaliza al marcar: un tel: sin indicativo es ambiguo
+                    para el marcador y el conductor llama desde la calle. */}
+                <a href={toTelHref(normalizePhone(delivery.telefono))}>
                   <Phone className="size-4" />
                   Llamar
                 </a>
