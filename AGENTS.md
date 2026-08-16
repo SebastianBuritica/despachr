@@ -352,14 +352,25 @@ Fase 1.3b — driver: OTP login UI (phone sign-in) — before offline, so 1.4 bu
             session handling on the final auth path, not on email/password swapped later
 Fase 1.4  — service worker + offline event queue
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
-Fase 2    — coordinator: real data + map + alerts   (blocked on migration 007: peso_kg/volumen_m3;
-            needs its OWN deliveries path — entregas_de_ruta RPC is driver-only, do not reuse)
+Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliveries/estados/map/
+            realtime/alerts touch no new columns, and coordinator RLS already grants SELECT on
+            clients+deliveries+routes and SELECT/UPDATE on alerts. Only the *malla planner* waits
+            on peso_kg/volumen_m3 → migration 008. Needs its OWN deliveries path — the
+            entregas_de_ruta RPC is driver-only by construction, do not reuse)
 ```
 
 > **Auth reality (do not overstate):** phone/SMS-OTP is **backend-only** today (verified via console);
 > there is **no OTP login UI** — drivers sign in with **email/password at `/login`** until Fase 1.3b.
 > `profiles.phone` has **no leading `+`** (Supabase Auth format, e.g. `573229596618`) — 1.3b's phone
 > input and any `tel:` links must normalize.
+>
+> **Public signup must stay OFF.** "Allow new users to sign up" is a project-level Supabase setting,
+> independent of the app having no signup UI. It was ON from project creation until 2026-08-16; with
+> the pre-`007` `handle_new_user` that meant anyone holding the anon key (it ships in the JS bundle)
+> could sign up as `admin`. It is now OFF and stays OFF: users are admin-provisioned. **Fase 1.3b
+> must therefore call `signInWithOtp` with `shouldCreateUser: false`** — otherwise sign-in attempts
+> from unprovisioned numbers fail confusingly instead of being rejected cleanly. Phone provider stays
+> enabled (it's the OTP transport); disabling *signup* is what closes the hole, not disabling phone.
 
 > Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
@@ -463,7 +474,8 @@ npm run lint             # ESLint validation
 - **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment
 - **scripts/README.md** — Detailed script documentation
-- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`006`** — hand-run, repo-tracked migrations (executed in prod). `005` adds the driver-only `entregas_de_ruta` SECURITY DEFINER RPC (client name without leaking pricing) + hardens `get_my_role()`'s `search_path`; `006` adds `deliveries.recibido_por`/`firma_url` and extends the RPC to return the cumplido evidence.
+- **scripts/schema.sql** — Base DB schema · **scripts/migrations/`001`–`007`** — hand-run, repo-tracked migrations (executed in prod). `005` adds the driver-only `entregas_de_ruta` SECURITY DEFINER RPC (client name without leaking pricing) + hardens `get_my_role()`'s `search_path`; `006` adds `deliveries.recibido_por`/`firma_url` and extends the RPC to return the cumplido evidence; **`007` closes the privilege-escalation holes** — RLS is row-level, so column protection needs triggers (`protect_profile_columns`: only an admin changes `profiles.role`; `protect_delivery_columns`: a driver can't write `valor_flete`), plus `handle_new_user` reading the role from **`app_metadata`** (service_role-only) instead of client-writable `user_metadata`, and `revoke execute` on `seed_demo_data`.
+- **Provisioning rule (post-`007`):** a new user's role comes from **`app_metadata`**, never `user_metadata`. From the dashboard, create the user (it defaults to `conductor`) then promote with `update public.profiles set role=… ` in the SQL Editor — that path works because the SQL Editor has no JWT (`auth.uid()` is NULL) and the trigger allows it; the same statement from the app is rejected with `42501`.
 - **supabase/functions/check-tiempo-en-punto/README.md** — Deploy + `pg_cron` scheduling steps for the 60-min alert function (pending manual deploy)
 - **.env.local.example** — All environment variables
 - **.claude/settings.json** — AI agent skills configuration
