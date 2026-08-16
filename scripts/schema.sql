@@ -414,13 +414,17 @@ create index if not exists idx_delivery_financials_delivery
 --   - name usa una cadena de fallbacks NULL-safe (name es NOT NULL).
 --   - phone lee la columna nativa new.phone primero (ahí llega el OTP), y cae
 --     a raw_user_meta_data->>'phone' para usuarios creados a mano.
+--   - el ROL sale de raw_app_meta_data (app_metadata), NO de raw_user_meta_data:
+--     user_metadata lo escribe el propio cliente en el signup, así que leer el
+--     rol de ahí permitía autoasignarse 'admin' al registrarse (migración 007).
+--     app_metadata sólo lo escribe el service_role / Admin API.
 -- ============================================================================
 
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   insert into public.profiles (id, email, name, role, phone)
@@ -433,7 +437,14 @@ begin
       new.phone,
       'Usuario'
     ),
-    coalesce(new.raw_user_meta_data->>'role', 'conductor'),
+    -- Lista blanca explícita: ausente, inválido o inyectado ⇒ 'conductor'
+    -- (menor privilegio). Nunca se confía en el input del signup.
+    case new.raw_app_meta_data->>'role'
+      when 'admin'       then 'admin'
+      when 'coordinador' then 'coordinador'
+      when 'conductor'   then 'conductor'
+      else 'conductor'
+    end,
     coalesce(new.phone, new.raw_user_meta_data->>'phone')
   )
   on conflict (id) do nothing;
@@ -563,6 +574,71 @@ end;
 $$;
 
 -- ============================================================================
+-- TRIGGER 5 y 6: protección COLUMNAR (migración 007)
+-- RLS de Postgres es row-level: una policy acota qué FILA se edita, nunca qué
+-- COLUMNAS. Sin estos triggers, `profiles_update_self` dejaba a cualquier
+-- autenticado escribir su propio `role` (escalada a admin en una petición), y
+-- `deliveries_driver_update` dejaba al conductor escribir `valor_flete`.
+-- auth.uid() NULL = service_role / SQL editor (sin JWT, salta RLS) ⇒ se permite;
+-- un anónimo no puede llegar aquí porque no empareja ninguna fila en la policy.
+-- ============================================================================
+
+create or replace function public.protect_profile_columns()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is not null and public.get_my_role() is distinct from 'admin' then
+    if new.role is distinct from old.role then
+      raise exception 'No autorizado: el rol solo lo cambia un administrador'
+        using errcode = '42501';
+    end if;
+    new.id := old.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_protect_profile_columns on public.profiles;
+create trigger trg_protect_profile_columns
+  before update on public.profiles
+  for each row execute function public.protect_profile_columns();
+
+-- El conductor escribe su OPERACIÓN (estado, evidencia, observaciones) pero
+-- nunca lo COMERCIAL. Deliberadamente NO se protegen hora_llegada_punto /
+-- hora_salida_punto / tiempo_en_punto_minutos: on_llegada_punto() y
+-- on_salida_punto() no son SECURITY DEFINER y las escriben con la sesión del
+-- propio conductor — restaurarlas rompería el cronómetro.
+create or replace function public.protect_delivery_columns()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is not null and public.get_my_role() = 'conductor' then
+    new.valor_flete       := old.valor_flete;
+    new.client_id         := old.client_id;
+    new.route_id          := old.route_id;
+    new.address           := old.address;
+    new.city              := old.city;
+    new.latitude          := old.latitude;
+    new.longitude         := old.longitude;
+    new.numero_secuencia  := old.numero_secuencia;
+    new.telefono_receptor := old.telefono_receptor;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_protect_delivery_columns on public.deliveries;
+create trigger trg_protect_delivery_columns
+  before update on public.deliveries
+  for each row execute function public.protect_delivery_columns();
+
+-- ============================================================================
 -- SEED: seed_demo_data()
 -- Idempotente. Córrela DESPUÉS de crear los usuarios de prueba en Auth.
 -- Busca los UUIDs reales por email y arma malla + rutas + entregas + eventos.
@@ -681,6 +757,11 @@ begin
 end;
 $$;
 
+-- LOAD-BEARING, no defensivo: Postgres concede EXECUTE a PUBLIC por defecto, y
+-- PostgREST expone las funciones de public como RPC. Sin este revoke, cualquiera
+-- con la anon key podía sembrar datos de demo en PRODUCCIÓN (migración 007).
+revoke all on function public.seed_demo_data() from public, anon, authenticated;
+
 /*
 ═════════════════════════════════════════════════════════════════════════════
 INSTRUCCIONES
@@ -692,18 +773,33 @@ PASO 1 — Correr el schema
 
 PASO 2 — Crear usuarios de prueba en Auth
   Supabase → Authentication → Users → "Add user" (Create new user).
-  Crea estos (password sugerido: password123) y en "User Metadata" (JSON)
-  define el rol. Ejemplo de metadata para el coordinador:
 
-    { "name": "Daniela Coordinadora", "role": "coordinador", "phone": "+57 302 234 5678" }
+  ⚠️ CONTRASEÑAS: genera una distinta y aleatoria por usuario y guárdalas en tu
+  gestor de contraseñas. NUNCA las escribas en este archivo ni en ningún otro
+  del repo — es público, y lo que entra al historial de git no se va con un
+  commit posterior. (Este archivo documentaba una contraseña compartida hasta la
+  migración 007; si tu proyecto se creó antes, rótala.)
 
-  Usuarios mínimos:
-    admin@despachr.test    →  { "name": "Carlos Admin",     "role": "admin" }
-    coord@despachr.test    →  { "name": "Daniela Coord",    "role": "coordinador" }
-    driver@despachr.test   →  { "name": "Juan Conductor",   "role": "conductor" }
-  Opcionales (para tener 3 conductores con placa):
-    driver2@despachr.test  →  { "name": "Pedro Conductor",  "role": "conductor" }
-    driver3@despachr.test  →  { "name": "Luis Conductor",   "role": "conductor" }
+  El ROL NO se define en "User Metadata": el usuario lo escribe en su propio
+  signup y podía autoasignarse 'admin' (migración 007). handle_new_user() lo lee
+  de **app_metadata**, que sólo escribe el service_role. Dos formas:
+
+    (a) Admin API / service_role:
+        supabase.auth.admin.createUser({
+          email: 'coord@tu-dominio.com', password: '<aleatoria>',
+          app_metadata: { role: 'coordinador' },
+          user_metadata: { name: 'Daniela Coordinadora' },
+        })
+
+    (b) Desde el dashboard (si no expone app_metadata): crea el usuario — nace
+        como 'conductor' por defecto — y luego promuévelo en el SQL Editor:
+          update public.profiles set role = 'coordinador' where email = 'coord@…';
+        Funciona porque el SQL Editor no lleva JWT (auth.uid() NULL) y el trigger
+        trg_protect_profile_columns lo permite; desde la app, no.
+
+  Usuarios mínimos: uno admin, uno coordinador y uno conductor (opcionalmente
+  dos conductores más para tener 3 placas). Usa un dominio real tuyo, no
+  *.despachr.test, si la instancia es la de producción.
 
   El trigger on_auth_user_created crea el profile automáticamente.
 
