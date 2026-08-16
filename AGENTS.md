@@ -377,6 +377,13 @@ Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliv
 > Reusable primitives added in Fase 1.0: `components/ui/empty-state.tsx` (icon + title + message +
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
 > tooltip so unbuilt CTAs read as pending, not broken).
+>
+> **`components/ui/demo-data-notice.tsx`** is the same idea applied to the *data* instead of the
+> control: it marks a screen still reading from `lib/mock/*`. A dead CTA is visibly dead; an invented
+> metric is not — it reads exactly like a real one. It is added **per page, not in the layout**, so
+> Fase 2 can connect one view at a time and delete only that page's line while the rest stay honestly
+> marked. **Rule: a page that imports from `lib/mock/*` renders `<DemoDataNotice />`.** When no page
+> imports it any more, delete the component.
 
 ---
 

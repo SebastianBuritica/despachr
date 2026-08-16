@@ -13,10 +13,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { INVOICES, INVOICE_STATUS, BILLING_SUMMARY } from '@/lib/mock/admin'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 export default function FacturacionPage() {
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader
         title="Facturación"
         subtitle="Enero 2026 · COP"

@@ -5,6 +5,7 @@ import { RoutesTable } from '@/components/dashboard/RoutesTable'
 import { Button } from '@/components/ui/button'
 import { ComingSoon } from '@/components/ui/coming-soon'
 import { ACTIVE_ROUTES } from '@/lib/mock/coordinator'
+import { DemoDataNotice } from '@/components/ui/demo-data-notice'
 
 export default function RutasPage() {
   const enRuta = ACTIVE_ROUTES.filter((r) => r.status === 'en_curso').length
@@ -15,6 +16,7 @@ export default function RutasPage() {
 
   return (
     <div className="space-y-6">
+      <DemoDataNotice />
       <PageHeader
         title="Rutas"
         subtitle={`${ACTIVE_ROUTES.length} rutas programadas hoy · Lunes 15 de enero`}
