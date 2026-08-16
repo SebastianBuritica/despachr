@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -9,13 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { supabase } from '@/lib/supabase'
+import { homeForRole } from '@/lib/roles'
 import type { RolUsuario } from '@/types'
-
-function homeForRole(role: RolUsuario | null): string {
-  if (role === 'conductor') return '/driver'
-  if (role === 'admin') return '/admin'
-  return '/dashboard'
-}
 
 // Solo aceptamos rutas internas: evita open-redirect (incluye protocol-relative //host y /\host,
 // que el navegador trata como absolutas).
@@ -148,9 +144,12 @@ function LoginForm() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Contraseña</Label>
-            <a href="#" className="text-xs font-medium text-brand hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-brand hover:underline"
+            >
               ¿Olvidaste tu contraseña?
-            </a>
+            </Link>
           </div>
           <Input
             id="password"
