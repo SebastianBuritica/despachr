@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "deploy": "bash scripts/deploy.sh",
     "setup-env": "bash scripts/setup-env.sh",
     "db:create-tables": "node scripts/db-create-tables.js",
@@ -47,6 +49,7 @@
     "eslint-config-next": "16.2.9",
     "playwright": "^1.61.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

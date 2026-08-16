@@ -45,6 +45,7 @@ import {
 import { registrarEvento } from '@/lib/queries/events'
 import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
 import { capturarUbicacion } from '@/lib/geo'
+import { confirmarCumplido, nuevoProgreso, type CumplidoProgreso } from '@/lib/cumplido'
 import { normalizePhone, toTelHref } from '@/lib/phone'
 import type { EstadoEntrega } from '@/types'
 
@@ -589,11 +590,11 @@ function CaptureScreen({
   const [busy, setBusy] = useState(false)
   const [stage, setStage] = useState<string | null>(null)
 
-  // Paths ya subidos con éxito: un reintento tras un fallo NO re-sube lo que ya
-  // funcionó (y evita el choque con upsert:false del helper).
-  const fotoPathRef = useRef<string | null>(null)
-  const firmaPathRef = useRef<string | null>(null)
-  const salidaRef = useRef(false)
+  // Lo ya logrado en intentos anteriores: un reintento tras un fallo NO re-sube
+  // lo que ya funcionó (y evita el choque con upsert:false del helper). Vive en
+  // un ref porque debe sobrevivir al re-render que provoca el error, no
+  // dispararlo. La orquestación y sus pruebas están en lib/cumplido.ts.
+  const progresoRef = useRef<CumplidoProgreso>(nuevoProgreso())
 
   // Libera el object URL del preview al reemplazar/desmontar (evita fuga).
   useEffect(() => {
@@ -614,21 +615,21 @@ function CaptureScreen({
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
-    fotoPathRef.current = null // foto nueva → invalida una subida previa
+    progresoRef.current.fotoPath = null // foto nueva → invalida una subida previa
   }
 
   const retomarFoto = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoFile(null)
     setPhotoPreview(null)
-    fotoPathRef.current = null
+    progresoRef.current.fotoPath = null
     fileInputRef.current?.click()
   }
 
   const limpiarFirma = () => {
     signatureRef.current?.clear()
     setHasSignature(false)
-    firmaPathRef.current = null
+    progresoRef.current.firmaPath = null
   }
 
   // Foto requerida (evidencia legal) + nombre de quien recibe. Firma OPCIONAL.
@@ -638,47 +639,33 @@ function CaptureScreen({
     if (!photoFile) return
     setBusy(true)
     try {
-      const coords = await capturarUbicacion()
-
-      // 1. Foto (requerida). Skip si ya se subió en un intento anterior.
-      if (!fotoPathRef.current) {
-        setStage('Subiendo foto…')
-        fotoPathRef.current = await uploadCumplido(delivery.routeId, delivery.id, photoFile)
-      }
-
-      // 2. Firma (opcional). Solo si hay trazo.
-      if (!firmaPathRef.current && hasSignature) {
-        setStage('Subiendo firma…')
-        const blob = await signatureRef.current?.toBlob()
-        if (blob) {
-          firmaPathRef.current = await uploadFirma(delivery.routeId, delivery.id, blob)
-        } else {
-          // toBlob puede devolver null (canvas sin contexto, memoria). Antes se
-          // descartaba en silencio: el conductor firmaba, veía "entregado" y la
-          // firma no existía. NO se bloquea la entrega — la evidencia legal es
-          // la foto de la factura sellada, y la firma es opcional por diseño —
-          // pero sí se le dice, porque si no, nadie se entera nunca.
-          toast.warning('No pudimos guardar la firma', {
-            description: 'La entrega se registra con la foto. Puedes pedir la firma en el papel.',
-          })
+      const { coords } = await confirmarCumplido(
+        {
+          routeId: delivery.routeId,
+          deliveryId: delivery.id,
+          foto: photoFile,
+          recibidoPor: receiver,
+          hayFirma: hasSignature,
+          obtenerFirma: () => Promise.resolve(signatureRef.current?.toBlob()),
+        },
+        progresoRef.current,
+        {
+          subirFoto: uploadCumplido,
+          subirFirma: uploadFirma,
+          registrarSalida: (deliveryId, routeId, c) =>
+            registrarEvento('salida_punto', deliveryId, routeId, c),
+          marcarEntregada,
+          capturarUbicacion,
+        },
+        {
+          onEtapa: setStage,
+          onFirmaPerdida: () =>
+            toast.warning('No pudimos guardar la firma', {
+              description:
+                'La entrega se registra con la foto. Puedes pedir la firma en el papel.',
+            }),
         }
-      }
-
-      // 3. Evento de salida (+GPS). El trigger calcula tiempo_en_punto_minutos.
-      if (!salidaRef.current) {
-        setStage('Registrando salida…')
-        await registrarEvento('salida_punto', delivery.id, delivery.routeId, coords)
-        salidaRef.current = true
-      }
-
-      // 4. ÚLTIMO paso: persistir evidencia + estado 'entregado' (el flip). Si algo
-      //    falló antes, la entrega sigue 'en_punto' y el reintento reusa lo hecho.
-      setStage('Guardando…')
-      await marcarEntregada(delivery.id, {
-        fotoUrl: fotoPathRef.current,
-        firmaUrl: firmaPathRef.current,
-        recibidoPor: receiver.trim(),
-      })
+      )
 
       if (!coords) toast('Evento registrado sin ubicación')
       await onConfirmed({
