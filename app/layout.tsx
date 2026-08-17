@@ -39,7 +39,12 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0A0A0A',
+  // Un solo color dejaba la barra de estado oscura en modo claro. Con media
+  // queries el navegador elige, y coinciden con --background de cada tema.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090B' },
+  ],
 }
 
 export default function RootLayout({

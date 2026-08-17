@@ -171,7 +171,7 @@ function EmailForm() {
             <Label htmlFor="password">Contraseña</Label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-brand hover:underline"
+              className="text-xs font-medium text-brand-ink hover:underline"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -371,7 +371,7 @@ function PhoneForm() {
             type="button"
             disabled={cooldown > 0 || loading}
             onClick={() => sendCode(sentTo)}
-            className="text-xs font-medium text-brand hover:underline disabled:text-muted-foreground disabled:no-underline"
+            className="text-xs font-medium text-brand-ink hover:underline disabled:text-muted-foreground disabled:no-underline"
           >
             {cooldown > 0 ? `Reenviar en ${cooldown}s` : 'Reenviar código'}
           </button>

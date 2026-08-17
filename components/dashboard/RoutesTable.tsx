@@ -71,7 +71,7 @@ export function RoutesTable({ routes }: { routes: RutaCoordinador[] }) {
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card">
-        <Table>
+        <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow>
               <TableHead>Conductor</TableHead>

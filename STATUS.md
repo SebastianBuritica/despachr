@@ -50,8 +50,9 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 - Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and **offline** (Fase 1.4).
 - El **mapa es real** (MapLibre + CARTO): dibuja las entregas por sus coordenadas y la última posición conocida de cada ruta. ⚠️ Si las entregas se sembraron sin `latitude`/`longitude`, muestra un vacío explicado — no un mapa roto.
 - Landing **pricing** is mock.
+- Tablas anchas: el contenedor ya hacía `overflow-x-auto`, pero `<table class="w-full">` se **encogía** en vez de desbordar, así que en móvil las columnas se apelmazaban. Con `min-w-*` ahora desbordan y se deslizan.
 - ~~**Known minor bugs**~~ **[fixed — Segmento C]**: the coordinator's four home stats were all hardcoded and **three of them were wrong** (Completadas said 1 with 2 completed routes; Paradas hoy said 20 with 27 stops) — now derived from the same list the table renders. The subtitle was frozen at "Lunes 15 de enero" because the page is statically prerendered, so any date computed server-side freezes at build → `LiveClock` (client, `useSyncExternalStore`, America/Bogota). "Actualizado hace 12 s" removed: there is no real refresh in this view yet, so it was a false claim about data freshness. Admin margin bar no longer multiplies by 2.5 (it painted a 26% margin as a 65%-full bar — inflating a margin in the owner's financial view is precisely what not to do).
-- Accessibility backlog: 30 serious axe warnings (all color-contrast; worst on the dark landing + admin) — P2.
+- ~~Accessibility backlog~~ **[cerrado — Segmento F]**: los 30 avisos eran todos de contraste y salían de tres tokens. `text-brand` como TEXTO daba 2.86:1 sobre superficie oscura → nuevo token `--brand-ink` que se aclara en oscuro (`--brand` no puede: blanco sobre #1D9E75 da 3.39:1 y rompería los fondos). `--faint` daba 2.56:1 sobre blanco → llevado al máximo legible. Landing: atribución en `white/40` (3.74:1) y un gris del mockup en 2.56:1. **Todos los pares verificados ≥4.5:1 por cálculo.** Falta confirmarlo con axe en el barrido de QA.
 
 ---
 

@@ -134,7 +134,8 @@ Definido con CSS custom properties en `app/globals.css` (`:root` = light, `.dark
 mapeadas a las variables de shadcn. Verde de **marca constante** en ambos modos.
 
 ```
-Marca:      #0F6E56 (primario) · #1D9E75 (brand-light / hover / destino)
+Marca:      #0F6E56 (primario, FONDOS) · #1D9E75 (brand-light / hover / destino)
+            #brand-ink → verde para TEXTO (se aclara en oscuro; ver abajo)
 Neutros:    escala Zinc (bg #FAFAFA/#09090B, card #FFFFFF/#18181B, border #E4E4E7/#27272A…)
 Panel:      #18181B (--panel) → superficies oscuras intencionales
             (login, header/timer del conductor, badge del mapa) en ambos modos
@@ -150,6 +151,18 @@ className="bg-muted text-muted-foreground"        // neutros
 ```
 > El toggle sol/luna vive en el topbar del `DashboardShell`. La **landing es oscura fija**
 > (colores explícitos, no usa el toggle). Fuentes: `font-sans` (Inter) / `font-mono` (JetBrains).
+
+### Contraste (WCAG AA) — reglas que ya costaron una corrección
+- **Texto verde → `text-brand-ink`, nunca `text-brand`.** `--brand` (#0F6E56) es color de FONDO:
+  blanco encima da 6.20:1, pero como texto sobre superficie oscura da **2.86:1** y falla. `--brand-ink`
+  se aclara a #1D9E75 en modo oscuro (5.23:1). `--brand` NO puede aclararse: blanco sobre #1D9E75
+  sólo da 3.39:1, así que los fondos se romperían.
+- **`--faint` es el gris más claro permitido para texto**, y ya está en el límite (4.83:1 en claro,
+  4.85:1 en oscuro). Cualquier cosa más clara falla — #A1A1AA sobre blanco da **2.56:1**. En modo
+  claro coincide con `--muted-foreground` a propósito: sobre blanco no hay margen entre "legible" y
+  "más tenue".
+- Al agregar un par color/fondo nuevo, calcular el ratio antes de darlo por bueno. El objetivo es
+  **4.5:1** para texto normal y 3:1 para texto grande o gráficos.
 
 ---
 

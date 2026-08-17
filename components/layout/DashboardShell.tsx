@@ -154,7 +154,7 @@ function SidebarNav({
   return (
     <>
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <BrandMark className="h-6 text-brand dark:text-white" />
+        <BrandMark className="h-6 text-brand-ink" />
         <span className="text-[15px] font-semibold tracking-tight">Despachr</span>
       </div>
 
@@ -178,7 +178,7 @@ function SidebarNav({
                   : 'font-medium text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
               )}
             >
-              <Icon className={cn('size-[17px] shrink-0', active && 'text-brand')} />
+              <Icon className={cn('size-[17px] shrink-0', active && 'text-brand-ink')} />
               {item.label}
             </Link>
           )

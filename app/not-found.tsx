@@ -6,8 +6,8 @@ import { BrandMark } from '@/components/brand/BrandMark'
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background p-6 text-center">
-      <BrandMark className="h-8 text-brand dark:text-white" />
-      <p className="mt-8 font-mono text-5xl font-semibold tabular-nums text-brand">404</p>
+      <BrandMark className="h-8 text-brand-ink" />
+      <p className="mt-8 font-mono text-5xl font-semibold tabular-nums text-brand-ink">404</p>
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Página no encontrada</h1>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
         La ruta que buscas no existe o fue movida.

@@ -106,7 +106,7 @@ export function DemoMockup() {
               </div>
               <div className="mt-1.5 flex gap-2">
                 {BARS.map((b) => (
-                  <span key={b.d} className="flex-1 text-center text-[10px] text-[#A1A1AA]">
+                  <span key={b.d} className="flex-1 text-center text-[10px] text-[#71717A]">
                     {b.d}
                   </span>
                 ))}

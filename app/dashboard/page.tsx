@@ -101,7 +101,7 @@ export default function OperacionEnVivoPage() {
             />
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[680px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Conductor</TableHead>

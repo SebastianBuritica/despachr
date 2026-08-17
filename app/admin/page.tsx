@@ -79,7 +79,7 @@ export default function MetricasPage() {
         <div className="border-b border-border px-5 py-3">
           <h2 className="text-sm font-semibold">Rentabilidad por cliente</h2>
         </div>
-        <Table>
+        <Table className="min-w-[680px]">
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
@@ -123,7 +123,7 @@ export default function MetricasPage() {
                   <span
                     className={cn(
                       'inline-flex items-center justify-end gap-0.5 font-medium',
-                      p.up ? 'text-brand' : 'text-destructive'
+                      p.up ? 'text-brand-ink' : 'text-destructive'
                     )}
                   >
                     {p.up ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}

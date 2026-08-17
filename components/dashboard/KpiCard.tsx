@@ -25,7 +25,7 @@ export function KpiCard({ label, value, delta, up, icon: Icon }: KpiCardProps) {
       <p
         className={cn(
           'mt-3 flex items-center gap-1 text-xs font-medium',
-          up ? 'text-brand' : 'text-destructive'
+          up ? 'text-brand-ink' : 'text-destructive'
         )}
       >
         <Arrow className="size-3.5" />

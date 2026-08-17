@@ -40,7 +40,7 @@ export default function ClientesGestionPage() {
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card">
-        <Table>
+        <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
@@ -62,7 +62,7 @@ export default function ClientesGestionPage() {
                 <TableCell className="text-muted-foreground">{c.contract}</TableCell>
                 <TableCell className="text-right font-mono tabular-nums">{c.tons}</TableCell>
                 <TableCell className="text-right font-mono tabular-nums">{c.revenue}</TableCell>
-                <TableCell className="text-right font-mono font-medium tabular-nums text-brand">
+                <TableCell className="text-right font-mono font-medium tabular-nums text-brand-ink">
                   {c.margin}%
                 </TableCell>
                 <TableCell>
