@@ -539,6 +539,7 @@ npm run lint             # ESLint validation
 ## 📚 Additional Documentation
 
 - **STATUS.md** — Living snapshot of current state + "what's next" (overwritten each session; read this for state)
+- **SUPABASE-PENDIENTE.md** — Runbook of the remaining Supabase configuration (the last of v1 is config, not code) + **how to enable an agent to help**: export `SUPABASE_ACCESS_TOKEN` *before* launching, since MCP tools register at session start and `supabase login` needs a TTY it does not have
 - **CHANGELOG.md** — Append-only history of completed work (PR ledger + per-segment detail; not auto-loaded)
 - **QA-E2E-AUDIT-2026-07-24.md** — Latest QA audit (re-run confirming the PR #15 fixes); `QA-E2E-AUDIT.md` is the prior (2026-07-04) one
 - **README.md** — Installation, setup, deployment

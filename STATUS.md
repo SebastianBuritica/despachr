@@ -15,17 +15,34 @@ manual steps below, then an end-to-end pass.
 
 ---
 
-## ⚠️ Do these before the E2E pass — they gate features that already exist
+## ⚠️ Everything left is Supabase configuration, not code
+
+**→ Full runbook: [SUPABASE-PENDIENTE.md](SUPABASE-PENDIENTE.md)** — the four tasks with exact SQL and
+commands, plus what an agent can and cannot do for each.
 
 | # | Action | What stays broken without it |
 |---|--------|------------------------------|
-| 1 | **Rotate the 5 `*@despachr.test` passwords** (Supabase → Authentication → Users) | `schema.sql` published a shared password in a **public repo** until migration `007`. It is in git history forever; removing it from the file did not unpublish it. `admin@` is the urgent one. |
-| 2 | **Add Redirect URLs** (Authentication → URL Configuration): `https://despachr.vercel.app/reset-password`, `http://localhost:3000/reset-password` | Password reset sends the email, then the link bounces. |
-| 3 | **Deploy Telegram bot + `pg_cron`** (steps in `supabase/functions/check-tiempo-en-punto/README.md`) | The coordinator's alerts card renders correctly but stays **empty** — nothing inserts alerts. |
-| 4 | **Check `deliveries.latitude/longitude` are populated** in seed/real data | The map correctly shows its explained-empty state instead of pins. |
+| 1 | **Rotate the 5 `*@despachr.test` passwords** (Authentication → Users). **Rotate, don't delete** — `routes.driver_id` has no `ON DELETE`. | `schema.sql` published a shared password in a **public repo** until migration `007`. It is in git history forever; removing it from the file did not unpublish it. `admin@` is the urgent one. |
+| 2 | **Add Redirect URLs** (Authentication → URL Configuration) for `/reset-password` | Password reset sends the email, then the link bounces. |
+| 3 | **Check `deliveries.latitude/longitude` are populated** | The map correctly shows its explained-empty state instead of pins. |
+| 4 | **Deploy Telegram bot + `pg_cron`** | The coordinator's alerts card renders correctly but stays **empty** — nothing inserts alerts. |
 
 Also confirm **"Allow new users to sign up" is still OFF** (turned off during the `007` remediation; it
 must stay off — see AGENTS.md).
+
+### To let the next session help with any of this
+
+Verified 2026-08-16: the CLI has **no stored credential** and the Supabase **MCP tools are not in the
+session**. Two different causes, one fix — export the token **before launching**, because MCP tools
+register at session start and `supabase login` cannot run without a TTY:
+
+```bash
+export SUPABASE_ACCESS_TOKEN=sbp_...   # Supabase → Account → Access Tokens
+claude                                  # launch AFTER the export
+```
+
+That authenticates both `.mcp.json` and the CLI. **Never paste the token into chat** — this repo is
+public and already had one credential incident. Details in [SUPABASE-PENDIENTE.md](SUPABASE-PENDIENTE.md).
 
 ---
 
