@@ -144,7 +144,40 @@ select count(*) as total, count(latitude) as con_coordenadas from public.deliver
 
 ---
 
-## ④ Desplegar las alertas · ~30–45 min · **la grande**
+## ④ Desplegar las alertas · ✅ CASI TODO HECHO (2026-08-17)
+
+**Ya está corriendo en producción:**
+- `pg_cron 1.6.4` y `pg_net 0.20.4` **habilitadas** (no lo estaban).
+- Función `check-tiempo-en-punto` **desplegada**.
+- Probada: primera corrida `{"checked":1,"alerted":1}`, segunda `{"alerted":0}` →
+  el índice único parcial evita duplicados, como estaba diseñado.
+- **Cron cada 5 min programado y verificado corriendo** (`succeeded`, HTTP 200).
+- Hay una alerta real en `public.alerts` → la tarjeta del coordinador ya muestra datos vivos.
+
+**NO hizo falta Vault.** El README pedía guardar la service role key ahí para que el cron
+autenticara. Resultó innecesario: la función se autentica contra la BD con *sus propias*
+credenciales inyectadas por el runtime, así que la cabecera `Authorization` sólo tiene que pasar
+`verify_jwt` — y la **publishable key** (que es pública, viaja en el bundle) sirve. El cron usa esa.
+Un secreto menos que rotar, y ninguna key privada quedó guardada en la base.
+
+**LO ÚNICO QUE FALTA — Telegram (sólo tú):**
+```bash
+# @BotFather → /newbot → token; escríbele al bot; luego
+# https://api.telegram.org/bot<TOKEN>/getUpdates → result[].message.chat.id
+supabase secrets set TELEGRAM_BOT_TOKEN=<token> TELEGRAM_CHAT_ID=<chat_id>
+```
+**No hay que re-desplegar:** los secrets se leen en cada invocación. En la próxima corrida del cron
+`telegram_ok` pasa de 0 a 1. Hasta entonces las alertas **in-app funcionan igual** — Telegram es el
+canal de aviso, no el sistema.
+
+> ⚠️ **Dato de siembra viejo:** la alerta actual dice "73638 min en el punto" (~51 días). Es correcta:
+> hay una entrega de la seed en `en_punto` desde finales de junio. Aparecerá así en el E2E; no es un
+> bug, es la seed.
+
+<details>
+<summary>Runbook original (por si hay que rehacerlo)</summary>
+
+## Detalle · ~30–45 min
 
 Es lo que hace que la tarjeta de alertas del coordinador **se llene**. Runbook completo:
 [supabase/functions/check-tiempo-en-punto/README.md](supabase/functions/check-tiempo-en-punto/README.md).
@@ -200,6 +233,8 @@ select job.jobname, r.status, r.start_time
  order by r.start_time desc limit 5;
 ```
 
+</details>
+
 ---
 
 ## Después: probar
@@ -231,6 +266,7 @@ inventadas (mock por decisión de alcance, van a v1.1 y las 4 lo dicen con su av
 - [x] ~~③ Coordenadas~~ — 6/6 ya las tienen
 - [ ] Revocar los dos tokens `sbp_` y dejar el nuevo sólo en `~/.zshrc`
 - [ ] Re-verificar el canario (`disable_signup` y `site_url`) al abrir la próxima sesión
-- [ ] ④ Bot creado · secrets · deploy · curl OK · `pg_cron` programado y corriendo
+- [x] ~~④ extensiones · deploy · prueba · cron programado y verificado~~
+- [ ] ④ (resto) Bot de Telegram + `supabase secrets set` — sin re-deploy
 - [ ] `/qa` en verde
 - [ ] E2E manual en PC y celular
