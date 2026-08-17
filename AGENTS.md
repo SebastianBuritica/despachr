@@ -123,8 +123,8 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **Storage** | Supabase Storage — bucket privado `cumplidos`; **conectado** al cumplido del conductor (foto + firma, Fase 1.2) vía `lib/storage.ts` |
 | **Realtime** | Supabase Realtime — **conectado** en la app del conductor (routes/deliveries, Fase 1.1/1.2); el mapa del coordinador es pendiente (Fase 2) |
 | **Deploy** | Vercel (auto-deploy from main) |
-| **Maps** | Placeholder estilizado; en producción MapLibre/Mapbox (ver memoria) |
-| **Alerts** | Telegram Bot API (future) |
+| **Maps** | **MapLibre GL + tiles CARTO** (`dark_all`/`light_all` según el tema). Sin token ni cuenta de facturación — misma razón por la que la landing ya usaba CARTO. El mapa dibuja las entregas por `deliveries.latitude/longitude` y la **última posición conocida** de cada ruta desde `delivery_events` (no hay tracking continuo en el schema: el último evento con coords es el mejor dato real, y por eso la UI muestra su hora). |
+| **Alerts** | Tabla `alerts` **conectada** en el panel del coordinador (ver + resolver, con constancia de quién y cuándo). La **llena** la edge function `check-tiempo-en-punto` con service role — el coordinador no tiene policy de INSERT a propósito. Telegram sigue pendiente de desplegar. |
 
 ---
 
@@ -195,7 +195,7 @@ tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/
   con toggle de tema + user card con logout). Prop `variant: 'coordinator' | 'admin'`.
 - `PageHeader.tsx` — header de página estándar (título + subtítulo + acción).
 
-**Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveClock`, `LiveMap` (placeholder, marcado `<DemoTag/>`),
+**Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveClock`, `LiveMap` (MapLibre real),
 `AlertsCard`, `DriverCard`, `RoutesTable` (filtros), `KpiCard`, `TonnageChart`, `ComplianceRing`,
 `PeriodToggle`.
 
@@ -401,7 +401,7 @@ Fase 1.3b — driver: OTP login UI (phone sign-in)                              
 Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ruta   [done]
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2.1  — coordinator: real routes/drivers/clients + Realtime                          [done]
-Fase 2.2  — coordinator: real map + alerts conectadas (tabla `alerts`)          [siguiente]
+Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas                 [done]
             (el planificador de malla sigue esperando peso_kg/volumen_m3 → migración 008)
 ```
 

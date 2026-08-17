@@ -44,11 +44,11 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **
 
 ## ⚠️ What is still a prototype (the honest gap)
 
-- **Admin screens** still read from mock data (`lib/mock/admin.ts`) — v1.1 por decisión de alcance. El **coordinador ya es real** (rutas, conductores, clientes + Realtime); lo único mock que le queda son las **alertas** y el **mapa**, ambos marcados con `<DemoTag/>` en la propia pieza y ambos parte de E.2.
+- **Admin screens** son lo ÚNICO que queda mock (`lib/mock/admin.ts`) — v1.1 por decisión de alcance, y las 4 llevan su aviso. El **coordinador es real de punta a punta**: rutas, conductores, clientes, **mapa** (MapLibre+CARTO) y **alertas** (ver + resolver), todo con Realtime. `lib/mock/coordinator.ts` fue eliminado.
 - **~12 primary action buttons** are no-ops → disabled behind a "Próximamente" tooltip since Fase 1.0.
 - The 8 still-mock screens now carry a **"Datos de demostración"** notice (`components/ui/demo-data-notice.tsx`) — same principle as `<ComingSoon>`, applied to the data. A dead button is visibly dead; an invented KPI reads exactly like a real one, which is how a demo turns into a wrong decision. Added per page, so Fase 2 removes it one view at a time.
 - Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and **offline** (Fase 1.4).
-- The **map** is a styled placeholder (no real map yet).
+- El **mapa es real** (MapLibre + CARTO): dibuja las entregas por sus coordenadas y la última posición conocida de cada ruta. ⚠️ Si las entregas se sembraron sin `latitude`/`longitude`, muestra un vacío explicado — no un mapa roto.
 - Landing **pricing** is mock.
 - ~~**Known minor bugs**~~ **[fixed — Segmento C]**: the coordinator's four home stats were all hardcoded and **three of them were wrong** (Completadas said 1 with 2 completed routes; Paradas hoy said 20 with 27 stops) — now derived from the same list the table renders. The subtitle was frozen at "Lunes 15 de enero" because the page is statically prerendered, so any date computed server-side freezes at build → `LiveClock` (client, `useSyncExternalStore`, America/Bogota). "Actualizado hace 12 s" removed: there is no real refresh in this view yet, so it was a false claim about data freshness. Admin margin bar no longer multiplies by 2.5 (it painted a 26% margin as a 65%-full bar — inflating a margin in the owner's financial view is precisely what not to do).
 - Accessibility backlog: 30 serious axe warnings (all color-contrast; worst on the dark landing + admin) — P2.
