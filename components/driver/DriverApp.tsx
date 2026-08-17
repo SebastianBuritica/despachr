@@ -552,7 +552,7 @@ function DeliveryListCard({
       <p className="mt-0.5 text-sm text-muted-foreground">{delivery.direccion}</p>
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <span className="text-sm text-muted-foreground">{delivery.ciudad}</span>
-        <span className="flex items-center gap-1 text-sm font-medium text-brand">
+        <span className="flex items-center gap-1 text-sm font-medium text-brand-ink">
           {cta}
           <ChevronRight className="size-4" />
         </span>

@@ -74,7 +74,7 @@ export default function ReportesPage() {
         <div className="border-b border-border px-5 py-3">
           <h2 className="text-sm font-semibold">Reportes recientes</h2>
         </div>
-        <Table>
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Reporte</TableHead>
@@ -98,7 +98,7 @@ export default function ReportesPage() {
                     <button
                       type="button"
                       disabled
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-brand disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-ink disabled:opacity-50"
                     >
                       <Download className="size-4" />
                       Descargar

@@ -46,12 +46,12 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center p-6">
       <div className="w-full min-w-0 max-w-[360px] space-y-6">
-        <BrandMark className="h-8 text-brand dark:text-white" />
+        <BrandMark className="h-8 text-brand-ink" />
 
         {sent ? (
           <div className="space-y-4">
             <div className="flex size-11 items-center justify-center rounded-full bg-brand/10">
-              <MailCheck className="size-5 text-brand" />
+              <MailCheck className="size-5 text-brand-ink" />
             </div>
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold tracking-tight">Revisa tu correo</h1>
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="button"
                 onClick={() => setSent(false)}
-                className="font-medium text-brand hover:underline"
+                className="font-medium text-brand-ink hover:underline"
               >
                 inténtalo con otro correo
               </button>

@@ -211,7 +211,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center p-6">
       <div className="w-full min-w-0 max-w-[360px] space-y-6">
-        <BrandMark className="h-8 text-brand dark:text-white" />
+        <BrandMark className="h-8 text-brand-ink" />
         <Suspense fallback={null}>
           <ResetPasswordForm />
         </Suspense>

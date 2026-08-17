@@ -41,9 +41,17 @@
   --brand: #0f6e56;
   --brand-strong: #0a5a45;
   --brand-light: #1d9e75;
+  /* Verde para TEXTO. --brand sirve de FONDO (blanco encima da 6.20:1) pero
+     como texto sobre superficie oscura da 2.86:1 y falla. Este token se aclara
+     en oscuro; --brand no, porque blanco sobre #1d9e75 sólo da 3.39:1. */
+  --brand-ink: #0f6e56;
   --success: #1d9e75;
   --warning: #b45309;
-  --faint: #a1a1aa; /* placeholders, ejes */
+  /* Texto secundario tenue. NO puede ser más claro que esto: #a1a1aa daba
+     2.56:1 sobre blanco (WCAG AA pide 4.5:1 para texto). En claro coincide con
+     --muted-foreground a propósito — no hay margen entre "legible" y "más
+     tenue" sobre fondo blanco. */
+  --faint: #71717a;
   --track: #e4e4e7; /* pista de donut/progreso */
 
   /* Panel oscuro intencional (login, header/timer del conductor) — suave en ambos modos */
@@ -98,9 +106,10 @@
   --brand: #0f6e56;
   --brand-strong: #0a5a45;
   --brand-light: #1d9e75;
+  --brand-ink: #1d9e75; /* 5.23:1 sobre --card, frente a 2.86:1 de --brand */
   --success: #4ade80;
   --warning: #fbbf24;
-  --faint: #71717a;
+  --faint: #85858e; /* #71717a daba 3.67:1 sobre --card */
   --track: #2b2b2f;
 
   --panel: #18181b;
@@ -155,6 +164,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-faint: var(--faint);
+  --color-brand-ink: var(--brand-ink);
   --color-track: var(--track);
   --color-panel: var(--panel);
   --color-panel-foreground: var(--panel-foreground);

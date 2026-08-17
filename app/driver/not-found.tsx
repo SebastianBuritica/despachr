@@ -6,8 +6,8 @@ import { BrandMark } from '@/components/brand/BrandMark'
 export default function DriverNotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
-      <BrandMark className="h-8 text-brand dark:text-white" />
-      <p className="mt-8 font-mono text-5xl font-semibold tabular-nums text-brand">404</p>
+      <BrandMark className="h-8 text-brand-ink" />
+      <p className="mt-8 font-mono text-5xl font-semibold tabular-nums text-brand-ink">404</p>
       <h1 className="mt-4 text-xl font-bold tracking-tight">Página no encontrada</h1>
       <p className="mt-2 max-w-xs text-sm text-muted-foreground">
         Esta pantalla no existe. Vuelve a tu ruta del día.

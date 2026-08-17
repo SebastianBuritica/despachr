@@ -12,7 +12,7 @@ export const metadata = { title: 'Sin conexión · Despachr' }
 export default function OfflinePage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center p-6 text-center">
-      <BrandMark className="h-8 text-brand dark:text-white" />
+      <BrandMark className="h-8 text-brand-ink" />
       <span className="mt-8 flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <CloudOff className="size-8" />
       </span>

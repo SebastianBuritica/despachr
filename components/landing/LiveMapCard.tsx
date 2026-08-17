@@ -84,7 +84,7 @@ export function LiveMapCard() {
               'linear-gradient(rgba(10,12,11,.35),rgba(10,12,11,.5)), radial-gradient(circle at 72% 28%, rgba(29,158,117,.16), transparent 58%)',
           }}
         />
-        <span className="absolute bottom-1.5 right-2 font-mono text-[9px] text-white/40">
+        <span className="absolute bottom-1.5 right-2 font-mono text-[10px] text-white/70">
           © OpenStreetMap · CARTO
         </span>
 

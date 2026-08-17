@@ -19,7 +19,7 @@ export default function DriverError({
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
-      <BrandMark className="h-8 text-brand dark:text-white" />
+      <BrandMark className="h-8 text-brand-ink" />
       <h1 className="mt-8 text-xl font-bold tracking-tight">Algo salió mal</h1>
       <p className="mt-2 max-w-xs text-sm text-muted-foreground">
         No pudimos cargar tu ruta. Revisa tu conexión y reintenta.

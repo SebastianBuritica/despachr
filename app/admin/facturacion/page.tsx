@@ -34,13 +34,13 @@ export default function FacturacionPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total facturado" value={BILLING_SUMMARY.billed} />
-        <StatCard label="Cobrado" value={<span className="text-brand">{BILLING_SUMMARY.collected}</span>} />
+        <StatCard label="Cobrado" value={<span className="text-brand-ink">{BILLING_SUMMARY.collected}</span>} />
         <StatCard label="Pendiente" value={BILLING_SUMMARY.pending} tone="warning" />
         <StatCard label="Vencido" value={BILLING_SUMMARY.overdue} tone="danger" />
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card">
-        <Table>
+        <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow>
               <TableHead>Factura</TableHead>

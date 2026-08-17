@@ -49,7 +49,7 @@ export default function ClientesOperativosPage() {
         />
       ) : (
         <div className="rounded-lg border border-border bg-card shadow-card">
-          <Table>
+          <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
