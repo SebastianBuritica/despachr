@@ -63,8 +63,21 @@ La URL queda:
 (`<PROJECT_REF>` es `mxgfkwwdhnoumboftjal`).
 
 > La función queda con `verify_jwt = true` (default). El cron la invoca pasando
-> el **service role key** como `Authorization: Bearer …` (es un JWT válido), lo
-> que además impide que terceros la llamen. No uses `--no-verify-jwt`.
+> el **service role key** como `Authorization: Bearer …`. No uses `--no-verify-jwt`.
+>
+> ⚠️ **CORRECCIÓN (2026-08-17):** este README decía que `verify_jwt` "impide que
+> terceros la llamen". **No es cierto** — se verificó invocándola con la *anon
+> key*, que también es un JWT válido del proyecto y es **pública** (viaja en el
+> bundle de JS). Cualquiera que cargue el sitio puede llamar esta función.
+>
+> **Impacto real: bajo.** No puede crear alertas duplicadas (índice único parcial
+> `uniq_alerts_activa`), no recibe parámetros y sólo devuelve conteos. Lo peor es
+> carga inútil o gastar envíos de Telegram.
+>
+> **Si se quiere cerrar de verdad**, la vía es un secreto compartido *dentro* de
+> la función (p. ej. exigir una cabecera `x-cron-key` que se compara contra un
+> `supabase secrets set CRON_KEY=…`), no `verify_jwt`. Queda anotado, no hecho:
+> no vale la pena antes de que el piloto esté en marcha.
 
 ## f) Probar manualmente con curl (antes de programar)
 
