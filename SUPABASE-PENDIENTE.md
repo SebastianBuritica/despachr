@@ -160,15 +160,21 @@ credenciales inyectadas por el runtime, así que la cabecera `Authorization` só
 `verify_jwt` — y la **publishable key** (que es pública, viaja en el bundle) sirve. El cron usa esa.
 Un secreto menos que rotar, y ninguna key privada quedó guardada en la base.
 
-**LO ÚNICO QUE FALTA — Telegram (sólo tú):**
+**Telegram: DESCARTADO por decisión de producto (2026-08-17).** No hay que configurarlo. La función
+ya maneja su ausencia: registra un warning y sigue, así que las alertas in-app funcionan igual. Sólo
+el coordinador necesita el push (1-2 personas, no un equipo), el panel ya las muestra en vivo, y en
+Colombia WhatsApp es universal mientras Telegram es nicho. Si algún día hace falta escalar:
+**SMS por Twilio** primero (la cuenta ya existe por el OTP, no exige instalar nada), y **WhatsApp**
+cuando haya cliente pagando. Detalle y razones en AGENTS.md.
+
+<details><summary>Si algún día se quisiera Telegram igual</summary>
 ```bash
 # @BotFather → /newbot → token; escríbele al bot; luego
 # https://api.telegram.org/bot<TOKEN>/getUpdates → result[].message.chat.id
 supabase secrets set TELEGRAM_BOT_TOKEN=<token> TELEGRAM_CHAT_ID=<chat_id>
 ```
-**No hay que re-desplegar:** los secrets se leen en cada invocación. En la próxima corrida del cron
-`telegram_ok` pasa de 0 a 1. Hasta entonces las alertas **in-app funcionan igual** — Telegram es el
-canal de aviso, no el sistema.
+No hay que re-desplegar: los secrets se leen en cada invocación.
+</details>
 
 > ⚠️ **Dato de siembra viejo:** la alerta actual dice "73638 min en el punto" (~51 días). Es correcta:
 > hay una entrega de la seed en `en_punto` desde finales de junio. Aparecerá así en el E2E; no es un
@@ -267,6 +273,6 @@ inventadas (mock por decisión de alcance, van a v1.1 y las 4 lo dicen con su av
 - [ ] Revocar los dos tokens `sbp_` y dejar el nuevo sólo en `~/.zshrc`
 - [ ] Re-verificar el canario (`disable_signup` y `site_url`) al abrir la próxima sesión
 - [x] ~~④ extensiones · deploy · prueba · cron programado y verificado~~
-- [ ] ④ (resto) Bot de Telegram + `supabase secrets set` — sin re-deploy
+- [x] ~~④ (resto) Telegram~~ — **descartado por decisión de producto**, no es requisito de v1
 - [ ] `/qa` en verde
 - [ ] E2E manual en PC y celular

@@ -282,7 +282,7 @@ UserRole          // Enum: 'admin' | 'coordinator' | 'driver'
 |----------|-----------|
 | **PWA, not native app** | No app store friction, auto-updates, works offline |
 | **Supabase over other DBaaS** | PostgreSQL, Auth, Realtime, Storage all-in-one; RLS for security |
-| **Alerts via Telegram Bot** | Coordinator already lives in Telegram/WhatsApp |
+| **Alertas in-app primero; el canal de push queda ABIERTO** | El registro de verdad es la tabla `alerts`, que el coordinador ve en vivo por Realtime y resuelve desde el panel. El envío externo es *best-effort* y desacoplado (~20 de 134 líneas de la edge function), así que cambiar de canal es un swap, no un rediseño. **Telegram quedó desplegado pero SIN configurar a propósito** — se eligió por facilidad de integración, no por encaje de mercado: en Colombia WhatsApp es universal y Telegram es nicho. Ver la nota de decisión abajo. |
 | **Cumplido photos in Supabase Storage** | Keeps all data in one ecosystem; easy backups |
 | **Timer on server (cron), not client** | Accurate alerts; not dependent on driver's phone staying awake |
 | **RLS (Row Level Security)** | Database enforces role-based access, not application logic |
@@ -395,7 +395,7 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 - **Driver app on real data** — today's own deliveries, GPS on arrival/departure, real photo +
   signature capture to Storage, **novedades** reporting, offline resilience.
 - **Coordinator panel on real data** — live route status, real map, visible alerts.
-- **Alerts live end-to-end** — Telegram + `pg_cron`.
+- **Alerts live end-to-end** — `pg_cron` + edge function insertando en `alerts`, visibles y resolubles en el panel. **El push externo NO es requisito de v1.**
 - **Resilience/UX baseline** — error/loading/not-found boundaries and empty states.
 
 **Out of scope for v1 (deferred):**
@@ -422,6 +422,19 @@ Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas      
 > first. Phone numbers have **no leading `+`** anywhere in the DB (`573229596618`); never build a
 > number by hand, use `lib/phone.ts`. `telefono_receptor` is coordinator-typed free text, so it must
 > be normalized before it becomes a `tel:` href.
+>
+> **Canal de alertas — decisión (2026-08-17).** Sólo **el coordinador** (y quizá el dueño) necesita
+> recibir la alerta: los conductores y los clientes no. Son 1-2 personas, no un equipo. Como el panel
+> ya las muestra en vivo, **el push externo es una escalación, no el sistema**. Orden acordado:
+> (1) in-app, ya funcionando; (2) **SMS por Twilio** si la coordinadora reporta que se le pasan
+> estando lejos de la pantalla — reusa la cuenta que ya existe para el OTP y no exige instalar nada;
+> (3) **WhatsApp** cuando haya un cliente pagando. Telegram se descarta: se eligió por lo fácil de
+> integrar, y en Colombia casi nadie lo usa.
+>
+> **Tensión que vale la pena tener presente:** este producto se vende para *reemplazar* la
+> coordinación por WhatsApp. Mandar las alertas de vuelta a WhatsApp refuerza el hábito contra el que
+> se compite. La alerta in-app con botón de resolver mantiene a la coordinadora en la herramienta,
+> donde puede actuar, en vez de en un chat donde va a teclearle al conductor.
 >
 > **Public signup must stay OFF.** "Allow new users to sign up" is a project-level Supabase setting,
 > independent of the app having no signup UI. It was ON from project creation until 2026-08-16; with
@@ -451,8 +464,9 @@ Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas      
 |-------------|---------|--------|
 | Google Maps API | Route optimization, visual routes | Design phase |
 | Sistran API | Auto-import routes (if API exists) | Investigate |
-| Telegram Bot | Push alerts to coordinator | Design phase |
-| WhatsApp Business API | Future alerts (backup to Telegram) | Backlog |
+| ~~Telegram Bot~~ | Push alerts to coordinator | **Desplegado, sin configurar — y así se queda.** Canal equivocado para el mercado |
+| SMS (Twilio) | Escalar alertas si el coordinador las pierde | **Siguiente paso si hace falta** — la cuenta Twilio ya existe (OTP), no requiere instalar nada |
+| WhatsApp Business API | Alertas para clientes que paguen | **Cuando haya cliente pagando.** Requiere verificación de Meta + *plantilla aprobada* (una alerta es business-initiated, fuera de la ventana de 24 h), así que no se empieza en especulativo |
 | Wompi | Charge Colombian customers | Backlog |
 | Stripe | Charge international customers | Backlog |
 
