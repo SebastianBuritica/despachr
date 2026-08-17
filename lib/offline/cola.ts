@@ -8,6 +8,8 @@
 import type { Coords } from '@/lib/geo'
 import type { TipoEvento } from '@/types'
 import type { CumplidoProgreso } from '@/lib/cumplido'
+import type { NovedadProgreso } from '@/lib/novedad'
+import type { TipoNovedad } from '@/types'
 import type { EventoIdentidad } from '@/lib/queries/events'
 import * as db from '@/lib/offline/db'
 
@@ -41,11 +43,29 @@ export interface PendienteCumplido {
   progreso: CumplidoProgreso
 }
 
-export type Pendiente = PendienteEvento | PendienteCumplido
+export interface PendienteNovedad {
+  /** Es el id de la propia novedad: la cola y la BD comparten identidad. */
+  id: string
+  tipo: 'novedad'
+  creadoEn: number
+  deliveryId: string
+  routeId: string
+  tipoNovedad: TipoNovedad
+  descripcion: string
+  /** Opcional: no toda novedad tiene algo que fotografiar. */
+  foto: Blob | null
+  coords: Coords | null
+  /** Identidad del evento `novedad` que este reporte deja en la bitácora. */
+  evento: EventoIdentidad
+  progreso: NovedadProgreso
+}
+
+export type Pendiente = PendienteEvento | PendienteCumplido | PendienteNovedad
 
 export interface ColaDeps {
   enviarEvento: (p: PendienteEvento) => Promise<void>
   enviarCumplido: (p: PendienteCumplido) => Promise<void>
+  enviarNovedad: (p: PendienteNovedad) => Promise<void>
 }
 
 export async function encolar(p: Pendiente): Promise<void> {
@@ -60,11 +80,10 @@ export async function contarPendientes(): Promise<number> {
   return db.contar()
 }
 
-/** Persiste el avance parcial de un cumplido para que el reintento reanude. */
-export async function actualizarProgreso(
-  p: PendienteCumplido,
-  progreso: CumplidoProgreso
-): Promise<void> {
+/** Persiste el avance parcial (cumplido o novedad) para que el reintento reanude. */
+export async function actualizarProgreso<
+  T extends PendienteCumplido | PendienteNovedad,
+>(p: T, progreso: T['progreso']): Promise<void> {
   await db.guardar({ ...p, progreso })
 }
 
@@ -102,7 +121,8 @@ export async function procesarCola(deps: ColaDeps): Promise<ResultadoSync> {
     for (const p of cola) {
       try {
         if (p.tipo === 'evento') await deps.enviarEvento(p)
-        else await deps.enviarCumplido(p)
+        else if (p.tipo === 'cumplido') await deps.enviarCumplido(p)
+        else await deps.enviarNovedad(p)
         await db.borrar(p.id)
         enviados++
       } catch (error) {

@@ -54,6 +54,16 @@ function cumplido(id: string, creadoEn: number): Pendiente {
   }
 }
 
+// Enviadores por defecto (no-op). Cada caso sobrescribe sólo el que le importa.
+function deps(over: Partial<Parameters<typeof procesarCola>[0]> = {}) {
+  return {
+    enviarEvento: async () => {},
+    enviarCumplido: async () => {},
+    enviarNovedad: async () => {},
+    ...over,
+  }
+}
+
 beforeEach(() => {
   almacen.clear()
   _resetCandado()
@@ -67,12 +77,13 @@ describe('cola offline — orden', () => {
     await encolar(evento('c', 3000))
 
     const vistos: string[] = []
-    const r = await procesarCola({
-      enviarEvento: async (p) => {
-        vistos.push(p.id)
-      },
-      enviarCumplido: async () => {},
-    })
+    const r = await procesarCola(
+      deps({
+        enviarEvento: async (p) => {
+          vistos.push(p.id)
+        },
+      })
+    )
 
     // El orden importa: los triggers derivan hora_llegada / tiempo_en_punto de
     // la secuencia. Una salida antes que su llegada da un tiempo absurdo.
@@ -87,13 +98,14 @@ describe('cola offline — orden', () => {
     await encolar(evento('c', 3000))
 
     const vistos: string[] = []
-    const r = await procesarCola({
-      enviarEvento: async (p) => {
-        vistos.push(p.id)
-        if (p.id === 'b') throw new Error('sin red')
-      },
-      enviarCumplido: async () => {},
-    })
+    const r = await procesarCola(
+      deps({
+        enviarEvento: async (p) => {
+          vistos.push(p.id)
+          if (p.id === 'b') throw new Error('sin red')
+        },
+      })
+    )
 
     expect(vistos).toEqual(['a', 'b'])
     expect(r.enviados).toBe(1)
@@ -106,19 +118,17 @@ describe('cola offline — orden', () => {
     await encolar(evento('a', 1000))
     await encolar(evento('b', 2000))
 
-    await procesarCola({
-      enviarEvento: async (p) => {
-        if (p.id === 'b') throw new Error('sin red')
-      },
-      enviarCumplido: async () => {},
-    })
+    await procesarCola(
+      deps({
+        enviarEvento: async (p) => {
+          if (p.id === 'b') throw new Error('sin red')
+        },
+      })
+    )
     expect(await contarPendientes()).toBe(1)
 
     // Vuelve la señal.
-    const r2 = await procesarCola({
-      enviarEvento: async () => {},
-      enviarCumplido: async () => {},
-    })
+    const r2 = await procesarCola(deps())
     expect(r2).toEqual({ enviados: 1, restantes: 0 })
     expect(await contarPendientes()).toBe(0)
   })
@@ -131,7 +141,7 @@ describe('cola offline — cumplidos', () => {
 
     const enviarEvento = vi.fn<(p: Pendiente) => Promise<void>>(async () => {})
     const enviarCumplido = vi.fn<(p: Pendiente) => Promise<void>>(async () => {})
-    await procesarCola({ enviarEvento, enviarCumplido })
+    await procesarCola(deps({ enviarEvento, enviarCumplido }))
 
     expect(enviarEvento).toHaveBeenCalledTimes(1)
     expect(enviarCumplido).toHaveBeenCalledTimes(1)
@@ -142,12 +152,13 @@ describe('cola offline — cumplidos', () => {
     await encolar(cumplido('c1', 2000))
 
     let recibido: Pendiente | undefined
-    await procesarCola({
-      enviarEvento: async () => {},
-      enviarCumplido: async (p) => {
-        recibido = p
-      },
-    })
+    await procesarCola(
+      deps({
+        enviarCumplido: async (p) => {
+          recibido = p
+        },
+      })
+    )
 
     // Las coords son las de ENTONCES: al sincronizar el conductor puede estar
     // a 50 km, y una lectura nueva ubicaría la entrega donde no fue.
@@ -175,8 +186,8 @@ describe('cola offline — concurrencia', () => {
 
     // El evento `online` y el reintento periódico pueden coincidir.
     const [r1, r2] = await Promise.all([
-      procesarCola({ enviarEvento, enviarCumplido: async () => {} }),
-      procesarCola({ enviarEvento, enviarCumplido: async () => {} }),
+      procesarCola(deps({ enviarEvento })),
+      procesarCola(deps({ enviarEvento })),
     ])
 
     expect(solapado).toBe(false)
