@@ -25,7 +25,7 @@ commands, plus what an agent can and cannot do for each.
 | 1 | **Rotate the 5 `*@despachr.test` passwords** (Authentication → Users). **Rotate, don't delete** — `routes.driver_id` has no `ON DELETE`. | `schema.sql` published a shared password in a **public repo** until migration `007`. It is in git history forever; removing it from the file did not unpublish it. `admin@` is the urgent one. |
 | 2 | **Add Redirect URLs** (Authentication → URL Configuration) for `/reset-password` | Password reset sends the email, then the link bounces. |
 | 3 | **Check `deliveries.latitude/longitude` are populated** | The map correctly shows its explained-empty state instead of pins. |
-| 4 | **Deploy Telegram bot + `pg_cron`** | The coordinator's alerts card renders correctly but stays **empty** — nothing inserts alerts. |
+| 4 | ~~Deploy `pg_cron` + edge function~~ ✅ **done 2026-08-17** — extensions enabled, function deployed and tested, cron running every 5 min (verified `succeeded`/HTTP 200), and a real alert is in the table. **Only Telegram is left**: `supabase secrets set TELEGRAM_BOT_TOKEN=… TELEGRAM_CHAT_ID=…`, no redeploy needed. In-app alerts already work without it. |
 
 Also confirm **"Allow new users to sign up" is still OFF** (turned off during the `007` remediation; it
 must stay off — see AGENTS.md).
@@ -66,7 +66,7 @@ public and already had one credential incident. Details in [SUPABASE-PENDIENTE.m
 - **Live operation, routes, drivers, clients** on real Supabase + **Realtime**.
 - **Real map** — MapLibre + CARTO. Deliveries by coordinates; last known position per route derived
   from event coordinates, shown **with its timestamp** (there is no continuous tracking in the schema).
-- **Alerts** — read from `alerts`, resolvable with a record of who and when.
+- **Alerts** — read from `alerts`, resolvable with a record of who and when. **The pipeline is live**: `check-tiempo-en-punto` runs every 5 min via `pg_cron` and is already inserting real alerts. Telegram delivery is the only part still pending a bot token.
 
 ### Platform
 - **Security** — migration `007` closed privilege escalation via `profiles.role`, signup role
