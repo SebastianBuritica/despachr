@@ -1,116 +1,98 @@
-# Despachr — Current Status (2026-08-06)
+# Despachr — Current Status (2026-08-16)
 
 **What it is:** A PWA for cargo-logistics management (Colombia / LATAM) that replaces the Excel + WhatsApp workflow.
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr
-**In one line:** **Fase 0 + 1.0 + 1.1 + 1.2 complete (Fase 1.2 merged — PR #27)** — the **driver app runs the full cumplido on live Supabase data**: real photo (device camera) + optional canvas signature upload to Storage, receiver name persisted, `Llegué`/`Salí` GPS events, realtime sync. The done screen's evidence claim is now truthful. Coordinator + admin screens are still on mock data. Next: Fase 1.3 (novedades UI).
 
-> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only history · `QA-E2E-AUDIT.md` = latest audit.
+**In one line:** **v1 scope is code-complete.** Both operational verticals — **driver** (real data, GPS,
+cumplido, novedades, OTP login, full offline) and **coordinator** (real routes/drivers/clients, real
+map, live alerts, Realtime) — run on live Supabase. **Admin is the only mock surface left**, deferred
+to v1.1 by scope decision and marked as such on all four screens. Remaining work is **not code**: four
+manual steps below, then an end-to-end pass.
+
+> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file
+> (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only
+> history · `QA-E2E-AUDIT.md` = latest audit (2026-08-06, predates this session's work).
 
 ---
 
-## Stack (current)
+## ⚠️ Do these before the E2E pass — they gate features that already exist
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · **shadcn/ui + Radix** · next-themes (light/dark) · Supabase (Postgres + Auth + Realtime + Storage) · Vercel (auto-deploy from `main`).
+| # | Action | What stays broken without it |
+|---|--------|------------------------------|
+| 1 | **Rotate the 5 `*@despachr.test` passwords** (Supabase → Authentication → Users) | `schema.sql` published a shared password in a **public repo** until migration `007`. It is in git history forever; removing it from the file did not unpublish it. `admin@` is the urgent one. |
+| 2 | **Add Redirect URLs** (Authentication → URL Configuration): `https://despachr.vercel.app/reset-password`, `http://localhost:3000/reset-password` | Password reset sends the email, then the link bounces. |
+| 3 | **Deploy Telegram bot + `pg_cron`** (steps in `supabase/functions/check-tiempo-en-punto/README.md`) | The coordinator's alerts card renders correctly but stays **empty** — nothing inserts alerts. |
+| 4 | **Check `deliveries.latitude/longitude` are populated** in seed/real data | The map correctly shows its explained-empty state instead of pins. |
+
+Also confirm **"Allow new users to sign up" is still OFF** (turned off during the `007` remediation; it
+must stay off — see AGENTS.md).
 
 ---
 
 ## ✅ What actually works today
 
-- **Real role-based auth.** Login at `/login` — **phone/SMS-OTP and email/password, in tabs** — + middleware that protects routes and redirects by role: admin → `/admin`, coordinator → `/dashboard`, driver → `/driver`. No public sign-up (admin creates users) — **and as of 2026-08-16 that is finally true at the API level too.** It had only ever been true of the *UI*: the project setting "Allow new users to sign up" was **ON** from creation until it was turned off during the `007` remediation, so anyone with the anon key (which ships in the JS bundle) could `POST /auth/v1/signup`. Combined with the pre-`007` `handle_new_user`, that meant self-assigning `role: 'admin'` at signup with no account required — C2 was never "contained by a disabled toggle" as the audit assumed. Verified clean afterwards: all 6 auth users accounted for, no unseen account requested a privileged role. **Keep that setting OFF** — Fase 1.3b's OTP login works fine against it, provided `signInWithOtp` passes `shouldCreateUser: false` (drivers are admin-provisioned).
-- **Phone-auth (SMS OTP) — live end to end (Fase 1.3b).** `/login` has two tabs, **phone first** (drivers are most of the daily sign-ins and they log in from the street): number → SMS → 6-digit code → their panel. `signInWithOtp` passes **`shouldCreateUser: false`**, so signing in never creates an account — an unprovisioned number is told to ask its coordinator. Resend is gated behind a 60s countdown (SMS costs money and Supabase rate-limits anyway), the code field uses `autoComplete="one-time-code"` so iOS/Android offer the SMS code without leaving the app, and all number handling goes through `lib/phone.ts` (canonical format = digits only, no `+`, matching how GoTrue stores it).
-- **Live database — 11 tables**, 24 RLS policies, triggers, seed data. RLS verified per role **on reads**: a driver sees only their own data; the coordinator sees everything **except** financials; the admin sees all. Driver pay/margin isolated in admin-only tables (`delivery_financials`, `client_invoices`). ⚠️ **Writes were never verified the same way, and that's where the holes were** — RLS is row-level, so `profiles_update_self` let any authenticated user write their own `role` (escalation to admin) and `deliveries_driver_update` let a driver write `valor_flete`. Migration `007` closes both with triggers. **Migrations `001`–`006` executed in production** (`004` = `deliveries.telefono_receptor`; `005` = the `entregas_de_ruta` RPC + hardened `get_my_role()` `search_path`; `006` = `deliveries.recibido_por`/`firma_url` + RPC returns the evidence columns). **`007` is merged but NOT yet run in prod — the holes stay open until you run it.**
-- **Driver app on REAL data (Fase 1.1 + fixes).** The phone-authed driver loads their own route for today and its deliveries from Supabase (`lib/queries/driver.ts`), marks **`Llegué`/`Salí`** which insert `delivery_events` (`lib/queries/events.ts`) — the DB triggers derive `hora_llegada_punto`/`en_punto` and `tiempo_en_punto_minutos` (app re-reads, never recomputes). **GPS** is captured on those events (`lib/geo.ts`) and **never blocks**: on denial/timeout the event is saved without coords + a subtle notice. The visual timer **seeds from `hora_llegada_punto`** so a refresh doesn't reset it. **Client name comes via the `entregas_de_ruta` SECURITY DEFINER RPC** (drivers can't read `clients` by RLS, and a plain grant would leak `tarifa_flete`; the RPC returns only safe columns, ownership-checked — `LEFT join` so an orphaned `client_id` never drops the delivery). **Realtime**: a channel scoped to this driver re-fetches on changes to their `routes`/`deliveries`, so a route assigned mid-session appears without a manual refresh (with a subtle "sin conexión en vivo" indicator + auto-reconnect on channel error). `lib/mock/driver.ts` is **deleted**.
-- **Real cumplido capture (Fase 1.2).** Photo via the device camera (`<input capture="environment">`, rear camera on mobile / file picker on desktop) → compressed by `uploadCumplido` (canvas, ≤1920px/JPEG) → `deliveries.foto_cumplido_url`. **Optional** canvas signature pad (`SignaturePad`, Pointer Events, white-paper/black-ink PNG) → `uploadFirma` → `firma_url` (confirmation never blocks on a missing signature). Receiver name → `recibido_por`. **Upload is resilient**: on failure the capture is kept and retry reuses already-uploaded parts; `estado='entregado'` is the *last* step, so a failed upload leaves the delivery `en_punto`. The done screen's **evidence line is now honest** (reflects what was actually stored, not a hardcoded "✓").
-- **Storage backend ready** — private `cumplidos` bucket (5 MB, jpeg/png/webp) with RLS (driver INSERT own routes, coord/admin SELECT, admin DELETE) + typed helpers in `lib/storage.ts` (`uploadCumplido`, `uploadFirma`, `getCumplidoUrl`). **Wired into the driver capture flow (Fase 1.2 — see above).**
-- **60-min alert backend ready** — `alerts` table + Deno edge function `check-tiempo-en-punto` (detects a driver >60 min at a point → in-app alert + Telegram). Code merged; **deploy + scheduling are pending manual steps** (see below).
-- **Realtime enabled** on the map tables (routes, deliveries, delivery_events) — at the DB level.
-- **Full, polished UI**: marketing landing (v2), split login, **Coordinator ×4** + **Admin ×4** (still mock data), **Driver** (mobile flow list → active → capture → done, now on **real data**), light/dark, brand icons, installable PWA.
-- **Mock data already speaks the schema vocabulary** (`EstadoEntrega`/`EstadoRuta`/`EstadoFactura`) — so wiring Supabase is a data-source swap, not a refactor.
-- **Pruebas de lógica (Vitest) — 27 casos.** `npm test`. Cubren lo que se rompe **en silencio**: el cierre del cumplido (`lib/cumplido.ts` — orden real, el flip a `entregado` siempre de último, y que un reintento *reanude* sin re-subir la foto ni duplicar el evento de salida) y la normalización de teléfonos (`lib/phone.ts`, con el número real de producción como caso de referencia). La orquestación del cumplido se **extrajo de `DriverApp`** para poder probarla; la Fase 1.4 hereda ese punto único para la cola offline.
-- **In-house QA tooling** — Playwright sweep of 42 screens (desktop + mobile, light + dark) + axe. Last run (2026-08-06, `QA-E2E-AUDIT.md`): **42/42 captured · 0 JS exceptions · 0 console errors · 0 nav failures · build green · lint clean** (30 axe color-contrast warnings = P2 backlog).
+### Driver (complete)
+- **Login by phone OTP** — `/login`, phone tab first. `signInWithOtp` with `shouldCreateUser: false`,
+  60s resend cooldown, `one-time-code` autofill. Email/password remains for admin/coordinator.
+- **Real route + deliveries**; client name via the driver-only `entregas_de_ruta` RPC.
+- **`Llegué` / `Salí`** insert `delivery_events` with GPS; DB triggers derive state — the app re-reads,
+  never recomputes. GPS never blocks.
+- **Cumplido** — device-camera photo + optional signature → Storage, receiver name, resilient retry
+  that resumes rather than restarting.
+- **Novedades** — 6 types, required description, optional photo. **A novedad closes the delivery.**
+- **Offline, end to end** — IndexedDB queue (photos as Blobs); client-generated ids and timestamps so
+  replay is idempotent and records when it *happened*, not when it synced; service worker so the app
+  opens with no network; route snapshot so a cold offline start still shows the stops, labelled with
+  its age.
 
-### This session's shipped work (Fase 0, all merged)
+### Coordinator (complete)
+- **Live operation, routes, drivers, clients** on real Supabase + **Realtime**.
+- **Real map** — MapLibre + CARTO. Deliveries by coordinates; last known position per route derived
+  from event coordinates, shown **with its timestamp** (there is no continuous tracking in the schema).
+- **Alerts** — read from `alerts`, resolvable with a record of who and when.
 
-| PR | Segment / work |
-|----|----------------|
-| #15 | Bug-fix pass — 5 real bugs (mobile sidebar drawer, theme-toggle hydration, driver confirm gate, open-redirect, null-role handling) |
-| #16 | Segment 1 — mock state vocabulary aligned to schema enums (`retrasada` derived; invoice `pendiente`→`enviada`) |
-| #17 | Segment 2 — storage bucket + `lib/storage.ts` helpers |
-| #18 | Segment 3 — `alerts` table + 60-min edge function |
-| #19 | Segment 4 — driver phone-auth **backend** (fix `handle_new_user()`; `profiles.email` nullable) — **backend only, no login UI** (that's Fase 1.3b) |
-| #20 | Segment 5 — assets cleanup + docs sync (this file, README, AGENTS) |
-
----
-
-## ⚠️ What is still a prototype (the honest gap)
-
-- **Admin screens** son lo ÚNICO que queda mock (`lib/mock/admin.ts`) — v1.1 por decisión de alcance, y las 4 llevan su aviso. El **coordinador es real de punta a punta**: rutas, conductores, clientes, **mapa** (MapLibre+CARTO) y **alertas** (ver + resolver), todo con Realtime. `lib/mock/coordinator.ts` fue eliminado.
-- **~12 primary action buttons** are no-ops → disabled behind a "Próximamente" tooltip since Fase 1.0.
-- The 8 still-mock screens now carry a **"Datos de demostración"** notice (`components/ui/demo-data-notice.tsx`) — same principle as `<ComingSoon>`, applied to the data. A dead button is visibly dead; an invented KPI reads exactly like a real one, which is how a demo turns into a wrong decision. Added per page, so Fase 2 removes it one view at a time.
-- Driver **camera / signature / GPS are now real** and persisted (Fase 1.2 wired `lib/storage.ts`). Remaining driver gap: **novedades** reporting (Fase 1.3) and **offline** (Fase 1.4).
-- El **mapa es real** (MapLibre + CARTO): dibuja las entregas por sus coordenadas y la última posición conocida de cada ruta. ⚠️ Si las entregas se sembraron sin `latitude`/`longitude`, muestra un vacío explicado — no un mapa roto.
-- Landing **pricing** is mock.
-- Tablas anchas: el contenedor ya hacía `overflow-x-auto`, pero `<table class="w-full">` se **encogía** en vez de desbordar, así que en móvil las columnas se apelmazaban. Con `min-w-*` ahora desbordan y se deslizan.
-- ~~**Known minor bugs**~~ **[fixed — Segmento C]**: the coordinator's four home stats were all hardcoded and **three of them were wrong** (Completadas said 1 with 2 completed routes; Paradas hoy said 20 with 27 stops) — now derived from the same list the table renders. The subtitle was frozen at "Lunes 15 de enero" because the page is statically prerendered, so any date computed server-side freezes at build → `LiveClock` (client, `useSyncExternalStore`, America/Bogota). "Actualizado hace 12 s" removed: there is no real refresh in this view yet, so it was a false claim about data freshness. Admin margin bar no longer multiplies by 2.5 (it painted a 26% margin as a 65%-full bar — inflating a margin in the owner's financial view is precisely what not to do).
-- ~~Accessibility backlog~~ **[cerrado — Segmento F]**: los 30 avisos eran todos de contraste y salían de tres tokens. `text-brand` como TEXTO daba 2.86:1 sobre superficie oscura → nuevo token `--brand-ink` que se aclara en oscuro (`--brand` no puede: blanco sobre #1D9E75 da 3.39:1 y rompería los fondos). `--faint` daba 2.56:1 sobre blanco → llevado al máximo legible. Landing: atribución en `white/40` (3.74:1) y un gris del mockup en 2.56:1. **Todos los pares verificados ≥4.5:1 por cálculo.** Falta confirmarlo con axe en el barrido de QA.
+### Platform
+- **Security** — migration `007` closed privilege escalation via `profiles.role`, signup role
+  injection, a publicly callable seeder, and driver writes to `valor_flete`. Public signup turned off.
+- **Next 16.3.1** — middleware-bypass CVE fixed. `npm audit`: **0 vulnerabilities**.
+- **41 logic tests** (`npm test`) over cumplido/novedad ordering and resume, offline queue ordering,
+  and phone normalisation. Playwright sweep (`npm run qa`) covers the screens.
+- Error/loading boundaries, empty states, password reset, fail-closed middleware.
+- **Contrast**: all token pairs verified ≥4.5:1.
 
 ---
 
-## ▶️ Next phase — what the next agent should do
+## 🚧 Honest gaps
 
-> **v1 scope + the full Fase 1.x → Fase 2 sequence now live in AGENTS.md** (durable). This section
-> tracks the current step.
+- **Admin (4 screens) is mock** — v1.1 by decision. All four carry the "Datos de demostración" notice.
+- **Untested against a live network**: password reset round-trip, OTP SMS send, and the map with real
+  coordinates. All three are blocked on the manual steps above, not on code.
+- **Contrast verified by calculation**, not yet by an axe run — arithmetic catches the systematic
+  cause but not a combination nobody thought to check. Fold it into the QA sweep.
+- **Landing pricing** is still mock.
+- **No ETA anywhere** — deliberate. Estimating one needs route optimisation, which is post-v1.
+- ~12 unbuilt CTAs are disabled behind a "Próximamente" tooltip.
 
-**Done — Fase 1.0 (PR #23, merged):** error/loading/not-found boundaries, empty states, login
-hardening, `signOut` try/catch, dead CTAs disabled behind "Próximamente", driver quick wins.
+---
 
-**Done — Fase 1.1 (PR #24 + fixes #26, merged):** DriverApp on real Supabase data, `Llegué`/`Salí`
-GPS events, timer seeded from `hora_llegada_punto`, client-name RPC, realtime. Migrations `004`+`005`.
+## ▶️ What's next
 
-**Done — Fase 1.2 (PR #27, merged):** real photo (device camera) +
-optional canvas signature → Storage (`lib/storage.ts` wired), `recibido_por` persisted, honest
-evidence claim, resilient upload with retry, realtime `subscribe()` error handling + reconnect, and
-`lib/supabase.ts` throws on missing env. Migration `006-recibido-por.sql` run in prod.
-
-**🔴 Security first (infrastructure audit, 2026-08-15).** The audit document is deliberately **kept
-out of this public repo** — it contains working exploit steps. It lives with the other handoffs
-outside the tree (`/assets` is gitignored). The A–F plan is still
-correct, it just isn't first anymore. Four criticals were confirmed against the schema, all from the
-same root: *RLS is row-level and was used as if it were column-level.*
-
-0. **RUN MIGRATION `007` IN PROD** — nothing below matters while a driver can `PATCH profiles` and
-   become admin. Verification queries are in the migration header.
-1. **Manual, yours, in the Supabase dashboard** — (a) rotate/delete the `*@despachr.test` users;
-   `schema.sql` published `password123` in a **public repo**, so the credential is in git history
-   forever and rotation is mandatory. (b) Confirm Authentication → Providers → Email →
-   "Enable signup" stays **disabled** (second layer for C2).
-2. ~~**Segment A — auth/infra hardening**~~ **[done]** — real password reset (`/forgot-password` →
-   `/reset-password`, replacing the `href="#"` that was the last place the UI promised something it
-   couldn't do), fail-closed env validation in `middleware.ts`, `global-error.tsx`, scoped
-   `error.tsx`/`loading.tsx` for admin+dashboard, dead `LogoutButton` deleted, `homeForRole`
-   de-duplicated into `lib/roles.ts` (it had three copies drifting apart).
-   ⚠️ **Requires a dashboard step:** the reset callback URL must be in Supabase → Authentication →
-   URL Configuration → Redirect URLs, or the emailed link bounces.
-
-**Then — finish the driver vertical, then coordinator:**
-
-1. ~~**Fase 1.3 — novedades UI**~~ **[done]** — decisión de negocio resuelta: **una novedad CIERRA la entrega**. 6 tipos (rechazo, faltante, dañado, cliente ausente, dirección errada, otro), descripción obligatoria (es lo único que el coordinador lee para resolver), foto opcional como evidencia. Mismo patrón que el cumplido: orden con el cambio de estado de último, reanudable, y **encolable offline** con la foto incluida. La pantalla avisa que cerrar es irreversible antes de enviar.
-2. ~~**Fase 1.3b — driver OTP login UI**~~ **[done]** — phone tab at `/login` (`signInWithOtp` with `shouldCreateUser: false` → `verifyOtp`), 60s resend cooldown, `one-time-code` autofill, and `lib/phone.ts` as the single place numbers get normalized (canonical = digits only, no `+`). Sequenced before offline **on purpose**, so Fase 1.4 builds its session handling on the final auth path instead of on email/password that then gets swapped. Also fixed the raw `tel:` href in `DriverApp` while here.
-3. ~~**Fase 1.4 — service worker + offline event queue**~~ **[done]** — (a) cola en IndexedDB con foto y firma como Blobs, reenvío en orden con corte al primer fallo, identidad de cliente para idempotencia y hora real del hecho; (b) service worker que hace que la app **abra** sin red (registrado sólo bajo `/driver`, sólo en producción); (c) **snapshot de la ruta**, porque el SW sirve el shell pero las entregas vienen de Supabase y esas peticiones no se cachean — sin el snapshot, un arranque en frío sin señal mostraba la pantalla de error en vez de las paradas. Se usa sólo si la carga falla, y la UI dice de qué hora es el dato.
-4. **Fase 2 — Coordinator** — real routes/deliveries + **real map** + Realtime + surface the `alerts` table (acknowledge/resolve). Needs its **own** path to deliveries — the `entregas_de_ruta` RPC is **driver-only by construction** (`driver_id = auth.uid()`), don't reuse it. **NOT blocked** (earlier claim was wrong): none of this touches `peso_kg`/`volumen_m3`, and coordinator RLS already grants SELECT on `clients`/`deliveries`/`routes` + SELECT/UPDATE on `alerts`, so no new RPC and no new migration are needed. `deliveries` already carries `latitude`/`longitude` → the real map is unblocked too. Only the **malla planner** waits on `peso_kg`/`volumen_m3` → **migration `008`** (007 went to the security hardening), pending pilot-client requirements.
-6. **v1.1 — Admin** depth (KPIs, client CRUD, invoice workflow) — out of v1 scope.
-
-**Two pending manual deploys (code already merged in #18 — the alert system isn't *live* until these are done):**
-- **Telegram bot** — create via BotFather, then `supabase secrets set TELEGRAM_BOT_TOKEN=… TELEGRAM_CHAT_ID=…` + `supabase functions deploy check-tiempo-en-punto`.
-- **pg_cron scheduling** — enable `pg_cron`/`pg_net`, then schedule the function every 5 min. Exact steps: `supabase/functions/check-tiempo-en-punto/README.md`.
+1. **The four manual steps**, then an E2E pass on desktop + phone.
+2. **v1.1 — Admin depth** (KPIs, client CRUD, invoicing) now that real data will start accumulating.
+3. **Migration `008`** (`peso_kg` / `volumen_m3`) → unblocks the **malla planner**. Still waiting on
+   pilot-client requirements; nothing else depends on it.
+4. Post-v1: multi-tenant, pricing, Sistran/Cigo, route optimisation.
 
 ---
 
 ## Infra / notes
 
-- `main` in sync with origin · auto-deploy to Vercel on every push.
-- Supabase env keys set across all 3 Vercel environments (incl. `NEXT_PUBLIC_SUPABASE_URL` in **Preview** — added this session; previews were failing without it).
-- Migrations are **hand-run, repo-tracked SQL** in `scripts/migrations/` (`001`–`006`) — the project does **not** use Supabase CLI versioned migrations. Base schema: `scripts/schema.sql`. Manual dev-test helper (not a migration): `scripts/testing/fase-1.1-driver-datos-reales.sql`.
-- Test users: `admin@ / coord@ / driver@ despachr.test` (QA credentials in a git-ignored file). ⚠️ These exist in **production** and `schema.sql` published a shared password until migration `007` — rotate them, and prefer separate non-prod users for QA.
-- `/assets` is gitignored (design handoffs + QA artifacts live outside the repo); brand kit is versioned in `/public/brand`.
-- **Dependencias: `npm audit` en 0.** Antes eran 11 (8 high). La grave era `next@16.2.9` → **GHSA-6gpp-xcg3-4w24, bypass de middleware en App Router + Turbopack + locale único** — exactamente esta app, donde `middleware.ts` **es** la frontera de autorización por rol. Se subió a **16.3.1** (patch, no major), lo que además cerró el `postcss` que este documento daba por diferido "hasta que Next parchee su postcss embebido": ya lo hizo. El resto (undici, js-yaml, brace-expansion, ip-address, fast-uri, hono, sharp) salió con `npm audit fix` sin `--force`. **`next` y `eslint-config-next` se mantienen pineados exactos y en lockstep.**
+- `main` in sync with origin · auto-deploy to Vercel on every push · **13 PRs merged this session
+  (#29–#41)**.
+- Migrations are **hand-run, repo-tracked SQL** in `scripts/migrations/` (`001`–`007`). Base schema:
+  `scripts/schema.sql`.
+- **Provisioning changed in `007`:** a new user's role comes from **`app_metadata`**, never
+  `user_metadata`. From the dashboard, create the user (it defaults to `conductor`) and promote with
+  `update public.profiles set role = …` in the SQL Editor.
+- `/assets` is gitignored; the infrastructure/security audit is deliberately **kept out of this public
+  repo** (it contains working exploit steps).
