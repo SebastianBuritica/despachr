@@ -13,11 +13,18 @@
  *    la transcripción de un agente.
  *
  * USO:
- *   export SUPABASE_SERVICE_ROLE_KEY=...        # Settings → API Keys
- *   node scripts/rotate-test-passwords.mjs      # muestra las nuevas y las guarda
+ *   export SUPABASE_SERVICE_ROLE_KEY=...        # Settings → API Keys (Secret)
+ *   node scripts/rotate-test-passwords.mjs
  *
- * La salida va a stdout UNA vez: cópiala a tu gestor de contraseñas. También
- * reescribe .env.qa-credentials (gitignored) para que `npm run qa` siga entrando.
+ * NO IMPRIME NINGUNA CONTRASEÑA. Las escribe en .secrets-rotacion.txt
+ * (gitignored) y a stdout sólo va una confirmación.
+ *
+ * POR QUÉ: la primera versión sí las imprimía, y el bloque entero de la
+ * terminal terminó pegado en un chat dos veces seguidas — junto con la service
+ * role key del `export` de la línea anterior. Pedirle a alguien que no copie su
+ * propia terminal no funciona: lo que se copia se siente como un RESULTADO, no
+ * como un secreto. La solución es que la salida sea segura de compartir, no
+ * advertir más fuerte.
  */
 import { randomBytes } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -75,9 +82,19 @@ for (const { email, alias } of CUENTAS) {
   resultado.push({ email, password, alias })
 }
 
-console.log('\n--- Guarda esto en tu gestor de contraseñas ---')
-for (const { email, password } of resultado) console.log(`${email.padEnd(24)} ${password}`)
-console.log('---\n')
+// Las contraseñas van a un archivo, NUNCA a stdout.
+const SALIDA = '.secrets-rotacion.txt'
+writeFileSync(
+  SALIDA,
+  [
+    `# Contraseñas rotadas el ${new Date().toISOString()}`,
+    '# Cópialas a tu gestor y BORRA este archivo.',
+    '',
+    ...resultado.map(({ email, password }) => `${email.padEnd(24)} ${password}`),
+    '',
+  ].join('\n'),
+  { mode: 0o600 }
+)
 
 // Mantener .env.qa-credentials en sync para que `npm run qa` siga funcionando.
 try {
@@ -93,7 +110,12 @@ try {
     }
   }
   writeFileSync(ruta, txt)
-  console.error(`↻ ${ruta}: ${cambiadas}/3 contraseñas actualizadas`)
+  console.log(`↻ ${ruta}: ${cambiadas}/3 contraseñas actualizadas`)
 } catch {
-  console.error('ℹ️  No se pudo actualizar .env.qa-credentials — actualízalo a mano para que `npm run qa` entre.')
+  console.log('ℹ️  No se pudo actualizar .env.qa-credentials — actualízalo a mano para que `npm run qa` entre.')
 }
+
+console.log(`\n✓ ${resultado.length} cuentas rotadas (created_at intacto en todas).`)
+console.log(`  Contraseñas escritas en ${SALIDA} (permisos 600, gitignored).`)
+console.log('  Ábrelo, cópialas a tu gestor, y bórralo:  rm .secrets-rotacion.txt')
+console.log('  Esta salida no contiene secretos: es segura de compartir.\n')
