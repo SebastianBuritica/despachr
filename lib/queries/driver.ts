@@ -5,6 +5,7 @@
 // pidiera otra ruta.
 import { supabase } from '@/lib/supabase'
 import type { EstadoRuta, EstadoEntrega } from '@/types'
+import { hoyOperacion } from '@/lib/fecha'
 
 // Vista de la ruta del día para el header del conductor.
 export interface RutaDelDia {
@@ -30,13 +31,6 @@ export interface EntregaConductor {
   fotoUrl: string | null
   firmaUrl: string | null
   recibidoPor: string | null
-}
-
-// Fecha "hoy" en la zona de la operación (Colombia, sin horario de verano).
-// Se compara contra routes.fecha (columna date). Usar la zona de operación
-// evita que, de noche, el desfase UTC muestre la ruta del día equivocado.
-function hoyOperacion(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
 }
 
 // La ruta de HOY del conductor autenticado. `null` si no tiene ruta hoy

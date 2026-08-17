@@ -1,25 +1,31 @@
+'use client'
+
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { RoutesTable } from '@/components/dashboard/RoutesTable'
 import { Button } from '@/components/ui/button'
 import { ComingSoon } from '@/components/ui/coming-soon'
-import { ACTIVE_ROUTES } from '@/lib/mock/coordinator'
-import { DemoDataNotice } from '@/components/ui/demo-data-notice'
+import { SectionSkeleton } from '@/components/layout/SectionSkeleton'
+import { useCoordinadorData } from '@/hooks/useCoordinadorData'
+import { getRutasDelDia } from '@/lib/queries/coordinator'
 
 export default function RutasPage() {
-  const enRuta = ACTIVE_ROUTES.filter((r) => r.status === 'en_curso').length
-  const completadas = ACTIVE_ROUTES.filter((r) => r.status === 'completada').length
-  const pendientes = ACTIVE_ROUTES.filter((r) => r.status === 'pendiente').length
-  // Retraso es derivado, no un estado del schema.
-  const retrasadas = ACTIVE_ROUTES.filter((r) => r.retrasada).length
+  const { data, loading, error } = useCoordinadorData(getRutasDelDia, 'coord-rutas')
+  if (error) throw error
+  if (loading || !data) return <SectionSkeleton />
+
+  const enRuta = data.filter((r) => r.estado === 'en_curso').length
+  const completadas = data.filter((r) => r.estado === 'completada').length
+  const pendientes = data.filter((r) => r.estado === 'pendiente').length
+  // Retraso es derivado, no un estado del schema (ver lib/queries/coordinator).
+  const retrasadas = data.filter((r) => r.retrasada).length
 
   return (
     <div className="space-y-6">
-      <DemoDataNotice />
       <PageHeader
         title="Rutas"
-        subtitle={`${ACTIVE_ROUTES.length} rutas programadas hoy · Lunes 15 de enero`}
+        subtitle={`${data.length} ${data.length === 1 ? 'ruta programada' : 'rutas programadas'} hoy`}
         action={
           <ComingSoon>
             <Button disabled>
@@ -33,11 +39,11 @@ export default function RutasPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="En ruta" value={enRuta} />
         <StatCard label="Completadas" value={completadas} />
-        <StatCard label="Pendientes" value={pendientes} tone="warning" />
-        <StatCard label="Retrasadas" value={retrasadas} tone="danger" />
+        <StatCard label="Pendientes" value={pendientes} tone={pendientes > 0 ? 'warning' : 'default'} />
+        <StatCard label="Retrasadas" value={retrasadas} tone={retrasadas > 0 ? 'danger' : 'default'} />
       </div>
 
-      <RoutesTable routes={ACTIVE_ROUTES} />
+      <RoutesTable routes={data} />
     </div>
   )
 }

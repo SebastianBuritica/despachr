@@ -32,3 +32,23 @@ export function DemoDataNotice({ className }: { className?: string }) {
     </div>
   )
 }
+
+// Variante compacta: para marcar UNA pieza de una pantalla que ya es real en lo
+// demás. La operación en vivo del coordinador es el caso: rutas y progreso
+// salen de Supabase, pero las alertas y el mapa todavía no. Un aviso de página
+// completa ahí sería falso en la otra dirección.
+export function DemoTag({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'border-[#FDE68A] bg-[#FEF9C3] text-[#B45309]',
+        'dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-[#FBBF24]',
+        className
+      )}
+    >
+      <FlaskConical className="size-3" aria-hidden />
+      Demo
+    </span>
+  )
+}

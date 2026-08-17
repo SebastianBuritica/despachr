@@ -195,7 +195,7 @@ tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/
   con toggle de tema + user card con logout). Prop `variant: 'coordinator' | 'admin'`.
 - `PageHeader.tsx` — header de página estándar (título + subtítulo + acción).
 
-**Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveMap` (placeholder),
+**Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveClock`, `LiveMap` (placeholder, marcado `<DemoTag/>`),
 `AlertsCard`, `DriverCard`, `RoutesTable` (filtros), `KpiCard`, `TonnageChart`, `ComplianceRing`,
 `PeriodToggle`.
 
@@ -220,6 +220,15 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
   idempotencia (choque de PK al reenviar = ya estaba) y el timestamp guarda cuándo PASÓ el hecho,
   no cuándo se pudo enviar — sin eso, `hora_llegada_punto` y `tiempo_en_punto_minutos` quedarían
   con la hora del sync.
+- `queries/coordinator.ts` — camino de datos del COORDINADOR. **No reusar `entregas_de_ruta`**: esa
+  RPC filtra por `driver_id = auth.uid()`, así que para el coordinador devuelve vacío. No hace falta
+  RPC — la RLS ya le da SELECT directo. Deriva lo que el schema no guarda en vez de inventarlo:
+  `routes` no tiene nombre ni zona → se muestran las **ciudades de sus puntos**; no hay ETA en
+  ninguna parte → se muestra la hora de cierre **real**; `retrasada` = alguna entrega >60 min en el
+  punto, **el mismo umbral que la edge function de alertas** (si difirieran, tablero y alertas se
+  contradirían).
+- `estados.ts` — presentación de estados del schema (antes vivía en el mock) · `fecha.ts` —
+  `hoyOperacion()` en zona Colombia, compartida por conductor y coordinador
 - `cumplido.ts` / `novedad.ts` — orquestación de los dos cierres posibles de una entrega
   (entregada o con novedad). Misma forma: dependencias inyectadas, progreso mutable para reanudar,
   y el cambio de estado SIEMPRE de último. Ambas probadas y ambas encolables offline.
@@ -391,11 +400,9 @@ Fase 1.3  — driver: novedades UI                                              
 Fase 1.3b — driver: OTP login UI (phone sign-in)                                        [done]
 Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ruta   [done]
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
-Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliveries/estados/map/
-            realtime/alerts touch no new columns, and coordinator RLS already grants SELECT on
-            clients+deliveries+routes and SELECT/UPDATE on alerts. Only the *malla planner* waits
-            on peso_kg/volumen_m3 → migration 008. Needs its OWN deliveries path — the
-            entregas_de_ruta RPC is driver-only by construction, do not reuse)
+Fase 2.1  — coordinator: real routes/drivers/clients + Realtime                          [done]
+Fase 2.2  — coordinator: real map + alerts conectadas (tabla `alerts`)          [siguiente]
+            (el planificador de malla sigue esperando peso_kg/volumen_m3 → migración 008)
 ```
 
 > **Auth reality:** phone/SMS-OTP login **is built** (Fase 1.3b) — `/login` shows two tabs, phone

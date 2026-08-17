@@ -14,7 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { routeBadge, type ActiveRoute } from '@/lib/mock/coordinator'
+import { rutaBadge, horaCorta } from '@/lib/estados'
+import type { RutaCoordinador } from '@/lib/queries/coordinator'
 import type { EstadoRuta } from '@/types'
 
 // 'retrasada' es un filtro derivado (no un EstadoRuta); el resto son estados del schema.
@@ -28,7 +29,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'retrasada', label: 'Retrasadas' },
 ]
 
-export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
+export function RoutesTable({ routes }: { routes: RutaCoordinador[] }) {
   const [filter, setFilter] = useState<Filter>('todas')
 
   // Sin rutas programadas: estado vacío completo (no la tabla con filtros vacíos).
@@ -47,7 +48,7 @@ export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
       ? routes
       : filter === 'retrasada'
         ? routes.filter((r) => r.retrasada)
-        : routes.filter((r) => r.status === filter)
+        : routes.filter((r) => r.estado === filter)
 
   return (
     <div className="space-y-4">
@@ -73,33 +74,41 @@ export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ruta</TableHead>
               <TableHead>Conductor</TableHead>
               <TableHead>Vehículo</TableHead>
-              <TableHead>Zona</TableHead>
+              <TableHead>Puntos</TableHead>
               <TableHead>Progreso</TableHead>
               <TableHead>Salida</TableHead>
-              <TableHead>ETA</TableHead>
+              <TableHead>Cierre</TableHead>
               <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell className="text-muted-foreground">{r.driver}</TableCell>
+                <TableCell className="font-medium">{r.conductor}</TableCell>
                 <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {r.plate}
+                  {r.placa ?? '—'}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{r.zone}</TableCell>
+                {/* Las ciudades de sus puntos sustituyen al "nombre" y la "zona"
+                    que el mock inventaba: `routes` no tiene ninguno de los dos. */}
+                <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                  {r.ciudades.join(' · ') || '—'}
+                </TableCell>
                 <TableCell>
-                  <RouteProgress done={r.done} total={r.total} />
+                  <RouteProgress done={r.hechas} total={r.total} />
                 </TableCell>
-                <TableCell className="font-mono text-xs tabular-nums">{r.departure}</TableCell>
-                <TableCell className="font-mono text-xs tabular-nums">{r.eta}</TableCell>
+                <TableCell className="font-mono text-xs tabular-nums">
+                  {horaCorta(r.horaInicio)}
+                </TableCell>
+                {/* Antes decía ETA. No hay ETA en el schema y estimarla sería
+                    inventar; se muestra el cierre REAL (hora_fin). */}
+                <TableCell className="font-mono text-xs tabular-nums">
+                  {horaCorta(r.horaFin)}
+                </TableCell>
                 <TableCell>
                   {(() => {
-                    const badge = routeBadge(r)
+                    const badge = rutaBadge(r)
                     return (
                       <StatusBadge tone={badge.tone} dot>
                         {badge.label}
@@ -111,7 +120,7 @@ export function RoutesTable({ routes }: { routes: ActiveRoute[] }) {
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                   No hay rutas en este estado.
                 </TableCell>
               </TableRow>

@@ -2,6 +2,7 @@ import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { LiveAlert } from '@/lib/mock/coordinator'
+import { DemoTag } from '@/components/ui/demo-data-notice'
 
 const ICON_TONE = {
   danger: 'text-destructive',
@@ -17,7 +18,12 @@ export function AlertsCard({ alerts }: { alerts: LiveAlert[] }) {
   return (
     <Card className="gap-0 py-0 shadow-card">
       <CardHeader className="flex flex-row items-center justify-between border-b border-border px-4 py-3">
-        <CardTitle className="text-sm">Alertas</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-sm">Alertas</CardTitle>
+          {/* La tabla `alerts` existe y la RLS ya deja al coordinador leerla y
+              resolverla, pero la llena la edge function, pendiente de desplegar. */}
+          <DemoTag />
+        </div>
         <span className="text-xs font-medium text-muted-foreground">{alerts.length} activas</span>
       </CardHeader>
       <CardContent className="space-y-2 p-3">

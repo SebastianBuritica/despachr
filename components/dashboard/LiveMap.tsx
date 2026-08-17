@@ -1,10 +1,14 @@
 import { Truck, AlertTriangle } from 'lucide-react'
+import { DemoTag } from '@/components/ui/demo-data-notice'
 
 // Placeholder estilizado del mapa (grid CSS + paths SVG + pines).
-// En producción se integra un mapa real (Mapbox / Google Maps / Leaflet).
+// Los nombres y placas que se ven aquí son INVENTADOS: va marcado como demo
+// hasta que E.2 lo reemplace por un mapa real alimentado de deliveries
+// (latitude/longitude ya existen en el schema).
 export function LiveMap() {
   return (
     <div className="relative h-[380px] overflow-hidden rounded-lg border border-border bg-card shadow-card">
+      <DemoTag className="absolute right-3 top-3 z-10" />
       {/* Grid de fondo (usa el token de borde para adaptarse al modo) */}
       <div
         className="absolute inset-0 text-border"

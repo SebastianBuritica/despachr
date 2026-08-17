@@ -1,9 +1,14 @@
+'use client'
+
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { LiveMap } from '@/components/dashboard/LiveMap'
 import { AlertsCard } from '@/components/dashboard/AlertsCard'
 import { RouteProgress } from '@/components/dashboard/RouteProgress'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SectionSkeleton } from '@/components/layout/SectionSkeleton'
+import { LiveClock } from '@/components/dashboard/LiveClock'
 import {
   Table,
   TableBody,
@@ -12,36 +17,40 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { LiveClock } from '@/components/dashboard/LiveClock'
-import { ACTIVE_ROUTES, LIVE_ALERTS, routeBadge } from '@/lib/mock/coordinator'
-import { DemoDataNotice } from '@/components/ui/demo-data-notice'
-
-const liveRoutes = ACTIVE_ROUTES.filter((r) => r.status !== 'pendiente').slice(0, 4)
-
-// Derivadas de la misma lista que pinta la tabla. Estaban escritas a mano y
-// tres de las cuatro mentían (Completadas decía 1 con 2 rutas completadas;
-// Paradas hoy decía 20 con 27 paradas). Cuando esto pase a Supabase en la
-// Fase 2 cambia la FUENTE, no el cálculo.
-const enRuta = ACTIVE_ROUTES.filter((r) => r.status === 'en_curso').length
-const completadas = ACTIVE_ROUTES.filter((r) => r.status === 'completada').length
-const paradasHoy = ACTIVE_ROUTES.reduce((total, r) => total + r.total, 0)
-// 'retrasada' no es un estado del schema: es condición derivada (ver el mock).
-const retrasadas = ACTIVE_ROUTES.filter((r) => r.retrasada).length
+import { Route as RouteIcon, WifiOff } from 'lucide-react'
+import { useCoordinadorData } from '@/hooks/useCoordinadorData'
+import { getRutasDelDia } from '@/lib/queries/coordinator'
+import { rutaBadge, horaCorta } from '@/lib/estados'
+import { LIVE_ALERTS } from '@/lib/mock/coordinator'
 
 export default function OperacionEnVivoPage() {
+  const { data, loading, error, syncDown } = useCoordinadorData(getRutasDelDia, 'coord-operacion')
+  if (error) throw error
+  if (loading || !data) return <SectionSkeleton />
+
+  const enRuta = data.filter((r) => r.estado === 'en_curso').length
+  const completadas = data.filter((r) => r.estado === 'completada').length
+  const paradasHoy = data.reduce((total, r) => total + r.total, 0)
+  const retrasadas = data.filter((r) => r.retrasada).length
+  const enCurso = data.filter((r) => r.estado !== 'pendiente')
+
   return (
     <div className="space-y-6">
-      <DemoDataNotice />
-      {/* "Actualizado hace 12 s" se quitó a propósito: no hay refresco real en
-          esta vista todavía (mock, sin Realtime hasta la Fase 2), así que era
-          una afirmación falsa sobre la frescura del dato. */}
       <PageHeader
         title="Operación en vivo"
         subtitle={<LiveClock />}
         action={
-          <StatusBadge tone="success" dot>
-            {enRuta} {enRuta === 1 ? 'ruta activa' : 'rutas activas'}
-          </StatusBadge>
+          <div className="flex items-center gap-2">
+            {syncDown && (
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <WifiOff className="size-3.5" />
+                Sync caído
+              </span>
+            )}
+            <StatusBadge tone={enRuta > 0 ? 'success' : 'neutral'} dot>
+              {enRuta} {enRuta === 1 ? 'ruta activa' : 'rutas activas'}
+            </StatusBadge>
+          </div>
         }
       />
 
@@ -59,51 +68,66 @@ export default function OperacionEnVivoPage() {
               tone={retrasadas > 0 ? 'danger' : 'default'}
             />
           </div>
+          {/* Las alertas siguen siendo mock: la tabla `alerts` existe pero se
+              llena con la edge function, que está pendiente de desplegar.
+              Conectarlas es E.2. */}
           <AlertsCard alerts={LIVE_ALERTS} />
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card">
         <div className="border-b border-border px-5 py-3">
-          <h2 className="text-sm font-semibold">Rutas activas</h2>
+          <h2 className="text-sm font-semibold">Rutas en curso</h2>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ruta</TableHead>
-              <TableHead>Conductor</TableHead>
-              <TableHead>Vehículo</TableHead>
-              <TableHead>Progreso</TableHead>
-              <TableHead>ETA</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {liveRoutes.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell className="text-muted-foreground">{r.driver}</TableCell>
-                <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {r.plate}
-                </TableCell>
-                <TableCell>
-                  <RouteProgress done={r.done} total={r.total} />
-                </TableCell>
-                <TableCell className="font-mono text-xs tabular-nums">{r.eta}</TableCell>
-                <TableCell>
-                  {(() => {
-                    const badge = routeBadge(r)
-                    return (
+        {enCurso.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={RouteIcon}
+              title="Ninguna ruta ha salido todavía"
+              message="Cuando un conductor inicie su ruta del día, la verás aquí en vivo."
+            />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Conductor</TableHead>
+                <TableHead>Vehículo</TableHead>
+                <TableHead>Puntos</TableHead>
+                <TableHead>Progreso</TableHead>
+                <TableHead>Salida</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {enCurso.map((r) => {
+                const badge = rutaBadge(r)
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.conductor}</TableCell>
+                    <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {r.placa ?? '—'}
+                    </TableCell>
+                    <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                      {r.ciudades.join(' · ') || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <RouteProgress done={r.hechas} total={r.total} />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs tabular-nums">
+                      {horaCorta(r.horaInicio)}
+                    </TableCell>
+                    <TableCell>
                       <StatusBadge tone={badge.tone} dot>
                         {badge.label}
                       </StatusBadge>
-                    )
-                  })()}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   )
