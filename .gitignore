@@ -43,3 +43,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Config local de Claude Code: guarda allowlists de permisos que pueden llevar
+# tokens literales. Hoy sólo lo protege el gitignore GLOBAL del equipo, que no
+# existe en otra máquina — este repo es público, así que se ignora aquí también.
+.claude/settings.local.json

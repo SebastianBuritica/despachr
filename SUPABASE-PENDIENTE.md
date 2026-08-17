@@ -40,6 +40,13 @@ Con eso, en la sesión nueva:
 Para que sobreviva a reinicios, ponlo en `~/.zshrc`. **Nunca lo pegues en el chat** ni lo comitees:
 este repo es público y ya hubo un incidente con una contraseña en `schema.sql` (ver migración `007`).
 
+> **Tokens a revocar (2026-08-17):** hay **dos** rondando. El del 2026-08-16 se pegó en un chat, y
+> `.claude/settings.local.json` tiene otro literal (`sbp_d30596…`) dentro de entradas de allowlist de
+> permisos. Ese archivo **no está en git** — pero sólo lo salvaba el gitignore GLOBAL del equipo, así
+> que se agregó al `.gitignore` del repo. Verificado: **ningún token real llegó a la historia de git**
+> (los `sbp_...` que aparecen en los docs son placeholders). Revoca los dos en
+> Supabase → Account → Access Tokens y genera uno nuevo que viva sólo en `~/.zshrc`.
+
 ### Qué puede y qué NO puede hacer el agente
 
 | Puede (con el token exportado) | No puede — es tuyo |
@@ -70,6 +77,25 @@ despublicó. `admin@` es la crítica.
 De paso, confirma que **"Allow new users to sign up" sigue APAGADO** (se apagó en la remediación
 `007` y debe quedarse así — ver AGENTS.md).
 
+> ⚠️ **Se volvió a abrir solo, una vez.** El 2026-08-16 se apagó y se confirmó apagado tras recargar;
+> horas después estaba **encendido** otra vez. Se cerró de nuevo vía Management API
+> (`PATCH /v1/projects/{ref}/config/auth {"disable_signup": true}`) y se verificó con una relectura
+> independiente. **No se pudo determinar la causa:** los audit logs de organización requieren plan
+> Team/Enterprise (este org es Free) y el toggle de "Write audit logs" de Auth sólo registra eventos
+> de sesión, no cambios de configuración. Se descartó el mecanismo más común revisando el repo: **no
+> hay** GitHub Actions, `vercel.json`, `supabase/config.toml` ni ramas de Supabase branching, y
+> `deploy.sh` no toca Supabase. Quedan como hipótesis un `supabase link --yes` corrido esa noche, una
+> sesión humana en el dashboard, o que nunca llegó a persistir.
+>
+> **Canario:** el `site_url` se fijó a producción el mismo día. Si vuelve a `http://localhost:3000`
+> por su cuenta, hay algo re-aplicando configuración y hay que buscarlo en serio. Si sigue en
+> producción, el incidente fue puntual. **Verificar ambos valores al empezar la próxima sesión:**
+> ```bash
+> curl -s -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+>   https://api.supabase.com/v1/projects/mxgfkwwdhnoumboftjal/config/auth \
+>   | python3 -c "import json,sys; d=json.load(sys.stdin); print('disable_signup =', d['disable_signup']); print('site_url =', d['site_url'])"
+> ```
+
 **Verificación (SQL, la puede correr el agente):**
 ```sql
 select id, email, role, created_at
@@ -97,23 +123,20 @@ Sin esto, el correo de recuperación se envía pero **el enlace rebota**.
 **Cómo probarlo bien:** usa el propio flujo para ponerle la contraseña nueva a `admin@`. Verifica la
 tarea ① y la ② de una sola pasada, en la cuenta que más lo necesita.
 
+✅ **Hecho el 2026-08-16.** Las dos URLs están en la allow list. De paso se corrigió el **Site URL**,
+que era `http://localhost:3000` en un proyecto de PRODUCCIÓN: cualquier correo de auth que caiga al
+redirect por defecto mandaba al usuario a su propia máquina. Ahora es `https://despachr.vercel.app`.
+
 ---
 
-## ③ Coordenadas de las entregas · ~1 min
+## ③ Coordenadas de las entregas · ✅ YA ESTÁ
 
-El mapa del coordinador (PR #40) dibuja `deliveries.latitude/longitude`. Si vienen nulas, muestra un
-vacío **explicado** (correcto, pero no ves el mapa funcionando).
-
-```sql
-select count(*) as total, count(latitude) as con_coordenadas
-  from public.deliveries;
-```
-
-Si `con_coordenadas = 0`, dale algo que dibujar:
+Verificado el 2026-08-16: **6 de 6 entregas tienen coordenadas.** El mapa del coordinador dibuja
+pines, no el vacío explicado. No hay nada que hacer aquí.
 
 ```sql
-update public.deliveries set latitude = 8.7500,  longitude = -75.8814 where city ilike '%monter%';
-update public.deliveries set latitude = 10.9639, longitude = -74.7964 where city ilike '%barranquilla%';
+-- por si se quiere re-verificar
+select count(*) as total, count(latitude) as con_coordenadas from public.deliveries;
 ```
 
 > El mapa también dibuja la **última posición conocida por ruta**, que sale de las coordenadas de
@@ -158,8 +181,8 @@ curl -i -X POST \
 # correrlo dos veces → la segunda debe dar "alerted": 0 (ya existe la alerta activa)
 ```
 
-**f. Programar cada 5 min (SQL — lo puede hacer el agente).** Primero verificar extensiones, que
-puede que NO estén activas:
+**f. Programar cada 5 min (SQL — lo puede hacer el agente).** Verificado el 2026-08-16: **ninguna de
+las dos está instalada** (`cron.job` ni siquiera existe), así que este paso es obligatorio:
 ```sql
 select extname from pg_extension where extname in ('pg_cron','pg_net');
 create extension if not exists pg_cron;
@@ -203,9 +226,11 @@ inventadas (mock por decisión de alcance, van a v1.1 y las 4 lo dicen con su av
 
 ## Checklist
 
-- [ ] ① Contraseñas rotadas · signup sigue apagado
-- [ ] ② Redirect URLs agregadas · reset probado con `admin@`
-- [ ] ③ Coordenadas verificadas (o sembradas)
+- [ ] ① Contraseñas rotadas (el agente de Chrome NO hace esto: no teclea credenciales)
+- [x] ~~② Redirect URLs~~ + Site URL corregido a producción
+- [x] ~~③ Coordenadas~~ — 6/6 ya las tienen
+- [ ] Revocar los dos tokens `sbp_` y dejar el nuevo sólo en `~/.zshrc`
+- [ ] Re-verificar el canario (`disable_signup` y `site_url`) al abrir la próxima sesión
 - [ ] ④ Bot creado · secrets · deploy · curl OK · `pg_cron` programado y corriendo
 - [ ] `/qa` en verde
 - [ ] E2E manual en PC y celular
