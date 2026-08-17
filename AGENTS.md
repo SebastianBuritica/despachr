@@ -204,6 +204,13 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
 > Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
 
 ### `/lib` — Utilities & Clients
+- `offline/` — cola de operaciones del conductor: `db.ts` (IndexedDB, sin librería),
+  `cola.ts` (orden + corte + reintento, con dobles en las pruebas), `sync.ts` (cableado real).
+  **Los eventos llevan `id` y `timestamp` de CLIENTE** (`nuevaIdentidadEvento`): el id da
+  idempotencia (choque de PK al reenviar = ya estaba) y el timestamp guarda cuándo PASÓ el hecho,
+  no cuándo se pudo enviar — sin eso, `hora_llegada_punto` y `tiempo_en_punto_minutos` quedarían
+  con la hora del sync.
+- `cumplido.ts` — orquestación del cierre de entrega (probada; ver Tests)
 - `supabase.ts` — Supabase client initialization
 - `utils.ts` — Helpers: `cn()`, `formatDate()`, `calculateDistance()`
 
@@ -370,7 +377,7 @@ Fase 1.1  — driver: real data + GPS                                           
 Fase 1.2  — driver: real photo + signature capture                                     [done]
 Fase 1.3  — driver: novedades UI
 Fase 1.3b — driver: OTP login UI (phone sign-in)                                        [done]
-Fase 1.4  — service worker + offline event queue
+Fase 1.4  — driver: cola offline (IndexedDB) [done] + service worker [siguiente]
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliveries/estados/map/
             realtime/alerts touch no new columns, and coordinator RLS already grants SELECT on

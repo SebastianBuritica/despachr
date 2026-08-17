@@ -17,10 +17,13 @@ import {
   RotateCcw,
   Eraser,
   WifiOff,
+  CloudOff,
+  CloudUpload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { useConexion } from '@/hooks/useConexion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,10 +45,15 @@ import {
   type RutaDelDia,
   type EntregaConductor,
 } from '@/lib/queries/driver'
-import { registrarEvento } from '@/lib/queries/events'
+import {
+  registrarEvento,
+  nuevaIdentidadEvento,
+  type EventoIdentidad,
+} from '@/lib/queries/events'
 import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
-import { capturarUbicacion } from '@/lib/geo'
+import { capturarUbicacion, type Coords } from '@/lib/geo'
 import { confirmarCumplido, nuevoProgreso, type CumplidoProgreso } from '@/lib/cumplido'
+import { encolar } from '@/lib/offline/cola'
 import { normalizePhone, toTelHref } from '@/lib/phone'
 import type { EstadoEntrega } from '@/types'
 
@@ -88,6 +96,7 @@ function initials(name: string): string {
 
 export function DriverApp() {
   const { profile, user } = useAuth()
+  const { online, pendientes, refrescarPendientes } = useConexion()
   const [route, setRoute] = useState<RutaDelDia | null>(null)
   const [deliveries, setDeliveries] = useState<EntregaConductor[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,6 +108,7 @@ export function DriverApp() {
   const [, setTick] = useState(0)
   const [completedAt, setCompletedAt] = useState('')
   const [doneSeconds, setDoneSeconds] = useState(0)
+  const [donePendiente, setDonePendiente] = useState(false)
 
   // Estado de la conexión Realtime (indicador sutil de "sync en vivo caído").
   const [syncDown, setSyncDown] = useState(false)
@@ -200,14 +210,49 @@ export function DriverApp() {
 
   // "Llegué al punto" → evento llegada_punto (+GPS). El trigger de la BD pone
   // hora_llegada_punto y estado 'en_punto'; re-leemos en vez de recalcular.
+  //
+  // OFFLINE: la identidad (id + hora) se genera AQUÍ, cuando el conductor
+  // llega. Si el envío no pasa, el mismo evento se encola con esa identidad —
+  // así la hora registrada es la de la llegada real, no la del sync, y
+  // reenviarlo no lo duplica (choque de PK = ya estaba).
   const handleLlegue = async () => {
     if (!active) return
     setBusy(true)
+    const identidad = nuevaIdentidadEvento()
     try {
       const coords = await capturarUbicacion()
-      await registrarEvento('llegada_punto', active.id, active.routeId, coords)
-      await refetch(active.routeId)
-      if (!coords) toast('Evento registrado sin ubicación')
+      try {
+        await registrarEvento('llegada_punto', active.id, active.routeId, coords, identidad)
+        await refetch(active.routeId)
+        if (!coords) toast('Evento registrado sin ubicación')
+      } catch (envio) {
+        await encolar({
+          id: identidad.id,
+          tipo: 'evento',
+          // Deriva de la hora ya capturada: una sola fuente de tiempo, y así
+          // el orden de la cola coincide con el orden real de los hechos.
+          creadoEn: Date.parse(identidad.timestamp),
+          tipoEvento: 'llegada_punto',
+          deliveryId: active.id,
+          routeId: active.routeId,
+          coords,
+          timestamp: identidad.timestamp,
+        })
+        // Sin red no se puede re-leer, así que la fila se refleja localmente
+        // con lo que el trigger habría derivado. El próximo refetch corrige.
+        setDeliveries((ds) =>
+          ds.map((d) =>
+            d.id === active.id
+              ? { ...d, estado: 'en_punto' as EstadoEntrega, horaLlegada: identidad.timestamp }
+              : d
+          )
+        )
+        await refrescarPendientes()
+        toast('Guardado sin señal', {
+          description: 'Se enviará solo cuando vuelva la conexión.',
+        })
+        console.warn('Llegada encolada:', envio)
+      }
     } catch {
       toast.error('No se pudo registrar la llegada. Inténtalo de nuevo.')
     } finally {
@@ -218,10 +263,23 @@ export function DriverApp() {
   // Tras confirmar el cumplido (CaptureScreen ya subió evidencia + cerró la
   // entrega): re-lee para que la lista/DoneScreen reflejen la evidencia real, y
   // pasa a la pantalla de confirmación.
-  const handleConfirmed = async (result: { seconds: number; completedAt: string }) => {
+  const handleConfirmed = async (result: {
+    seconds: number
+    completedAt: string
+    pendienteDeEnvio?: boolean
+  }) => {
     setDoneSeconds(result.seconds)
     setCompletedAt(result.completedAt)
-    if (route) await refetch(route.id)
+    setDonePendiente(!!result.pendienteDeEnvio)
+    if (result.pendienteDeEnvio) {
+      // Sin red no hay nada que re-leer: se refleja localmente lo entregado.
+      setDeliveries((ds) =>
+        ds.map((d) => (d.id === activeId ? { ...d, estado: 'entregado' as EstadoEntrega } : d))
+      )
+      await refrescarPendientes()
+    } else if (route) {
+      await refetch(route.id)
+    }
     setScreen('done')
   }
 
@@ -256,6 +314,7 @@ export function DriverApp() {
         delivery={active}
         seconds={doneSeconds}
         completedAt={completedAt}
+        pendienteDeEnvio={donePendiente}
         onBack={() => setScreen('list')}
       />
     )
@@ -268,6 +327,8 @@ export function DriverApp() {
       deliveries={deliveries}
       doneCount={doneCount}
       syncDown={syncDown}
+      online={online}
+      pendientes={pendientes}
       onOpen={open}
     />
   )
@@ -281,6 +342,8 @@ function ListScreen({
   deliveries,
   doneCount,
   syncDown,
+  online,
+  pendientes,
   onOpen,
 }: {
   route: RutaDelDia | null
@@ -288,6 +351,8 @@ function ListScreen({
   deliveries: EntregaConductor[]
   doneCount: number
   syncDown: boolean
+  online: boolean
+  pendientes: number
   onOpen: (d: EntregaConductor) => void
 }) {
   const router = useRouter()
@@ -347,11 +412,24 @@ function ListScreen({
           </span>
         </div>
 
-        {syncDown && (
+        {!online ? (
           <p className="mt-3 flex items-center gap-1.5 text-[11px] text-panel-muted">
-            <WifiOff className="size-3" />
-            Sin conexión en vivo · reintentando…
+            <CloudOff className="size-3" />
+            Sin señal · lo que registres se guarda y se envía solo
+            {pendientes > 0 && ` · ${pendientes} por enviar`}
           </p>
+        ) : pendientes > 0 ? (
+          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-panel-muted">
+            <CloudUpload className="size-3 animate-pulse" />
+            Enviando {pendientes} {pendientes === 1 ? 'registro' : 'registros'} pendientes…
+          </p>
+        ) : (
+          syncDown && (
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-panel-muted">
+              <WifiOff className="size-3" />
+              Sin conexión en vivo · reintentando…
+            </p>
+          )
         )}
       </header>
 
@@ -579,7 +657,11 @@ function CaptureScreen({
 }: {
   delivery: EntregaConductor
   onBack: () => void
-  onConfirmed: (r: { seconds: number; completedAt: string }) => void | Promise<void>
+  onConfirmed: (r: {
+    seconds: number
+    completedAt: string
+    pendienteDeEnvio?: boolean
+  }) => void | Promise<void>
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const signatureRef = useRef<SignaturePadHandle>(null)
@@ -595,6 +677,12 @@ function CaptureScreen({
   // un ref porque debe sobrevivir al re-render que provoca el error, no
   // dispararlo. La orquestación y sus pruebas están en lib/cumplido.ts.
   const progresoRef = useRef<CumplidoProgreso>(nuevoProgreso())
+  // Identidad del evento de salida y coords: se fijan en el PRIMER intento y
+  // se reusan al encolar, para que la hora y el lugar sean los de la entrega.
+  // Se crean dentro del handler, no en render: generar un UUID al renderizar es
+  // impuro y además desperdicia uno por cada re-render.
+  const salidaRef = useRef<EventoIdentidad | null>(null)
+  const coordsRef = useRef<Coords | null>(null)
 
   // Libera el object URL del preview al reemplazar/desmontar (evita fuga).
   useEffect(() => {
@@ -637,6 +725,8 @@ function CaptureScreen({
 
   const confirm = async () => {
     if (!photoFile) return
+    salidaRef.current ??= nuevaIdentidadEvento()
+    const salida = salidaRef.current
     setBusy(true)
     try {
       const { coords } = await confirmarCumplido(
@@ -653,9 +743,12 @@ function CaptureScreen({
           subirFoto: uploadCumplido,
           subirFirma: uploadFirma,
           registrarSalida: (deliveryId, routeId, c) =>
-            registrarEvento('salida_punto', deliveryId, routeId, c),
+            registrarEvento('salida_punto', deliveryId, routeId, c, salida),
           marcarEntregada,
-          capturarUbicacion,
+          capturarUbicacion: async () => {
+            coordsRef.current ??= await capturarUbicacion()
+            return coordsRef.current
+          },
         },
         {
           onEtapa: setStage,
@@ -676,12 +769,46 @@ function CaptureScreen({
         }),
       })
     } catch (e) {
-      const msg =
-        e instanceof StorageError
-          ? e.message
-          : 'No se pudo guardar el cumplido. Revisa tu conexión y reintenta — no perdiste la captura.'
-      toast.error(msg)
-      // photoFile, firma y los paths ya subidos se conservan → el reintento reusa.
+      // OFFLINE: el cumplido se encola COMPLETO — foto y firma como Blobs en
+      // IndexedDB, más las coords y la identidad del evento de salida. Es la
+      // diferencia entre "reintenta cuando vuelvas a tener señal" (que obliga
+      // al conductor a quedarse en el punto) y "sigue tu ruta, esto se envía
+      // solo". Un File en estado de React no sobrevive ni a recargar.
+      try {
+        const firma = hasSignature ? ((await signatureRef.current?.toBlob()) ?? null) : null
+        await encolar({
+          id: salida.id,
+          tipo: 'cumplido',
+          creadoEn: Date.parse(salida.timestamp),
+          deliveryId: delivery.id,
+          routeId: delivery.routeId,
+          foto: photoFile,
+          firma,
+          recibidoPor: receiver.trim(),
+          coords: coordsRef.current,
+          salida,
+          progreso: progresoRef.current,
+        })
+        await onConfirmed({
+          seconds: elapsedSeconds(delivery.horaLlegada),
+          completedAt: new Date().toLocaleTimeString('es-CO', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          pendienteDeEnvio: true,
+        })
+        return
+      } catch (encolarError) {
+        // Ni siquiera se pudo encolar (sin IndexedDB, cuota llena). Aquí sí hay
+        // que retener al conductor: la captura sigue en pantalla y es lo único
+        // que queda de la evidencia.
+        console.error('No se pudo encolar el cumplido:', encolarError)
+        const msg =
+          e instanceof StorageError
+            ? e.message
+            : 'No se pudo guardar el cumplido. Revisa tu conexión y reintenta — no perdiste la captura.'
+        toast.error(msg)
+      }
     } finally {
       setBusy(false)
       setStage(null)
@@ -814,18 +941,27 @@ function DoneScreen({
   delivery,
   seconds,
   completedAt,
+  pendienteDeEnvio,
   onBack,
 }: {
   delivery: EntregaConductor
   seconds: number
   completedAt: string
+  pendienteDeEnvio: boolean
   onBack: () => void
 }) {
   // Evidencia HONESTA: refleja lo realmente persistido, no un check fijo.
+  // Encolado: la evidencia está en el dispositivo, no en el servidor todavía,
+  // así que delivery.fotoUrl aún es null. Afirmar "Foto ✓" sería mentir en la
+  // dirección peligrosa; afirmar "Sin evidencia" mentiría en la otra.
   const partes: string[] = []
   if (delivery.fotoUrl) partes.push('Foto')
   if (delivery.firmaUrl) partes.push('firma')
-  const evidencia = partes.length ? `${partes.join(' + ')} ✓` : 'Sin evidencia'
+  const evidencia = pendienteDeEnvio
+    ? 'Guardada en el equipo'
+    : partes.length
+      ? `${partes.join(' + ')} ✓`
+      : 'Sin evidencia'
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
@@ -834,8 +970,19 @@ function DoneScreen({
       </span>
       <h1 className="mt-6 text-2xl font-bold tracking-tight">Entrega confirmada</h1>
       <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-        El cumplido de <span className="font-semibold text-foreground">{delivery.cliente}</span> fue
-        registrado y enviado a coordinación.
+        {pendienteDeEnvio ? (
+          <>
+            El cumplido de{' '}
+            <span className="font-semibold text-foreground">{delivery.cliente}</span> quedó guardado
+            en tu equipo. Se envía a coordinación apenas vuelva la señal — puedes seguir tu ruta.
+          </>
+        ) : (
+          <>
+            El cumplido de{' '}
+            <span className="font-semibold text-foreground">{delivery.cliente}</span> fue registrado
+            y enviado a coordinación.
+          </>
+        )}
       </p>
 
       <div className="mt-8 w-full max-w-xs space-y-2 rounded-xl border border-border bg-card p-4 text-left text-sm shadow-card">
