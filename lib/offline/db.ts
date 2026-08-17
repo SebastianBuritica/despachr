@@ -12,8 +12,11 @@
 // por 3G no se paga sola.
 
 const DB_NAME = 'despachr-offline'
-const DB_VERSION = 1
+const DB_VERSION = 2
 export const STORE_PENDIENTES = 'pendientes'
+// Store aparte: el snapshot NO puede aparecer en listar() de pendientes, o la
+// cola intentaría "enviarlo" como si fuera una operación.
+export const STORE_SNAPSHOT = 'snapshot'
 
 function abrir(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -25,6 +28,9 @@ function abrir(): Promise<IDBDatabase> {
         // Se procesa en orden de creación: la llegada antes que la salida, o el
         // trigger de la BD derivaría un tiempo en punto sin sentido.
         store.createIndex('creadoEn', 'creadoEn')
+      }
+      if (!db.objectStoreNames.contains(STORE_SNAPSHOT)) {
+        db.createObjectStore(STORE_SNAPSHOT, { keyPath: 'id' })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -84,4 +90,29 @@ export async function contar(): Promise<number> {
 // qué hacer: la app sigue funcionando sin cola, sólo que sin resiliencia.
 export function hayIndexedDB(): boolean {
   return typeof indexedDB !== 'undefined'
+}
+
+// --- Store genérico (snapshot de la ruta) ---------------------------------
+
+export async function guardarEn<T extends { id: string }>(
+  store: string,
+  registro: T
+): Promise<void> {
+  const db = await abrir()
+  try {
+    const tx = db.transaction(store, 'readwrite')
+    await promesa(tx.objectStore(store).put(registro))
+  } finally {
+    db.close()
+  }
+}
+
+export async function leerDe<T>(store: string, id: string): Promise<T | undefined> {
+  const db = await abrir()
+  try {
+    const tx = db.transaction(store, 'readonly')
+    return await promesa(tx.objectStore(store).get(id) as IDBRequest<T | undefined>)
+  } finally {
+    db.close()
+  }
 }

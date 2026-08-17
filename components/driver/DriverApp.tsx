@@ -54,6 +54,7 @@ import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
 import { capturarUbicacion, type Coords } from '@/lib/geo'
 import { confirmarCumplido, nuevoProgreso, type CumplidoProgreso } from '@/lib/cumplido'
 import { encolar } from '@/lib/offline/cola'
+import { guardarSnapshot, leerSnapshot } from '@/lib/offline/snapshot'
 import { normalizePhone, toTelHref } from '@/lib/phone'
 import type { EstadoEntrega } from '@/types'
 
@@ -101,6 +102,8 @@ export function DriverApp() {
   const [deliveries, setDeliveries] = useState<EntregaConductor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  // Marca de tiempo del snapshot cuando la ruta se muestra sin conexión.
+  const [desdeSnapshot, setDesdeSnapshot] = useState<number | null>(null)
 
   const [screen, setScreen] = useState<Screen>('list')
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -130,11 +133,28 @@ export function DriverApp() {
   const load = useCallback(async (silent = false) => {
     try {
       const r = await getRutaDelDia()
+      const ds = r ? await getEntregasDeRuta(r.id) : []
       setRoute(r)
-      setDeliveries(r ? await getEntregasDeRuta(r.id) : [])
+      setDeliveries(ds)
+      setDesdeSnapshot(null)
+      // Se guarda lo último bueno para poder arrancar sin señal (ver snapshot.ts).
+      void guardarSnapshot(r, ds, Date.parse(new Date().toISOString()))
     } catch (e) {
-      if (!silent) setError(e instanceof Error ? e : new Error('Error al cargar la ruta'))
-      else console.warn('Recarga por Realtime falló:', e)
+      // Sin red: en vez de la pantalla de error, la última ruta conocida —
+      // marcada como tal. Un conductor sin sus paradas no puede trabajar; uno
+      // con las paradas de ayer creyéndolas de hoy es peor. Por eso se muestra
+      // CON la hora del dato y sólo cuando la carga falló de verdad.
+      const snap = await leerSnapshot()
+      if (snap) {
+        setRoute(snap.route)
+        setDeliveries(snap.deliveries)
+        setDesdeSnapshot(snap.guardadoEn)
+        console.warn('Mostrando ruta desde snapshot offline:', e)
+      } else if (!silent) {
+        setError(e instanceof Error ? e : new Error('Error al cargar la ruta'))
+      } else {
+        console.warn('Recarga por Realtime falló:', e)
+      }
     } finally {
       if (!silent) setLoading(false)
     }
@@ -329,6 +349,7 @@ export function DriverApp() {
       syncDown={syncDown}
       online={online}
       pendientes={pendientes}
+      desdeSnapshot={desdeSnapshot}
       onOpen={open}
     />
   )
@@ -344,6 +365,7 @@ function ListScreen({
   syncDown,
   online,
   pendientes,
+  desdeSnapshot,
   onOpen,
 }: {
   route: RutaDelDia | null
@@ -353,6 +375,7 @@ function ListScreen({
   syncDown: boolean
   online: boolean
   pendientes: number
+  desdeSnapshot: number | null
   onOpen: (d: EntregaConductor) => void
 }) {
   const router = useRouter()
@@ -412,10 +435,12 @@ function ListScreen({
           </span>
         </div>
 
-        {!online ? (
+        {!online || desdeSnapshot ? (
           <p className="mt-3 flex items-center gap-1.5 text-[11px] text-panel-muted">
             <CloudOff className="size-3" />
-            Sin señal · lo que registres se guarda y se envía solo
+            {desdeSnapshot
+              ? `Sin conexión · datos de las ${new Date(desdeSnapshot).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`
+              : 'Sin señal · lo que registres se guarda y se envía solo'}
             {pendientes > 0 && ` · ${pendientes} por enviar`}
           </p>
         ) : pendientes > 0 ? (

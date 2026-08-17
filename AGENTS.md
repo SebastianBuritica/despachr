@@ -155,6 +155,13 @@ className="bg-muted text-muted-foreground"        // neutros
 
 ## 📁 Project Structure
 
+> **Service worker (`public/sw.js`)** — registrado SÓLO bajo `/driver` (el único rol que trabaja sin
+> señal; coordinación y admin operan con wifi de oficina) y sólo en producción (un shell cacheado
+> peleando con el HMR de Turbopack es un bug fantasma caro). Navegaciones: **red primero** con caída
+> al shell cacheado — nunca caché primero, o un despliegue tardaría en llegarle al conductor.
+> `/_next/static/**`: caché primero (llevan hash, son inmutables). **Supabase, `/api/` y cualquier
+> otro origen: jamás se cachean.** Sin Workbox ni next-pwa: son ~40 líneas.
+
 ### `/app` — Next.js Routes
 ```
 app/
@@ -204,7 +211,10 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
 > Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
 
 ### `/lib` — Utilities & Clients
-- `offline/` — cola de operaciones del conductor: `db.ts` (IndexedDB, sin librería),
+- `offline/` — resiliencia sin señal del conductor: `db.ts` (IndexedDB, sin librería),
+  `snapshot.ts` (última ruta conocida: el SW sirve el shell, pero las entregas vienen de Supabase y
+  **esas peticiones nunca se cachean** — servir la ruta de ayer como si fuera la de hoy es peor que
+  no mostrar nada; el snapshot se usa SÓLO si la carga falla y la UI dice de qué hora es el dato),
   `cola.ts` (orden + corte + reintento, con dobles en las pruebas), `sync.ts` (cableado real).
   **Los eventos llevan `id` y `timestamp` de CLIENTE** (`nuevaIdentidadEvento`): el id da
   idempotencia (choque de PK al reenviar = ya estaba) y el timestamp guarda cuándo PASÓ el hecho,
@@ -377,7 +387,7 @@ Fase 1.1  — driver: real data + GPS                                           
 Fase 1.2  — driver: real photo + signature capture                                     [done]
 Fase 1.3  — driver: novedades UI
 Fase 1.3b — driver: OTP login UI (phone sign-in)                                        [done]
-Fase 1.4  — driver: cola offline (IndexedDB) [done] + service worker [siguiente]
+Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ruta   [done]
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2    — coordinator: real data + map + alerts   (NOT blocked: routes/deliveries/estados/map/
             realtime/alerts touch no new columns, and coordinator RLS already grants SELECT on
