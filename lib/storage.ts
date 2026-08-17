@@ -31,6 +31,10 @@ function firmaPath(routeId: string, deliveryId: string): string {
   return `${routeId}/${deliveryId}/firma.png`
 }
 
+function novedadPath(routeId: string, deliveryId: string): string {
+  return `${routeId}/${deliveryId}/novedad.jpg`
+}
+
 // Con upsert:false, si ya hay un objeto en el path Supabase responde 409
 // "Duplicate". Como el path es DETERMINISTA por entrega, un objeto ahí ES la
 // evidencia de esta entrega → la subida anterior SÍ tuvo éxito (falla típica en
@@ -122,6 +126,38 @@ export async function uploadCumplido(
     // Ya existe en este path (determinista por entrega) = ya se había subido.
     if (isDuplicateError(error)) return path
     throw new StorageError(`No se pudo subir el cumplido: ${error.message}`)
+  }
+  return path
+}
+
+/**
+ * Sube la foto de una novedad (mercancía dañada, faltante, dirección errada).
+ * Mismo bucket y misma RLS que el cumplido: la política parsea el route_id del
+ * path, así que basta con respetar `{routeId}/{deliveryId}/…`.
+ * @returns el path del objeto (para issues.foto_novedad_url).
+ */
+export async function uploadNovedad(
+  routeId: string,
+  deliveryId: string,
+  file: File
+): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new StorageError(`Tipo de archivo no soportado: ${file.type || 'desconocido'}`)
+  }
+
+  const blob = await compressImage(file)
+  if (blob.size > MAX_UPLOAD_BYTES) {
+    throw new StorageError('La imagen supera 5 MB incluso tras comprimir')
+  }
+
+  const path = novedadPath(routeId, deliveryId)
+  const { error } = await supabase.storage
+    .from(CUMPLIDOS_BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: false })
+
+  if (error) {
+    if (isDuplicateError(error)) return path
+    throw new StorageError(`No se pudo subir la foto de la novedad: ${error.message}`)
   }
   return path
 }

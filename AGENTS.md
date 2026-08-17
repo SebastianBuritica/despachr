@@ -92,7 +92,7 @@ This system reflects an **actual operational workflow** from the pilot client:
 |------|-----------|
 | **cumplido** | Proof of delivery — photo of invoice signed by receiver |
 | **malla** | Weekly consolidated delivery plan (multi-client routes) |
-| **novedad** | Any problem during delivery (rejection, shortage, damage, etc) |
+| **novedad** | Any problem during delivery (rejection, shortage, damage, etc). **Reporting one CLOSES the delivery** — `deliveries.estado='novedad'` is terminal like `entregado`, and `check_route_completion` already counts it as closed, so a route completes with novedades inside. The driver reports and moves on; resolving it is the coordinator's job. |
 | **flete** | Payment to driver/transporter for the service |
 | **despacho** | Shipment/delivery of merchandise |
 | **manifiesto de carga** | Legal shipping document |
@@ -220,7 +220,9 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
   idempotencia (choque de PK al reenviar = ya estaba) y el timestamp guarda cuándo PASÓ el hecho,
   no cuándo se pudo enviar — sin eso, `hora_llegada_punto` y `tiempo_en_punto_minutos` quedarían
   con la hora del sync.
-- `cumplido.ts` — orquestación del cierre de entrega (probada; ver Tests)
+- `cumplido.ts` / `novedad.ts` — orquestación de los dos cierres posibles de una entrega
+  (entregada o con novedad). Misma forma: dependencias inyectadas, progreso mutable para reanudar,
+  y el cambio de estado SIEMPRE de último. Ambas probadas y ambas encolables offline.
 - `supabase.ts` — Supabase client initialization
 - `utils.ts` — Helpers: `cn()`, `formatDate()`, `calculateDistance()`
 
@@ -385,7 +387,7 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 Fase 1.0  — infra scaffolding (error/loading/not-found + empty states + UX hardening)   [done]
 Fase 1.1  — driver: real data + GPS                                                     [done]
 Fase 1.2  — driver: real photo + signature capture                                     [done]
-Fase 1.3  — driver: novedades UI
+Fase 1.3  — driver: novedades UI                                                        [done]
 Fase 1.3b — driver: OTP login UI (phone sign-in)                                        [done]
 Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ruta   [done]
 Manual    — Telegram bot + pg_cron deploy (owner runs these)

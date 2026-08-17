@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Eraser,
   WifiOff,
+  TriangleAlert,
   CloudOff,
   CloudUpload,
 } from 'lucide-react'
@@ -54,11 +55,20 @@ import { uploadCumplido, uploadFirma, StorageError } from '@/lib/storage'
 import { capturarUbicacion, type Coords } from '@/lib/geo'
 import { confirmarCumplido, nuevoProgreso, type CumplidoProgreso } from '@/lib/cumplido'
 import { encolar } from '@/lib/offline/cola'
+import {
+  reportarNovedad,
+  nuevoProgresoNovedad,
+  type NovedadProgreso,
+} from '@/lib/novedad'
+import { crearNovedad, marcarConNovedad } from '@/lib/queries/issues'
+import { uploadNovedad } from '@/lib/storage'
+import { Textarea } from '@/components/ui/textarea'
+import type { TipoNovedad } from '@/types'
 import { guardarSnapshot, leerSnapshot } from '@/lib/offline/snapshot'
 import { normalizePhone, toTelHref } from '@/lib/phone'
 import type { EstadoEntrega } from '@/types'
 
-type Screen = 'list' | 'active' | 'capture' | 'done'
+type Screen = 'list' | 'active' | 'capture' | 'novedad' | 'done'
 
 // Presentación de cada estado de entrega (label + tono del badge). Antes vivía
 // en el mock; ahora es constante de UI del conductor.
@@ -303,6 +313,20 @@ export function DriverApp() {
     setScreen('done')
   }
 
+  // Una novedad CIERRA la entrega: se vuelve a la lista, no a la pantalla de
+  // confirmación del cumplido (no hubo entrega que confirmar).
+  const handleNovedadReportada = async (pendienteDeEnvio: boolean) => {
+    if (pendienteDeEnvio) {
+      setDeliveries((ds) =>
+        ds.map((d) => (d.id === activeId ? { ...d, estado: 'novedad' as EstadoEntrega } : d))
+      )
+      await refrescarPendientes()
+    } else if (route) {
+      await refetch(route.id)
+    }
+    setScreen('list')
+  }
+
   if (screen === 'active' && active) {
     return (
       <ActiveScreen
@@ -314,6 +338,7 @@ export function DriverApp() {
         onBack={() => setScreen('list')}
         onLlegue={handleLlegue}
         onCapture={() => setScreen('capture')}
+        onNovedad={() => setScreen('novedad')}
       />
     )
   }
@@ -324,6 +349,16 @@ export function DriverApp() {
         delivery={active}
         onBack={() => setScreen('active')}
         onConfirmed={handleConfirmed}
+      />
+    )
+  }
+
+  if (screen === 'novedad' && active) {
+    return (
+      <NovedadScreen
+        delivery={active}
+        onBack={() => setScreen('active')}
+        onReportada={handleNovedadReportada}
       />
     )
   }
@@ -537,6 +572,7 @@ function ActiveScreen({
   onBack,
   onLlegue,
   onCapture,
+  onNovedad,
 }: {
   delivery: EntregaConductor
   index: number
@@ -546,6 +582,7 @@ function ActiveScreen({
   onBack: () => void
   onLlegue: () => void
   onCapture: () => void
+  onNovedad: () => void
 }) {
   const s = ESTADO_UI[delivery.estado]
   const pendiente = delivery.estado === 'pendiente'
@@ -650,10 +687,24 @@ function ActiveScreen({
             {busy ? 'Registrando…' : 'Llegué al punto'}
           </Button>
         ) : enPunto ? (
-          <Button className="h-12 w-full" onClick={onCapture} disabled={busy}>
-            <Camera className="size-4" />
-            Capturar cumplido
-          </Button>
+          <div className="space-y-2">
+            <Button className="h-12 w-full" onClick={onCapture} disabled={busy}>
+              <Camera className="size-4" />
+              Capturar cumplido
+            </Button>
+            {/* Secundario y no destructivo: reportar una novedad es parte del
+                trabajo normal, no un fallo del conductor. Pero CIERRA la
+                entrega, así que la pantalla siguiente lo confirma. */}
+            <Button
+              variant="outline"
+              className="h-11 w-full"
+              onClick={onNovedad}
+              disabled={busy}
+            >
+              <TriangleAlert className="size-4" />
+              Reportar novedad
+            </Button>
+          </div>
         ) : (
           <Button className="h-12 w-full" variant="outline" onClick={onBack}>
             Volver a la ruta
@@ -954,6 +1005,239 @@ function CaptureScreen({
             : ready
               ? 'Confirmar entrega'
               : 'Completa foto y quién recibe'}
+        </Button>
+      </footer>
+    </div>
+  )
+}
+
+/* --------------------------- Novedad --------------------------- */
+
+// Etiquetas de cara al conductor. Los valores son los del CHECK de issues
+// (scripts/schema.sql) — no inventar variantes nuevas aquí.
+const TIPOS_NOVEDAD: { valor: TipoNovedad; label: string; ayuda: string }[] = [
+  { valor: 'rechazo', label: 'Rechazo', ayuda: 'El cliente no recibe la mercancía' },
+  { valor: 'faltante', label: 'Faltante', ayuda: 'Llegaron menos unidades de las despachadas' },
+  { valor: 'danado', label: 'Mercancía dañada', ayuda: 'Averías, mojado, empaque roto' },
+  { valor: 'cliente_ausente', label: 'Cliente ausente', ayuda: 'Cerrado o sin quien reciba' },
+  { valor: 'direccion_errada', label: 'Dirección errada', ayuda: 'La dirección no corresponde' },
+  { valor: 'otro', label: 'Otro', ayuda: 'Algo distinto: descríbelo abajo' },
+]
+
+function NovedadScreen({
+  delivery,
+  onBack,
+  onReportada,
+}: {
+  delivery: EntregaConductor
+  onBack: () => void
+  onReportada: (pendienteDeEnvio: boolean) => void | Promise<void>
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [tipo, setTipo] = useState<TipoNovedad | null>(null)
+  const [descripcion, setDescripcion] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [stage, setStage] = useState<string | null>(null)
+
+  const progresoRef = useRef<NovedadProgreso>(nuevoProgresoNovedad())
+  const idRef = useRef<EventoIdentidad | null>(null)
+  const eventoRef = useRef<EventoIdentidad | null>(null)
+  const coordsRef = useRef<Coords | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+    }
+  }, [photoPreview])
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+    progresoRef.current.fotoPath = null
+  }
+
+  // La descripción es obligatoria: es lo único que el coordinador lee para
+  // decidir qué hacer. Un tipo sin texto no le sirve para nada.
+  const ready = !!tipo && descripcion.trim().length >= 3
+
+  const enviar = async () => {
+    if (!tipo || !ready) return
+    idRef.current ??= nuevaIdentidadEvento()
+    eventoRef.current ??= nuevaIdentidadEvento()
+    const novedadId = idRef.current.id
+    const evento = eventoRef.current
+    setBusy(true)
+    try {
+      await reportarNovedad(
+        {
+          novedadId,
+          routeId: delivery.routeId,
+          deliveryId: delivery.id,
+          tipo,
+          descripcion,
+          foto: photoFile,
+        },
+        progresoRef.current,
+        {
+          subirFoto: uploadNovedad,
+          crearNovedad,
+          registrarEventoNovedad: (deliveryId, routeId, c) =>
+            registrarEvento('novedad', deliveryId, routeId, c, evento),
+          marcarConNovedad,
+          capturarUbicacion: async () => {
+            coordsRef.current ??= await capturarUbicacion()
+            return coordsRef.current
+          },
+        },
+        { onEtapa: setStage }
+      )
+      toast.success('Novedad reportada', {
+        description: 'Coordinación ya puede verla. La entrega queda cerrada.',
+      })
+      await onReportada(false)
+    } catch (e) {
+      // Igual que el cumplido: sin red se encola completa, con foto incluida.
+      try {
+        await encolar({
+          id: novedadId,
+          tipo: 'novedad',
+          creadoEn: Date.parse(idRef.current.timestamp),
+          deliveryId: delivery.id,
+          routeId: delivery.routeId,
+          tipoNovedad: tipo,
+          descripcion: descripcion.trim(),
+          foto: photoFile,
+          coords: coordsRef.current,
+          evento,
+          progreso: progresoRef.current,
+        })
+        toast('Novedad guardada sin señal', {
+          description: 'Se envía a coordinación cuando vuelva la conexión.',
+        })
+        await onReportada(true)
+      } catch (encolarError) {
+        console.error('No se pudo encolar la novedad:', encolarError)
+        toast.error(
+          e instanceof StorageError
+            ? e.message
+            : 'No se pudo reportar la novedad. Revisa tu conexión y reintenta.'
+        )
+      }
+    } finally {
+      setBusy(false)
+      setStage(null)
+    }
+  }
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card px-4 py-3">
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Volver">
+          <ChevronLeft className="size-5" />
+        </Button>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">Reportar novedad</p>
+          <p className="truncate text-xs text-muted-foreground">{delivery.cliente}</p>
+        </div>
+      </header>
+
+      <div className="flex-1 space-y-5 p-4">
+        <p className="rounded-lg border border-[#FDE68A] bg-[#FEF9C3] px-3.5 py-2.5 text-[13px] text-[#B45309] dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-[#FBBF24]">
+          Reportar una novedad <span className="font-semibold">cierra esta entrega</span>. No
+          podrás capturar el cumplido después.
+        </p>
+
+        <div className="space-y-2">
+          <Label>¿Qué pasó?</Label>
+          <div className="grid gap-2">
+            {TIPOS_NOVEDAD.map((t) => (
+              <button
+                key={t.valor}
+                type="button"
+                onClick={() => setTipo(t.valor)}
+                aria-pressed={tipo === t.valor}
+                className={cn(
+                  'rounded-xl border p-3 text-left transition-colors',
+                  tipo === t.valor
+                    ? 'border-brand bg-brand/5 ring-1 ring-brand'
+                    : 'border-border bg-card'
+                )}
+              >
+                <p className="text-sm font-semibold">{t.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t.ayuda}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="descripcion">Cuéntanos qué pasó</Label>
+          <Textarea
+            id="descripcion"
+            placeholder="Ej: dos cajas llegaron mojadas, el cliente recibió el resto"
+            maxLength={500}
+            rows={4}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Es lo que lee coordinación para resolverla.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Foto (opcional)</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={onPickPhoto}
+          />
+          {photoPreview ? (
+            <div className="space-y-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoPreview}
+                alt="Foto de la novedad"
+                className="w-full rounded-xl border border-border object-cover"
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <RotateCcw className="size-4" />
+                Tomar otra
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-24 w-full flex-col gap-1"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera className="size-5" />
+              <span className="text-xs font-normal text-muted-foreground">
+                Sirve como evidencia del daño o faltante
+              </span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <footer className="sticky bottom-0 border-t border-border bg-card p-4">
+        <Button className="h-12 w-full" onClick={enviar} disabled={!ready || busy}>
+          {busy && <Loader2 className="size-4 animate-spin" />}
+          {busy ? (stage ?? 'Enviando…') : 'Reportar y cerrar entrega'}
         </Button>
       </footer>
     </div>
