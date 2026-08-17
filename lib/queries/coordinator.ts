@@ -279,3 +279,64 @@ export async function getClientesOperativos(): Promise<ClienteCoordinador[]> {
     }
   })
 }
+
+
+export interface PosicionRuta {
+  routeId: string
+  latitude: number
+  longitude: number
+  timestamp: string
+}
+
+/**
+ * Última posición conocida por ruta.
+ *
+ * NO hay tabla de tracking: el schema no guarda la posición del vehículo en
+ * continuo. Lo que sí existe son las coordenadas de los EVENTOS del conductor
+ * (llegada, salida, novedad), capturadas por `lib/geo.ts`. La última de esas es
+ * el mejor "dónde va" disponible — y es un dato real, no una interpolación. Por
+ * eso la UI muestra la hora: una posición de hace tres horas no es "ahora".
+ */
+export async function getUltimasPosiciones(routeIds: string[]): Promise<PosicionRuta[]> {
+  if (routeIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('delivery_events')
+    .select('route_id, latitude, longitude, timestamp')
+    .in('route_id', routeIds)
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null)
+    .order('timestamp', { ascending: false })
+
+  if (error) throw error
+
+  // Se queda la primera de cada ruta: el order ya las trajo de más nueva a más vieja.
+  const vistas = new Map<string, PosicionRuta>()
+  for (const row of (data ?? []) as {
+    route_id: string
+    latitude: number
+    longitude: number
+    timestamp: string
+  }[]) {
+    if (!vistas.has(row.route_id)) {
+      vistas.set(row.route_id, {
+        routeId: row.route_id,
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        timestamp: row.timestamp,
+      })
+    }
+  }
+  return [...vistas.values()]
+}
+
+export interface OperacionEnVivo {
+  rutas: RutaCoordinador[]
+  posiciones: PosicionRuta[]
+}
+
+export async function getOperacionEnVivo(): Promise<OperacionEnVivo> {
+  const rutas = await getRutasDelDia()
+  const posiciones = await getUltimasPosiciones(rutas.map((r) => r.id))
+  return { rutas, posiciones }
+}

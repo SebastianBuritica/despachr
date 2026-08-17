@@ -18,21 +18,34 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Route as RouteIcon, WifiOff } from 'lucide-react'
+import { useCallback } from 'react'
 import { useCoordinadorData } from '@/hooks/useCoordinadorData'
-import { getRutasDelDia } from '@/lib/queries/coordinator'
+import { getOperacionEnVivo } from '@/lib/queries/coordinator'
+import { getAlertasActivas } from '@/lib/queries/alerts'
 import { rutaBadge, horaCorta } from '@/lib/estados'
-import { LIVE_ALERTS } from '@/lib/mock/coordinator'
 
 export default function OperacionEnVivoPage() {
-  const { data, loading, error, syncDown } = useCoordinadorData(getRutasDelDia, 'coord-operacion')
+  // Una sola consulta para rutas + posiciones + alertas: las tres se refrescan
+  // con los mismos cambios de Realtime, así que separar las suscripciones sólo
+  // dejaría el mapa y las alertas desfasados del tablero.
+  const cargar = useCallback(async () => {
+    const [operacion, alertas] = await Promise.all([getOperacionEnVivo(), getAlertasActivas()])
+    return { ...operacion, alertas }
+  }, [])
+
+  const { data, loading, error, syncDown, refetch } = useCoordinadorData(
+    cargar,
+    'coord-operacion'
+  )
   if (error) throw error
   if (loading || !data) return <SectionSkeleton />
 
-  const enRuta = data.filter((r) => r.estado === 'en_curso').length
-  const completadas = data.filter((r) => r.estado === 'completada').length
-  const paradasHoy = data.reduce((total, r) => total + r.total, 0)
-  const retrasadas = data.filter((r) => r.retrasada).length
-  const enCurso = data.filter((r) => r.estado !== 'pendiente')
+  const { rutas, posiciones, alertas } = data
+  const enRuta = rutas.filter((r) => r.estado === 'en_curso').length
+  const completadas = rutas.filter((r) => r.estado === 'completada').length
+  const paradasHoy = rutas.reduce((total, r) => total + r.total, 0)
+  const retrasadas = rutas.filter((r) => r.retrasada).length
+  const enCurso = rutas.filter((r) => r.estado !== 'pendiente')
 
   return (
     <div className="space-y-6">
@@ -55,7 +68,7 @@ export default function OperacionEnVivoPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">
-        <LiveMap />
+        <LiveMap rutas={rutas} posiciones={posiciones} />
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -68,10 +81,10 @@ export default function OperacionEnVivoPage() {
               tone={retrasadas > 0 ? 'danger' : 'default'}
             />
           </div>
-          {/* Las alertas siguen siendo mock: la tabla `alerts` existe pero se
-              llena con la edge function, que está pendiente de desplegar.
-              Conectarlas es E.2. */}
-          <AlertsCard alerts={LIVE_ALERTS} />
+          {/* Reales: la tabla `alerts` la llena la edge function
+              check-tiempo-en-punto. Mientras esté sin desplegar, la lista sale
+              vacía — que es la verdad, no un error. */}
+          <AlertsCard alerts={alertas} onResuelta={() => refetch(true)} />
         </div>
       </div>
 
