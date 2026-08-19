@@ -97,7 +97,12 @@ public and already had one credential incident. Details in [SUPABASE-PENDIENTE.m
 1. **The four manual steps**, then an E2E pass on desktop + phone.
 2. **v1.1 — Admin depth** (KPIs, client CRUD, invoicing) now that real data will start accumulating.
 3. **Migration `008`** (`peso_kg` / `volumen_m3`) → unblocks the **malla planner**. Still waiting on
-   pilot-client requirements; nothing else depends on it.
+   pilot-client requirements — **the questions are now written up in
+   [PREGUNTAS-CLIENTE.md](PREGUNTAS-CLIENTE.md)**. Nothing else depends on it.
+   Note that three of the four **Business KPIs in AGENTS.md are not computable today**: "on-time %"
+   has nothing to compare against (no committed delivery time is stored anywhere), and cost/km
+   depends on `routes.distancia_km`, which nothing populates. Those are product questions, not
+   missing code — same document.
 4. Post-v1: multi-tenant, pricing, Sistran/Cigo, route optimisation.
 
 ---
