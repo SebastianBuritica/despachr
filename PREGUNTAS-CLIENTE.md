@@ -17,12 +17,12 @@ desbloquea, por si ayuda a priorizar.
 **A1.** 🔴 Cuando un cliente manda el Excel del viernes, ¿viene el **peso** de lo que hay que mover?
 ¿En qué viene — kilos, número de cajas, toneladas, estibas?
 
-**A2.** Ese dato, ¿es por **cada punto de entrega** o por todo el despacho del cliente junto?
+**A2.** 🔴 Ese dato, ¿es por **cada punto de entrega** o por todo el despacho del cliente junto?
 
-**A3.** 🔴 Al armar un camión, ¿qué se llena primero: **el peso o el espacio**? (Hay carga liviana
+**A3.** Al armar un camión, ¿qué se llena primero: **el peso o el espacio**? (Hay carga liviana
 que ocupa mucho y carga pesada que ocupa poco — importa saber cuál manda.)
 
-**A4.** ¿Cuánto carga un camión típico? ¿Todos cargan lo mismo o depende del vehículo?
+**A4.** 🔴 ¿Cuánto carga un camión típico? ¿Todos cargan lo mismo o depende del vehículo?
 
 **A5.** Hoy, ¿cómo se sabe que un camión ya no da para más? ¿Se calcula con algún número o es
 experiencia?
@@ -67,7 +67,7 @@ automatizar.)
 
 > Ya sabemos que una novedad **cierra la entrega**. Falta saber qué pasa después, en la operación.
 
-**D1.** 🔴 Con un rechazo, ¿qué pasa con la mercancía? ¿Vuelve a bodega, se deja donde el cliente,
+**D1.** Con un rechazo, ¿qué pasa con la mercancía? ¿Vuelve a bodega, se deja donde el cliente,
 se reintenta otro día?
 
 **D2.** Si se reintenta, ¿eso es **una entrega nueva** en la malla de la otra semana, o se considera
@@ -114,10 +114,27 @@ tedioso**? Ahí es donde el sistema puede ayudar más.
 
 ---
 
-## Las 5 más importantes, si el tiempo es corto
+## Las 5 mínimas, si el tiempo es corto
+
+Estas cinco son las que **de verdad destraban trabajo**. No son las más interesantes de conversar —
+son las que, sin respuesta, dejan código sin poder escribirse (o escrito dos veces).
 
 1. **A1** — ¿el Excel trae el peso, y en qué unidad?
-2. **A3** — ¿se llena antes el peso o el espacio del camión?
-3. **B1** — ¿qué hace que una entrega sea "a tiempo"?
-4. **D1** — con un rechazo, ¿qué pasa con la mercancía?
-5. **E1** — ¿60 minutos parados en un punto es el número correcto?
+2. **A2** — ¿ese peso es por punto de entrega o por todo el despacho?
+   → decide **en qué tabla** va la columna. Si se asume mal, la migración `008` se escribe dos veces.
+3. **A4** — ¿cuánto carga un camión?
+   → sin un tope, se puede *guardar* el peso pero no responder "¿este camión ya va lleno?", que es
+   justamente para lo que sirve el planificador de malla.
+4. **B1** — ¿qué hace que una entrega sea "a tiempo"?
+   → hoy **no se puede calcular** el indicador de cumplimiento: no hay contra qué comparar la llegada.
+5. **E1** — ¿60 minutos parados en un punto es razonable?
+   → es una constante; con la respuesta se cambia en un minuto.
+
+**Lo que estas cinco NO destraban:** todo el bloque **F** (cómo se cobra, cómo se pacta el flete,
+a cuántos días pagan de verdad, qué parte de facturar duele más). Eso es lo que define el panel de
+administración de la v1.1. Si el orden va a ser "primero planificador de malla, después admin",
+está bien dejarlo para otra conversación — pero conviene saber que no está cubierto.
+
+**Y en novedades**, la pregunta estructural es la **D2**, no la D1: si el reintento es *una entrega
+nueva* o *la misma*, porque eso decide si las entregas tienen que apuntarse entre ellas. No corre
+prisa (el reintento es post-v1), pero D1 sola no la responde.
