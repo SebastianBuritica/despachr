@@ -1,120 +1,113 @@
-# Despachr — Current Status (2026-08-16)
+# Despachr — Current Status (2026-08-20)
 
-**What it is:** A PWA for cargo-logistics management (Colombia / LATAM) that replaces the Excel + WhatsApp workflow.
-**Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr
+**Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr · **Supabase:** `mxgfkwwdhnoumboftjal`
 
-**In one line:** **v1 scope is code-complete.** Both operational verticals — **driver** (real data, GPS,
-cumplido, novedades, OTP login, full offline) and **coordinator** (real routes/drivers/clients, real
-map, live alerts, Realtime) — run on live Supabase. **Admin is the only mock surface left**, deferred
-to v1.1 by scope decision and marked as such on all four screens. Remaining work is **not code**: four
-manual steps below, then an end-to-end pass.
+**One line:** v1 is **code-complete and deployed**, all Supabase config is **done**, and the owner is
+**mid-E2E** (started with admin, driver last). No engineering work is queued or blocked.
 
-> **Doc map:** `AGENTS.md` = durable reference (product/stack/conventions, auto-loaded) · **this file
-> (STATUS.md)** = living state + next steps (overwrite each session) · `CHANGELOG.md` = append-only
-> history · `QA-E2E-AUDIT.md` = latest audit (2026-08-06, predates this session's work).
+> Doc map: `AGENTS.md` durable reference (auto-loaded) · **this file** = state + next steps ·
+> `CHANGELOG.md` history · `SUPABASE-PENDIENTE.md` infra runbook · `PREGUNTAS-CLIENTE.md` open
+> product questions.
 
 ---
 
-## ⚠️ Everything left is Supabase configuration, not code
-
-**→ Full runbook: [SUPABASE-PENDIENTE.md](SUPABASE-PENDIENTE.md)** — the four tasks with exact SQL and
-commands, plus what an agent can and cannot do for each.
-
-| # | Action | What stays broken without it |
-|---|--------|------------------------------|
-| 1 | **Rotate the 5 `*@despachr.test` passwords** (Authentication → Users). **Rotate, don't delete** — `routes.driver_id` has no `ON DELETE`. | `schema.sql` published a shared password in a **public repo** until migration `007`. It is in git history forever; removing it from the file did not unpublish it. `admin@` is the urgent one. |
-| 2 | **Add Redirect URLs** (Authentication → URL Configuration) for `/reset-password` | Password reset sends the email, then the link bounces. |
-| 3 | **Check `deliveries.latitude/longitude` are populated** | The map correctly shows its explained-empty state instead of pins. |
-| 4 | ~~Deploy `pg_cron` + edge function~~ ✅ **done 2026-08-17** — extensions enabled, function deployed and tested, cron running every 5 min (verified `succeeded`/HTTP 200), and a real alert is in the table. **Telegram was dropped by product decision** — wrong channel for Colombia, and only 1-2 people need the push at all. In-app alerts are the system; SMS via the existing Twilio account is the escalation if the coordinator ever reports missing them. See AGENTS.md. |
-
-Also confirm **"Allow new users to sign up" is still OFF** (turned off during the `007` remediation; it
-must stay off — see AGENTS.md).
-
-### To let the next session help with any of this
-
-Verified 2026-08-16: the CLI has **no stored credential** and the Supabase **MCP tools are not in the
-session**. Two different causes, one fix — export the token **before launching**, because MCP tools
-register at session start and `supabase login` cannot run without a TTY:
+## Read this first if you are the next agent
 
 ```bash
-export SUPABASE_ACCESS_TOKEN=sbp_...   # Supabase → Account → Access Tokens
-claude                                  # launch AFTER the export
+# Export BEFORE launching, or you get neither the MCP tools nor the CLI.
+export SUPABASE_ACCESS_TOKEN=sbp_...     # Supabase → Account → Access Tokens
+claude
 ```
+MCP tools register at session start; `supabase login` cannot run without a TTY. Both read this var.
+**Never let a credential into the chat** — it happened three times on 2026-08-16/17 (a management
+token, then the `service_role` key with five passwords). Design the no-paste path *before* handing
+over a command. See the memory note `secrets-never-in-chat`.
 
-That authenticates both `.mcp.json` and the CLI. **Never paste the token into chat** — this repo is
-public and already had one credential incident. Details in [SUPABASE-PENDIENTE.md](SUPABASE-PENDIENTE.md).
+**Run the canary immediately:**
+```bash
+curl -s -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  https://api.supabase.com/v1/projects/mxgfkwwdhnoumboftjal/config/auth \
+  | python3 -c "import json,sys;d=json.load(sys.stdin);print('disable_signup =',d['disable_signup']);print('site_url =',d['site_url'])"
+```
+Expected `True` and `https://despachr.vercel.app`. On 2026-08-16 `disable_signup` silently flipped
+back to open once and the cause was never found (org audit logs need a paid plan; the repo has no
+Actions, no `vercel.json`, no `config.toml`, no branching). **If either value reverted, something is
+re-applying project config and it is worth hunting.** If both hold, it was a one-off.
 
 ---
 
-## ✅ What actually works today
+## ✅ Done
 
-### Driver (complete)
-- **Login by phone OTP** — `/login`, phone tab first. `signInWithOtp` with `shouldCreateUser: false`,
-  60s resend cooldown, `one-time-code` autofill. Email/password remains for admin/coordinator.
-- **Real route + deliveries**; client name via the driver-only `entregas_de_ruta` RPC.
-- **`Llegué` / `Salí`** insert `delivery_events` with GPS; DB triggers derive state — the app re-reads,
-  never recomputes. GPS never blocks.
-- **Cumplido** — device-camera photo + optional signature → Storage, receiver name, resilient retry
-  that resumes rather than restarting.
-- **Novedades** — 6 types, required description, optional photo. **A novedad closes the delivery.**
-- **Offline, end to end** — IndexedDB queue (photos as Blobs); client-generated ids and timestamps so
-  replay is idempotent and records when it *happened*, not when it synced; service worker so the app
-  opens with no network; route snapshot so a cold offline start still shows the stops, labelled with
-  its age.
+**v1 code** — 20 PRs (#29–#48). Driver vertical (real data, GPS, cumplido, novedades, phone OTP,
+full offline: IndexedDB queue + service worker + route snapshot) and coordinator vertical (real
+routes/drivers/clients, MapLibre map, live alerts with resolve, Realtime). 41 logic tests, `npm audit`
+clean, contrast pairs ≥4.5:1.
 
-### Coordinator (complete)
-- **Live operation, routes, drivers, clients** on real Supabase + **Realtime**.
-- **Real map** — MapLibre + CARTO. Deliveries by coordinates; last known position per route derived
-  from event coordinates, shown **with its timestamp** (there is no continuous tracking in the schema).
-- **Alerts** — read from `alerts`, resolvable with a record of who and when. **The pipeline is live**: `check-tiempo-en-punto` runs every 5 min via `pg_cron` and is already inserting real alerts. External push is deliberately not configured — see the alert-channel decision in AGENTS.md.
+**Supabase config** — passwords rotated in place, redirect URLs added, `site_url` fixed to
+production, signup closed, coordinates confirmed (6/6), `pg_cron` + `pg_net` enabled,
+`check-tiempo-en-punto` deployed and **cron verified running every 5 min**. A real alert is in the
+table.
 
-### Platform
-- **Security** — migration `007` closed privilege escalation via `profiles.role`, signup role
-  injection, a publicly callable seeder, and driver writes to `valor_flete`. Public signup turned off.
-- **Next 16.3.1** — middleware-bypass CVE fixed. `npm audit`: **0 vulnerabilities**.
-- **41 logic tests** (`npm test`) over cumplido/novedad ordering and resume, offline queue ordering,
-  and phone normalisation. Playwright sweep (`npm run qa`) covers the screens.
-- Error/loading boundaries, empty states, password reset, fail-closed middleware.
-- **Contrast**: all token pairs verified ≥4.5:1.
+**Telegram dropped** by product decision (2026-08-17) — wrong channel for Colombia, and only 1–2
+people need the push. In-app alerts are the system; SMS via the existing Twilio account is the
+escalation if the coordinator reports missing them; WhatsApp only when a customer pays. Rationale in
+AGENTS.md, including the tension that this product is sold to *replace* WhatsApp coordination.
+
+---
+
+## ⬜ Owner's queue
+
+1. **Finish the E2E.** Admin first (in progress, via a browser agent), then coordinator, then driver
+   on a phone. The best single test is the cross-check: coordinator panel open on desktop while the
+   driver marks *Llegué* on the phone — the panel must move on its own. That is Realtime, which is
+   what replaces WhatsApp.
+2. **Revoke two `sbp_` access tokens** — `sbp_0300…` (pasted in chat, still valid) and `sbp_d305…`
+   (literal inside `.claude/settings.local.json`, now gitignored). No real token ever reached git
+   history; the `sbp_...` in the docs are placeholders.
+3. `rm .secrets-rotacion.txt` once the passwords are in a manager.
+4. **Ask the 5 questions** in `PREGUNTAS-CLIENTE.md` (A1, A2, A4, B1, E1) → unblocks migration `008`
+   and the malla planner.
 
 ---
 
 ## 🚧 Honest gaps
 
-- **Admin (4 screens) is mock** — v1.1 by decision. All four carry the "Datos de demostración" notice.
-- **Untested against a live network**: password reset round-trip, OTP SMS send, and the map with real
-  coordinates. All three are blocked on the manual steps above, not on code.
-- **Contrast verified by calculation**, not yet by an axe run — arithmetic catches the systematic
-  cause but not a combination nobody thought to check. Fold it into the QA sweep.
-- **Landing pricing** is still mock.
-- **No ETA anywhere** — deliberate. Estimating one needs route optimisation, which is post-v1.
-- ~12 unbuilt CTAs are disabled behind a "Próximamente" tooltip.
+- **Admin's 4 screens are mock** — v1.1 by scope decision, all four carry the demo notice.
+- **Password reset cannot be tested with the current accounts.** `@despachr.test` receives no mail.
+  To exercise it, point one account at a real address first.
+- **Three of the four Business KPIs in AGENTS.md are not computable.** "On-time %" — the one
+  coordinators supposedly obsess over — has nothing to compare an arrival against; no committed time
+  or window is stored per delivery. Cost/km needs `routes.distancia_km`, which nothing populates.
+  These are product questions (`PREGUNTAS-CLIENTE.md`), not missing code, and they would otherwise
+  surface as apparent bugs when v1.1 admin gets built.
+- **`QA-E2E-AUDIT.md` (2026-08-06) overstates its coverage.** PR #48 found `qa.mjs` never loaded
+  `.env.qa-credentials` and read `QA_ADMIN_EMAIL` while the file defines `ADMIN_EMAIL` — so every
+  protected route was skipped silently. Its "42/42 screens" only ever covered landing + login. The
+  next `npm run qa` is the first real sweep. Against production:
+  `QA_BASE_URL=https://despachr.vercel.app npm run qa`
+- **Contrast verified by arithmetic**, not yet by an axe run — fold that into the sweep.
+- Landing pricing is mock. No ETA anywhere (deliberate — needs route optimisation, post-v1).
+- The alert reads *73638 min en el punto*: a seed delivery has sat `en_punto` since June. Correct,
+  but it looks alarming during the E2E.
+- `verify_jwt` does **not** protect the edge function — the anon key passes it and is public.
+  Impact low (no params, counts only, duplicate-proof). Closing it needs a shared secret inside the
+  function. Noted in its README, not done.
 
 ---
 
-## ▶️ What's next
+## ▶️ Next engineering work
 
-1. **The four manual steps**, then an E2E pass on desktop + phone.
-2. **v1.1 — Admin depth** (KPIs, client CRUD, invoicing) now that real data will start accumulating.
-3. **Migration `008`** (`peso_kg` / `volumen_m3`) → unblocks the **malla planner**. Still waiting on
-   pilot-client requirements — **the questions are now written up in
-   [PREGUNTAS-CLIENTE.md](PREGUNTAS-CLIENTE.md)**. Nothing else depends on it.
-   Note that three of the four **Business KPIs in AGENTS.md are not computable today**: "on-time %"
-   has nothing to compare against (no committed delivery time is stored anywhere), and cost/km
-   depends on `routes.distancia_km`, which nothing populates. Those are product questions, not
-   missing code — same document.
-4. Post-v1: multi-tenant, pricing, Sistran/Cigo, route optimisation.
+1. **v1.1 — Admin depth** (KPIs, client CRUD, invoicing). Blocked on the money questions (block F).
+2. **Migration `008`** (`peso_kg` / `volumen_m3`) → malla planner. Blocked on A1/A2/A4.
+3. Post-v1: multi-tenant, pricing, Sistran/Cigo, route optimisation.
 
 ---
 
-## Infra / notes
+## Notes
 
-- `main` in sync with origin · auto-deploy to Vercel on every push · **13 PRs merged this session
-  (#29–#41)**.
-- Migrations are **hand-run, repo-tracked SQL** in `scripts/migrations/` (`001`–`007`). Base schema:
-  `scripts/schema.sql`.
-- **Provisioning changed in `007`:** a new user's role comes from **`app_metadata`**, never
-  `user_metadata`. From the dashboard, create the user (it defaults to `conductor`) and promote with
-  `update public.profiles set role = …` in the SQL Editor.
-- `/assets` is gitignored; the infrastructure/security audit is deliberately **kept out of this public
-  repo** (it contains working exploit steps).
+- Migrations are hand-run, repo-tracked SQL in `scripts/migrations/` (`001`–`007`).
+- **Provisioning changed in `007`:** a new user's role comes from `app_metadata`, never
+  `user_metadata`. Create in the dashboard (defaults to `conductor`), then promote via SQL Editor.
+- `scripts/rotate-test-passwords.mjs` rotates test passwords via Admin API — writes to
+  `.secrets-rotacion.txt`, prints nothing secret, guarantees update-not-recreate.
+- The security audit is deliberately **out of this public repo** (working exploit steps).
