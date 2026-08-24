@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { crearSesion, SESION_INICIAL } from '@/lib/sesion'
 import type { RolUsuario, User } from '@/types'
 
 interface UseAuthResult {
@@ -36,70 +37,50 @@ function mapProfile(row: {
   }
 }
 
-export function useAuth(): UseAuthResult {
-  const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [profile, setProfile] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+// DECISIÓN: una sola sesión por módulo, no una por llamada al hook.
+// Antes cada useAuth() montaba su propio getUser() + select a profiles + su
+// propia suscripción a onAuthStateChange. DashboardShell lo llama dos veces y
+// DriverApp otras dos, y onAuthStateChange reemite INITIAL_SESSION al
+// suscribirse: cada navegación disparaba 4-6 GET idénticos a profiles.
+// La lógica del store vive en lib/sesion.ts para poder probarla.
+const sesion = crearSesion({
+  obtenerUsuario: async () => (await supabase.auth.getUser()).data.user,
 
-  const loadProfile = useCallback(async (authUser: SupabaseUser | null) => {
-    if (!authUser) {
-      setProfile(null)
-      return
-    }
-    const { data, error: profileError } = await supabase
+  obtenerPerfil: async (id) => {
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, email, name, role, phone, created_at, updated_at')
-      .eq('id', authUser.id)
+      .eq('id', id)
       .single()
 
-    if (profileError) {
-      setError(profileError.message)
-      setProfile(null)
-      return
-    }
-    setProfile(mapProfile(data))
-  }, [])
+    if (error) throw new Error(error.message)
+    return mapProfile(data)
+  },
 
-  useEffect(() => {
-    let active = true
+  alCambiarAuth: (cb) => {
+    supabase.auth.onAuthStateChange((_event, session) => cb(session?.user ?? null))
+  },
 
-    const init = async () => {
-      try {
-        const { data } = await supabase.auth.getUser()
-        if (!active) return
-        setUser(data.user)
-        await loadProfile(data.user)
-      } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : 'Error de autenticación')
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
+  cerrarSesion: async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+  },
+})
 
-    init()
+export function useAuth(): UseAuthResult {
+  const estado = useSyncExternalStore(
+    sesion.suscribir,
+    sesion.instantanea,
+    () => SESION_INICIAL
+  )
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      loadProfile(session?.user ?? null)
-    })
-
-    return () => {
-      active = false
-      subscription?.unsubscribe()
-    }
-  }, [loadProfile])
-
-  const signOut = useCallback(async () => {
-    const { error: signOutError } = await supabase.auth.signOut()
-    // Propaga el fallo para que el llamador no redirija con la sesión aún viva.
-    if (signOutError) throw signOutError
-    // Limpieza inmediata del estado; onAuthStateChange también disparará.
-    setUser(null)
-    setProfile(null)
-  }, [])
-
-  return { user, profile, rol: profile?.role ?? null, loading, error, signOut }
+  return {
+    user: estado.user,
+    profile: estado.profile,
+    rol: estado.profile?.role ?? null,
+    loading: estado.loading,
+    error: estado.error,
+    // Estable entre renders: no se recrea en cada consumidor.
+    signOut: sesion.cerrarSesion,
+  }
 }

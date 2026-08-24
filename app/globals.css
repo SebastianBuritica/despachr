@@ -52,6 +52,11 @@
      --muted-foreground a propósito — no hay margen entre "legible" y "más
      tenue" sobre fondo blanco. */
   --faint: #71717a;
+  /* Texto secundario CUANDO CAE SOBRE --muted, no sobre --card. #71717a da
+     4.83:1 sobre blanco (pasa) pero sólo 4.40:1 sobre #f4f4f5 (falla). Este
+     token existe para esos dos casos — badge neutral y pista del PeriodToggle —
+     sin oscurecer todo el texto secundario de la app. 5.42:1 sobre --muted. */
+  --on-muted: #63636b;
   --track: #e4e4e7; /* pista de donut/progreso */
 
   /* Panel oscuro intencional (login, header/timer del conductor) — suave en ambos modos */
@@ -110,6 +115,8 @@
   --success: #4ade80;
   --warning: #fbbf24;
   --faint: #85858e; /* #71717a daba 3.67:1 sobre --card */
+  /* En oscuro --muted-foreground ya da 5.81:1 sobre --muted: mismo valor. */
+  --on-muted: #a1a1aa;
   --track: #2b2b2f;
 
   --panel: #18181b;
@@ -164,6 +171,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-faint: var(--faint);
+  --color-on-muted: var(--on-muted);
   --color-brand-ink: var(--brand-ink);
   --color-track: var(--track);
   --color-panel: var(--panel);

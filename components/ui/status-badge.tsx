@@ -2,13 +2,14 @@ import { cn } from '@/lib/utils'
 
 // Sistema de badges del handoff (fondo / texto):
 //  success → bg #DCFCE7 / #0F6E56  ·  neutral → #F1F5F9 / #64748B
-//  danger  → #FEF2F2 / #DC2626     ·  warning → #FFFBEB / #D97706
+//  danger  → #FEF2F2 / #C81E1E     ·  warning → #FFFBEB / #D97706
+// El rojo del handoff (#DC2626) daba 4.41:1 sobre #FEF2F2; #C81E1E da 5.24:1.
 export type StatusTone = 'success' | 'neutral' | 'danger' | 'warning'
 
 const TONE: Record<StatusTone, string> = {
   success: 'bg-[#DCFCE7] text-[#0F6E56] dark:bg-green-500/15 dark:text-[#4ADE80]',
-  neutral: 'bg-muted text-muted-foreground',
-  danger: 'bg-[#FEF2F2] text-[#DC2626] dark:bg-red-600/15 dark:text-[#F87171]',
+  neutral: 'bg-muted text-on-muted',
+  danger: 'bg-[#FEF2F2] text-[#C81E1E] dark:bg-red-600/15 dark:text-[#F87171]',
   warning: 'bg-[#FEF9C3] text-[#B45309] dark:bg-amber-600/15 dark:text-[#FBBF24]',
 }
 

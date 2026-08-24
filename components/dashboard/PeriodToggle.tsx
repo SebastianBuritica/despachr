@@ -20,7 +20,7 @@ export function PeriodToggle() {
             'rounded-md px-3 py-1 text-sm font-medium transition-colors',
             period === p
               ? 'bg-card text-foreground shadow-card'
-              : 'text-muted-foreground hover:text-foreground'
+              : 'text-on-muted hover:text-foreground'
           )}
         >
           {p}
