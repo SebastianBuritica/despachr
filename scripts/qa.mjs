@@ -97,6 +97,9 @@ async function login(context, role) {
   const page = await context.newPage()
   try {
     await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' })
+    // /login abre en la pestaña de teléfono (OTP, Fase 1.3b) y Radix no monta
+    // el TabsContent de correo hasta activarlo: sin este clic no existe #email.
+    await page.getByRole('tab', { name: 'Correo' }).click()
     await page.fill('#email', cred.email)
     await page.fill('#password', cred.password)
     await page.click('button[type="submit"]')
@@ -275,7 +278,10 @@ async function main() {
   }
   console.log(`\n→ Report + screenshots in ${OUT_DIR}/`)
 
-  const hardFail = results.some((r) => r.pageErrors.length || !r.screenshot)
+  // Un segmento saltado no deja ningún result, así que sin esto un barrido que
+  // no logró entrar a NINGUNA pantalla protegida salía en verde — que es como
+  // el audit de agosto pudo decir "42/42" cubriendo sólo landing y login.
+  const hardFail = skipped.length > 0 || results.some((r) => r.pageErrors.length || !r.screenshot)
   process.exit(hardFail ? 1 : 0)
 }
 
