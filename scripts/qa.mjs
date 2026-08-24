@@ -19,6 +19,7 @@ import { config as loadEnv } from 'dotenv'
 import path from 'node:path'
 
 loadEnv({ path: '.env.local' })
+loadEnv({ path: '.env.qa-credentials' }) // dotenv no pisa lo ya definido
 
 const BASE = process.env.QA_BASE_URL || 'http://localhost:3000'
 const VIEWPORTS = [
@@ -66,10 +67,13 @@ const SEGMENTS = {
   },
 }
 
+const env = (k) => process.env[`QA_${k}`] ?? process.env[k]
+
 const CREDS = {
-  admin: { email: process.env.QA_ADMIN_EMAIL, password: process.env.QA_ADMIN_PASSWORD },
-  coordinador: { email: process.env.QA_COORDINADOR_EMAIL, password: process.env.QA_COORDINADOR_PASSWORD },
-  conductor: { email: process.env.QA_CONDUCTOR_EMAIL, password: process.env.QA_CONDUCTOR_PASSWORD },
+  // Acepta ambos nombres: .env.qa-credentials usa ADMIN_*, el doc del skill QA_*.
+  admin: { email: env('ADMIN_EMAIL'), password: env('ADMIN_PASSWORD') },
+  coordinador: { email: env('COORDINADOR_EMAIL'), password: env('COORDINADOR_PASSWORD') },
+  conductor: { email: env('CONDUCTOR_EMAIL'), password: env('CONDUCTOR_PASSWORD') },
 }
 
 // Optional a11y engine — degrade gracefully if not installed.
