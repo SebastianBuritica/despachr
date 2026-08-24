@@ -179,7 +179,25 @@ async function visit(context, segName, route, theme) {
           .analyze()
         a11y = scan.violations
           .filter((v) => ['serious', 'critical'].includes(v.impact))
-          .map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help }))
+          .map((v) => ({
+            id: v.id,
+            impact: v.impact,
+            nodes: v.nodes.length,
+            help: v.help,
+            // Sin esto el informe dice CUÁNTOS nodos fallan pero no cuáles, y un
+            // hallazgo que no se puede ubicar no se puede arreglar. Se recortan a
+            // 5 por violación: alcanzan para localizarla sin volver el informe
+            // ilegible cuando una misma regla pega en media tabla.
+            ejemplos: v.nodes.slice(0, 5).map((n) => ({
+              selector: n.target.flat().join(' '),
+              detalle: (n.failureSummary || '')
+                .split('\n')
+                .map((l) => l.trim())
+                .filter(Boolean)
+                .slice(1)
+                .join(' · '),
+            })),
+          }))
       } catch {}
     }
 
@@ -223,6 +241,9 @@ function buildReport() {
       lines.push(`### ${r.route} · ${r.viewport} · ${r.theme}`)
       for (const item of r[group]) {
         lines.push(`- ${typeof item === 'string' ? item : `[${item.impact}] ${item.id} (${item.nodes}×) — ${item.help}`}`)
+        for (const ej of item.ejemplos ?? []) {
+          lines.push(`    - \`${ej.selector}\`${ej.detalle ? ` — ${ej.detalle}` : ''}`)
+        }
       }
       lines.push('')
     }
