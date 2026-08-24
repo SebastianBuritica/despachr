@@ -26,6 +26,7 @@ import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ComingSoon } from '@/components/ui/coming-soon'
 import {
   DropdownMenu,
@@ -87,7 +88,7 @@ export function DashboardShell({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { profile } = useAuth()
+  const { profile, loading: cargandoSesion } = useAuth()
   const { section, items } = NAV[variant]
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -101,6 +102,7 @@ export function DashboardShell({
       pathname={pathname}
       name={name}
       roleLabel={roleLabel}
+      cargandoSesion={cargandoSesion}
       onNavigate={() => setMobileOpen(false)}
     />
   )
@@ -142,6 +144,7 @@ function SidebarNav({
   pathname,
   name,
   roleLabel,
+  cargandoSesion,
   onNavigate,
 }: {
   section: string
@@ -149,6 +152,7 @@ function SidebarNav({
   pathname: string
   name: string
   roleLabel: string
+  cargandoSesion: boolean
   onNavigate: () => void
 }) {
   return (
@@ -186,7 +190,7 @@ function SidebarNav({
       </nav>
 
       <div className="mt-auto p-3">
-        <UserCard name={name} roleLabel={roleLabel} />
+        <UserCard name={name} roleLabel={roleLabel} cargandoSesion={cargandoSesion} />
       </div>
     </>
   )
@@ -262,7 +266,15 @@ function Topbar({
   )
 }
 
-function UserCard({ name, roleLabel }: { name: string; roleLabel: string }) {
+function UserCard({
+  name,
+  roleLabel,
+  cargandoSesion,
+}: {
+  name: string
+  roleLabel: string
+  cargandoSesion: boolean
+}) {
   const router = useRouter()
   const { signOut } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -277,6 +289,20 @@ function UserCard({ name, roleLabel }: { name: string; roleLabel: string }) {
       toast.error('No se pudo cerrar sesión. Inténtalo de nuevo.')
       setLoading(false)
     }
+  }
+
+  // Mientras la sesión resuelve se muestra el hueco, no un nombre inventado:
+  // "Usuario / —" con avatar "U" se lee como si la app no supiera quién entró.
+  if (cargandoSesion) {
+    return (
+      <div className="flex w-full items-center gap-3 p-2" aria-hidden>
+        <Skeleton className="size-8 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+    )
   }
 
   return (
