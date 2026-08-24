@@ -219,7 +219,12 @@ function Topbar({
       <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
         <div className="flex items-center gap-2">
           <MenuButton onOpenMenu={onOpenMenu} />
-          <span className="text-sm font-medium text-muted-foreground">Administración</span>
+          {/* En móvil la etiqueta cede el ancho: sin esto, PeriodToggle + ThemeToggle
+              se salen del viewport y el toggle de tema queda inalcanzable (el header
+              no tiene scroll propio y la página tampoco desborda). */}
+          <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
+            Administración
+          </span>
         </div>
         <div className="flex items-center gap-3">
           {pathname === '/admin' && <PeriodToggle />}
