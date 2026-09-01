@@ -122,3 +122,45 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 - **Landing (marketing):** `/` con tema oscuro; v2 de 8 secciones (nav/hero → Producto → Cómo funciona → Plataforma → Precios → CTA → footer). Componentes: `LiveMapCard`, `DemoMockup`, `ProductFeatures`, `HowItWorks`, `Pricing`, `Reveal`.
 - **Marca / iconos:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx`. **PWA**: `app/manifest.ts` (icons 192/512) + apple-touch-icon 180. Assets en `public/brand/`.
 - **QA tooling (skill + subagent):** `scripts/qa.mjs` (Playwright) login por rol y recorre todas las rutas en desktop+mobile y light/dark, capturando screenshots + errores consola/JS + axe → `assets/qa/<timestamp>/` (gitignored). Skill `/qa [segmento]`, subagente `qa`, `npm run qa`.
+
+## 2026-08-30/31 — Fase 3.1: el producto cambia de forma
+
+La reunión con la dueña (2026-08-24, transcrita en Notion) reordenó el producto. Hasta aquí Despachr
+era una **herramienta que la gente opera**: paneles, mapas, tableros. Ese es el molde en el que Drivin
+y SimpliRoute llevan diez años ganando. Lo que la operación real pide es otra cosa: **software que
+hace el trabajo**. Concretamente, el trabajo de Girle — llenar a mano el Excel que manda el cliente,
+persiguiendo cumplidos que llegan 15–20 días tarde, y filtrarlo para sacar el porcentaje de la
+reunión de los viernes.
+
+**Lo construido.** Migración `008` (`deliveries.fecha_programada`): el compromiso viene en el Excel
+semanal del cliente, y sin él "a tiempo" no existía — era el dato que STATUS.md daba por imposible.
+Con eso, `lib/cumplimiento.ts` (la aritmética, 4 tests), `lib/queries/reporte.ts` (datos, con el
+cliente de Supabase inyectado como en `cumplido.ts`), `app/api/informe/route.ts` (el agente redactor,
+`claude-opus-5`) y el informe como única pantalla del admin. Verificado contra la base: 85.7% de
+cumplimiento, 91.4% de efectividad.
+
+**La decisión que sostiene todo:** los números los calcula código, el modelo **sólo redacta**. Recibe
+los totales ya hechos y tiene prohibido producir cifras nuevas. No es estética — este informe se le
+entrega al cliente que paga, y un porcentaje alucinado es una factura mal sustentada. Corolario: si
+la llamada al modelo falla, el informe sigue en pie completo.
+
+Dos detalles que salieron de la voz de la dueña y quedaron en el producto: cada oportunidad de mejora
+dice **de quién depende** (nosotros / cliente / punto — su modelo mental textual), y la pantalla
+**declara la base del porcentaje** cuando hay entregas sin compromiso, porque un cumplimiento
+calculado sobre una base recortada en silencio se ve idéntico a uno bueno.
+
+**Lo borrado (−425 líneas netas).** Las tres pantallas mock del admin (Métricas, Clientes,
+Facturación), sus cuatro componentes exclusivos, `lib/mock/` entero y `demo-data-notice.tsx`. No eran
+deuda pendiente de completar: eran vistas para mirar, y ninguna le quitaba trabajo a nadie. El
+`demo-data-notice` se autodestruyó según su propia regla — "cuando ninguna página lo importe, bórralo".
+No queda un solo dato inventado en la UI.
+
+**Corregido en AGENTS.md** contra la fuente real: era **SIGO**, no "Cigo"; el plazo es de **15 días**,
+no 30; el margen objetivo es **22%** y lo calcula SISTRAN solo; existen los **anexos**. Y se añadió
+la restricción que condiciona todo lo que se le pida al conductor: refrigerados, ventana de recibo
+hasta las 10–11am, colas de descargue de hasta 2 horas. Cualquier paso nuevo entre 7 y 10am no se va
+a usar.
+
+**Hallazgo que evita trabajo perdido:** el RNDC (obligatorio, Decreto 1017 de 2025) ya lo resuelve
+SISTRAN para este cliente. Sigue siendo una cuña real frente a los competidores regionales, pero **no
+es el camino de entrada al piloto**.

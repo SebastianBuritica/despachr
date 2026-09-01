@@ -26,7 +26,55 @@ This file consolidates the **durable** things an AI agent needs to understand De
 
 **Despachr** is a Progressive Web Application for managing logistics operations in Colombian and Latin American transport companies. It digitalizes workflows currently handled with Excel and WhatsApp.
 
-**One sentence:** Real-time logistics management PWA that replaces manual tracking with digital, mobile-first operations.
+**One sentence:** The back-office of a freight company — the delivery record fills itself, and the
+weekly compliance report the client receives is produced without anyone transcribing anything.
+
+### 🧭 Tesis (leer antes de proponer cualquier feature)
+
+Las cuatro personas del back-office hacen **el mismo trabajo**: *un documento llega por un canal
+informal, un humano le extrae los datos, y los teclea en un sistema formal.*
+
+| Persona | Documento que llega | Sistema donde lo mete |
+|---|---|---|
+| Isaac (coordinador) | WhatsApp + facturas físicas | SISTRAN |
+| Girle (asistente) | fotos de cumplidos | el Excel del cliente |
+| Yuli (contadora) | cumplidos cerrados | SISTRAN + SIGO |
+| La gerente | datos operativos sueltos | propuestas e informes |
+
+Eso no es un problema colombiano: **toda pyme logística del mundo corre sobre documentos que llegan
+por canales informales.**
+
+**El objeto único es el expediente de la entrega** (`deliveries`): una fila que acumula lo
+comprometido (`fecha_programada`), lo que pasó (eventos con GPS), lo que lo prueba (cumplido,
+novedad), lo que vale (flete) y lo que se reportó. Cada rol hace hoy **un salto** de esa acumulación
+a mano; cada agente automatiza **un salto**. No son cuatro módulos — es un objeto y cuatro agentes.
+
+**Los 4 agentes, en orden de dolor:**
+
+| # | Agente | Le quita trabajo a | Estado |
+|---|---|---|---|
+| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Girle | pendiente ← **el siguiente** |
+| 2 | **Informe** — cumplimiento semanal por cliente, redactado | Girle + gerencia | **hecho** |
+| 3 | **Despacho** — del requerimiento arma la malla y notifica | Isaac | después |
+| 4 | **Facturación** — el cumplido cerrado dispara la factura | Yuli | al final |
+
+**El que NO se construye:** el de Osmelia (estados financieros, NIF, DIAN). Contabilidad regulada,
+externa, con responsabilidad legal. Bajísimo apalancamiento, altísimo riesgo. Fuera del producto.
+
+### ⚖️ REGLA DEL NÚCLEO (no negociable)
+
+**Nada específico de un país entra al núcleo.** SISTRAN, SIGO, DIAN, RNDC, el formato de Excel de un
+cliente — todos son **adaptadores en el borde**. El núcleo es el expediente + los agentes.
+
+Respetarla cuesta $0 hoy y es lo que permite un cliente en Perú o México sin reescribir. No
+respetarla siembra `sistran_sync_id` por media base de datos. Si una propuesta mete lógica de un país
+en el core, **la propuesta está mal**, no la regla.
+
+### 📏 Las tres métricas (no se cuentan pantallas)
+
+1. **% de cumplidos cerrados sin corrección humana** (0% → 95%) — cuándo el copiloto pasa a piloto
+2. **Horas de back-office liberadas por semana**
+3. **Días entre entrega e informe al cliente** (hoy 15–20 → objetivo 0)
 
 ### Key Facts
 - **Founder:** Sebastian Buritica
@@ -52,9 +100,29 @@ This system reflects an **actual operational workflow** from the pilot client:
 
 **CLOSE-OF-WEEK:** 
 - Generate invoice in **Sistran** (TMS software client currently uses)
-- Export XML to **Cigo** (accounting software, integrated with Sistran)
+- Export XML to **SIGO** (accounting software; también factura lo que Sistran no genera — bodegaje, transporte subcontratado)
 - Upload to **DIAN** (Colombian tax authority)
-- 30-day payment terms to client
+- **15-day** payment terms típicos (20–45 en la práctica; la rotación de cartera es dato de Osmelia)
+
+### ⏱️ La restricción del conductor (condiciona TODO lo que se le pida)
+
+De la reunión con la dueña (2026-08-24), y es la razón por la que los conductores **no reportan en
+tiempo real hoy**:
+
+- Mercancía **refrigerada**. Las cadenas reciben **hasta las 10–11am, máximo**.
+- Los puntos abren a las 7am. Las colas de descargue llegan a **2 horas**.
+- Quedan ~3 horas para 5–6 entregas. *"Si el conductor se queda organizando y tomando fotos, pierde
+  tiempo."*
+- Cada parada son varios documentos (factura + albarán); un solo negocio puede ser 2–3 facturas.
+- Las facturas **físicas firmadas hay que devolverlas igual** — se arma un paquete semanal al cliente.
+
+**Consecuencia de diseño:** cualquier paso nuevo que se le agregue al conductor entre 7 y 10am no se
+va a usar. La única jugada viable es **no pedirle trabajo nuevo, sino el mismo por otro canal**: ya
+fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde.
+
+> Bajo esta luz, la **firma digital** (`SignaturePad`) es evidencia **duplicada**: la firma legal ya
+> está en el papel que fotografía y que además devuelve físicamente. Es candidata a borrarse —
+> pendiente de confirmar con el coordinador.
 
 ### Business KPIs
 - **On-time delivery %** (metric coordinators obsess over)
@@ -100,7 +168,9 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **consolidado** | Multiple clients in same truck |
 | **exclusivo** | Full truck for one client only, fixed rate |
 | **Sistran** | TMS (Transport Management System) — client's main software |
-| **Cigo** | Accounting software integrated with Sistran |
+| **SIGO** | Software contable. Factura a la DIAN lo que Sistran no genera (bodegaje, transporte subcontratado); se enlaza con Sistran por XML |
+| **anexo** | Cargo extra sobre el flete que va en el manifiesto (p. ej. ~100k por descargue) |
+| **generador de carga** | El cliente que origina el despacho (p. ej. Casablanca). El destino es la tienda, no el cliente |
 | **DIAN** | Colombian Tax Authority |
 | **punto** | Stop/delivery location on a route |
 | **evento** | Timestamped action: arrival, departure, photo, issue report |
@@ -185,10 +255,10 @@ app/
 │   ├── page.tsx           #   Operación en vivo
 │   ├── rutas/ conductores/ clientes/   # sub-páginas
 │   └── layout.tsx         #   → <DashboardShell variant="coordinator">
-├── admin/                 # ADMIN (protegido, solo rol admin)
-│   ├── page.tsx           #   Métricas
-│   ├── clientes/ facturacion/ reportes/
+├── admin/                 # ADMIN (protegido, solo rol admin) — UNA pantalla, a propósito
+│   ├── page.tsx           #   Informe de cumplimiento (cifras + análisis redactado)
 │   └── layout.tsx         #   → <DashboardShell variant="admin">
+├── api/informe/route.ts   # Agente 2: redacta el informe. La llave NUNCA va al navegador
 ├── driver/                # CONDUCTOR (protegido) → <DriverApp/> (mobile)
 ├── page.tsx               # Landing (pública, oscura fija)
 ├── manifest.ts            # PWA manifest (iconos, standalone)
@@ -221,7 +291,9 @@ tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/
 **Otros**: `theme/ThemeProvider` + `theme/ThemeToggle` · `brand/BrandMark` (isotipo Ruta-D).
 El logout vive en el user card del `DashboardShell`; no hay componente `LogoutButton` suelto.
 
-> Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
+> **No queda un solo mock.** `lib/mock/` se borró el 2026-08-30 junto con las tres pantallas de
+> admin que lo consumían. Toda pantalla lee de Supabase. Si vuelve a aparecer un dato inventado
+> en la UI, es un bug, no un placeholder.
 
 ### `/lib` — Utilities & Clients
 - `offline/` — resiliencia sin señal del conductor: `db.ts` (IndexedDB, sin librería),
@@ -245,6 +317,15 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
 - `cumplido.ts` / `novedad.ts` — orquestación de los dos cierres posibles de una entrega
   (entregada o con novedad). Misma forma: dependencias inyectadas, progreso mutable para reanudar,
   y el cambio de estado SIEMPRE de último. Ambas probadas y ambas encolables offline.
+- `cumplimiento.ts` — la ARITMÉTICA del informe (probada). Vive fuera de `queries/` para poder
+  probarse sin red. Dos decisiones que no son obvias: el % se calcula **sólo** sobre entregas con
+  `fecha_programada` y el informe **declara cuántas excluyó** (una base recortada en silencio se ve
+  idéntica a una buena); y "a tiempo" se compara a nivel de FECHA, porque el compromiso que manda el
+  cliente es un día, no una hora.
+- `queries/reporte.ts` — el camino de datos del informe. Recibe el cliente de Supabase **inyectado**
+  (como `cumplido.ts`): la página pasa el del navegador, la API uno de servidor. Filtra por la fecha
+  de la RUTA, no por `fecha_programada` — filtrar por ella escondería justo las entregas sin
+  compromiso que el cálculo intenta hacer visibles.
 - `supabase.ts` — Supabase client initialization
 - `utils.ts` — Helpers: `cn()`, `formatDate()`, `calculateDistance()`
 
@@ -398,10 +479,16 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 - **Alerts live end-to-end** — `pg_cron` + edge function insertando en `alerts`, visibles y resolubles en el panel. **El push externo NO es requisito de v1.**
 - **Resilience/UX baseline** — error/loading/not-found boundaries and empty states.
 
+**In scope for v1 (añadido 2026-08-30, tras la reunión con la dueña):**
+- **Informe de cumplimiento por cliente** — el entregable que hoy se arma llenando a mano el Excel
+  del generador de carga y filtrándolo antes de la reunión del viernes. Es el **único artefacto del
+  producto que ve el cliente que paga**, y por eso pesa más que cualquier pantalla interna.
+
 **Out of scope for v1 (deferred):**
-- **Admin panel depth** — KPIs, charts, billing workflow, reports, client CRUD → **v1.1**, once real
-  data has accumulated (the pilot doesn't need ROA/ROE to stop using Excel).
-- Multi-tenant, pricing, route optimization, Sistran/Cigo integration → **post-v1**.
+- **Admin panel depth** — KPIs, charts, billing workflow, client CRUD → **cancelado, no diferido.**
+  Las tres pantallas mock se **borraron** el 2026-08-30. No eran una deuda a completar: eran vistas
+  para mirar, y ninguna le quitaba trabajo a nadie. Lo que sí lo quita es el agente de cumplido.
+- Multi-tenant, pricing, route optimization, Sistran/SIGO integration → **post-v1**.
 - The a11y contrast backlog (35 axe warnings) → tracked, **not v1**.
 
 ### Sequence
@@ -415,8 +502,15 @@ Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ru
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2.1  — coordinator: real routes/drivers/clients + Realtime                          [done]
 Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas                 [done]
-            (el planificador de malla sigue esperando peso_kg/volumen_m3 → migración 008)
+Fase 3.1  — informe de cumplimiento + agente redactor (migración 008)                    [done]
+Fase 3.2  — agente de CUMPLIDO: lee la foto, cierra la entrega  ← EL SIGUIENTE
+Fase 3.3  — multi-tenant (`company_id` + reescribir las 27 policies) → cliente #2
 ```
+
+> **Fase 3.2 se despacha en modo COPILOTO, no autopiloto.** El modelo propone los campos, un humano
+> confirma con un toque. Razón: arranca al ~70% de precisión, y un agente autónomo al 70% es
+> inservible mientras que un copiloto al 70% ya ahorra el día. La **tasa de confirmación sin
+> corrección** es la métrica que decide cuándo se quita el humano — no la fe.
 
 > **Auth reality:** phone/SMS-OTP login **is built** (Fase 1.3b) — `/login` shows two tabs, phone
 > first. Phone numbers have **no leading `+`** anywhere in the DB (`573229596618`); never build a
@@ -449,12 +543,11 @@ Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas      
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
 > tooltip so unbuilt CTAs read as pending, not broken).
 >
-> **`components/ui/demo-data-notice.tsx`** is the same idea applied to the *data* instead of the
-> control: it marks a screen still reading from `lib/mock/*`. A dead CTA is visibly dead; an invented
-> metric is not — it reads exactly like a real one. It is added **per page, not in the layout**, so
-> Fase 2 can connect one view at a time and delete only that page's line while the rest stay honestly
-> marked. **Rule: a page that imports from `lib/mock/*` renders `<DemoDataNotice />`.** When no page
-> imports it any more, delete the component.
+>
+> **`demo-data-notice.tsx` ya no existe** — cumplió su función y se borró con el último mock
+> (2026-08-30), exactamente como decía su propia regla. La lección que deja: un CTA muerto se ve
+> muerto, pero una métrica inventada se lee igual que una real. Por eso ahora la regla es más dura:
+> **no hay pantallas de relleno.** Si algo no tiene datos reales, no se despacha.
 
 ---
 

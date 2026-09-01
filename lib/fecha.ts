@@ -5,7 +5,17 @@
 // mostraría la ruta del día equivocado; y una coordinadora revisando desde otro
 // huso vería un día distinto al que el conductor está corriendo.
 export function hoyOperacion(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+  return fechaOperacion(new Date())
+}
+
+// La FECHA calendario de un instante, en la zona de la operación. Importa para
+// el informe: un cumplido de las 8:00 pm en Bogotá es 01:00 UTC del día
+// siguiente, así que comparar en UTC correría la entrega un día y marcaría
+// "tarde" algo que llegó a tiempo.
+export function fechaOperacion(t: Date | string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(
+    typeof t === 'string' ? new Date(t) : t
+  )
 }
 
 // Minutos transcurridos desde una marca ISO. Null-safe.

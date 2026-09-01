@@ -10,8 +10,6 @@ import {
   Route as RouteIcon,
   Users,
   Building2,
-  BarChart3,
-  Receipt,
   FileText,
   Bell,
   Search,
@@ -22,7 +20,6 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { PeriodToggle } from '@/components/dashboard/PeriodToggle'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -57,10 +54,9 @@ const NAV: Record<ShellVariant, { section: string; items: NavItem[] }> = {
   admin: {
     section: 'Administración',
     items: [
-      { label: 'Métricas', href: '/admin', icon: BarChart3, exact: true },
-      { label: 'Clientes', href: '/admin/clientes', icon: Building2 },
-      { label: 'Facturación', href: '/admin/facturacion', icon: Receipt },
-      { label: 'Reportes', href: '/admin/reportes', icon: FileText },
+      // Una sola pantalla a propósito. Las de métricas/clientes/facturación
+      // eran datos inventados: se borraron en vez de dejarlas marcadas como demo.
+      { label: 'Informe de cumplimiento', href: '/admin', icon: FileText, exact: true },
     ],
   },
 }
@@ -130,7 +126,7 @@ export function DashboardShell({
 
         {/* Main */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar variant={variant} pathname={pathname} onOpenMenu={() => setMobileOpen(true)} />
+          <Topbar variant={variant} onOpenMenu={() => setMobileOpen(true)} />
           <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
         </div>
       </div>
@@ -211,11 +207,9 @@ function MenuButton({ onOpenMenu }: { onOpenMenu: () => void }) {
 
 function Topbar({
   variant,
-  pathname,
   onOpenMenu,
 }: {
   variant: ShellVariant
-  pathname: string
   onOpenMenu: () => void
 }) {
   if (variant === 'admin') {
@@ -231,7 +225,6 @@ function Topbar({
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {pathname === '/admin' && <PeriodToggle />}
           <ThemeToggle />
         </div>
       </header>

@@ -51,3 +51,7 @@ next-env.d.ts
 
 # Salida de scripts/rotate-test-passwords.mjs — contraseñas en claro, se borra a mano
 .secrets-rotacion.txt
+
+# Auditoría de seguridad: se mantiene FUERA del repo público a propósito
+# (contiene pasos de explotación reproducibles). Ver AGENTS.md.
+SECURITY-AUDIT-*.md
