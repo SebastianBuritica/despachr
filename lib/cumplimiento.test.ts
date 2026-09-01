@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { calcularCumplimiento, type EntregaInforme } from './cumplimiento'
 
 const e = (p: Partial<EntregaInforme>): EntregaInforme => ({
+  factura: null, conductor: null,
   tienda: 'X', ciudad: 'Barranquilla', estado: 'entregado',
   fechaProgramada: '2026-08-24', fechaEntrega: '2026-08-24',
   novedad: null, observaciones: null, ...p,

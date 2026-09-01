@@ -84,12 +84,14 @@ datos(seq, tienda, city, prog, retraso, estado, novedad, obs) as (values
   (7,'Súper Inter Sur','Barranquilla',date '2026-08-28',0,'entregado',null,null)
 )
 insert into deliveries (route_id, client_id, address, city, numero_secuencia, valor_flete,
-                        estado, fecha_programada, hora_llegada_punto, hora_salida_punto,
+                        estado, fecha_programada, numero_factura, hora_llegada_punto, hora_salida_punto,
                         latitude, longitude, observaciones, foto_cumplido_url)
 select ('33333333-3333-4333-8333-00000000000' || extract(isodow from d.prog)::int)::uuid,
        '11111111-1111-4111-8111-111111111111',
        d.tienda, d.city, d.seq, 180000,
        d.estado, d.prog,
+       -- Número de factura sintético pero con la forma real: prefijo + consecutivo.
+       'CB-' || to_char(d.prog, 'MMDD') || '-' || lpad(d.seq::text, 2, '0'),
        ((d.prog + d.retraso) + time '07:30') at time zone 'America/Bogota',
        case when d.estado = 'entregado'
             then ((d.prog + d.retraso) + time '08:45') at time zone 'America/Bogota' end,

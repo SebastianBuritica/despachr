@@ -258,20 +258,24 @@ export default function ReportesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Factura</TableHead>
                     <TableHead>Punto</TableHead>
                     <TableHead>Ciudad</TableHead>
                     <TableHead>Comprometida</TableHead>
                     <TableHead>Entregada</TableHead>
+                    <TableHead>Entregó</TableHead>
                     <TableHead>Novedad</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {problemas.map((e) => (
-                    <TableRow key={`${e.tienda}-${e.fechaProgramada}`}>
+                    <TableRow key={e.factura ?? `${e.tienda}-${e.fechaProgramada}`}>
+                      <TableCell className="font-mono text-[13px]">{e.factura ?? '—'}</TableCell>
                       <TableCell className="font-medium">{e.tienda}</TableCell>
                       <TableCell>{e.ciudad}</TableCell>
                       <TableCell className="font-mono text-[13px]">{e.fechaProgramada ?? '—'}</TableCell>
                       <TableCell className="font-mono text-[13px]">{e.fechaEntrega ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{e.conductor ?? '—'}</TableCell>
                       <TableCell>
                         {e.novedad ? (
                           <StatusBadge tone="danger">{NOVEDAD_UI[e.novedad] ?? e.novedad}</StatusBadge>

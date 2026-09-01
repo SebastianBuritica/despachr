@@ -49,6 +49,7 @@ const NAV: Record<ShellVariant, { section: string; items: NavItem[] }> = {
       { label: 'Rutas', href: '/dashboard/rutas', icon: RouteIcon },
       { label: 'Conductores', href: '/dashboard/conductores', icon: Users },
       { label: 'Clientes', href: '/dashboard/clientes', icon: Building2 },
+      { label: 'Cumplidos', href: '/dashboard/cumplidos', icon: FileText },
     ],
   },
   admin: {

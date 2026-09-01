@@ -10,6 +10,8 @@ import type { EntregaInforme } from '@/lib/cumplimiento'
 import type { EstadoEntrega, TipoNovedad } from '@/types'
 
 interface FilaCruda {
+  numero_factura: string | null
+  routes: { profiles: { name: string | null } | null } | { profiles: { name: string | null } | null }[] | null
   address: string | null
   city: string | null
   estado: EstadoEntrega
@@ -36,8 +38,8 @@ export async function entregasDelInforme(
   const { data, error } = await db
     .from('deliveries')
     .select(
-      'address, city, estado, fecha_programada, hora_salida_punto, observaciones, ' +
-        'issues(tipo_novedad), routes!inner(fecha)'
+      'address, city, estado, fecha_programada, numero_factura, hora_salida_punto, ' +
+        'observaciones, issues(tipo_novedad), routes!inner(fecha, profiles(name))'
     )
     .eq('client_id', clienteId)
     .gte('routes.fecha', desde)
@@ -48,7 +50,11 @@ export async function entregasDelInforme(
 
   return (data ?? []).map((d) => {
     const f = d as unknown as FilaCruda
+    const ruta = Array.isArray(f.routes) ? f.routes[0] : f.routes
+    const perfil = Array.isArray(ruta?.profiles) ? ruta?.profiles[0] : ruta?.profiles
     return {
+      factura: f.numero_factura,
+      conductor: perfil?.name ?? null,
       tienda: f.address ?? '—',
       ciudad: f.city ?? '—',
       estado: f.estado,
