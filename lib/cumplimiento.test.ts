@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { calcularCumplimiento, type EntregaInforme } from './cumplimiento'
 
 const e = (p: Partial<EntregaInforme>): EntregaInforme => ({
-  factura: null, conductor: null,
+  factura: null, conductor: null, fechaReprogramada: null,
   tienda: 'X', ciudad: 'Barranquilla', estado: 'entregado',
   fechaProgramada: '2026-08-24', fechaEntrega: '2026-08-24',
   novedad: null, observaciones: null, ...p,
@@ -41,5 +41,18 @@ describe('calcularCumplimiento', () => {
   it('devuelve null en vez de 0% cuando no hay contra qué medir', () => {
     // 0% y "no medible" son cosas distintas; pintar 0% sería inventar un dato.
     expect(calcularCumplimiento([]).pctCumplimiento).toBeNull()
+  })
+})
+
+describe('fechaReprogramada nunca entra al cálculo', () => {
+  it('sigue midiendo contra la fecha programada aunque haya 2da fecha', () => {
+    // Confirmado por la dueña (2026-09-02): "siempre con la primera fecha,
+    // porque es la que está en la malla". Si esto se rompe, el % deja de
+    // coincidir con el que el cliente calcula por su lado.
+    const r = calcularCumplimiento([
+      e({ fechaProgramada: '2026-08-20', fechaEntrega: '2026-08-22', fechaReprogramada: '2026-08-22' }),
+    ])
+    expect(r.aTiempo).toBe(0)
+    expect(r.tarde).toBe(1)
   })
 })

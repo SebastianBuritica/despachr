@@ -262,6 +262,7 @@ export default function ReportesPage() {
                     <TableHead>Punto</TableHead>
                     <TableHead>Ciudad</TableHead>
                     <TableHead>Comprometida</TableHead>
+                    <TableHead>Reprogramada</TableHead>
                     <TableHead>Entregada</TableHead>
                     <TableHead>Entregó</TableHead>
                     <TableHead>Novedad</TableHead>
@@ -274,6 +275,12 @@ export default function ReportesPage() {
                       <TableCell className="font-medium">{e.tienda}</TableCell>
                       <TableCell>{e.ciudad}</TableCell>
                       <TableCell className="font-mono text-[13px]">{e.fechaProgramada ?? '—'}</TableCell>
+                      {/* Sólo referencia: el cumplimiento SIEMPRE se mide contra la
+                          comprometida (confirmado por la dueña, 2026-09-02) — nunca contra
+                          esta. Mostrarla ayuda a ver el patrón de reprogramaciones. */}
+                      <TableCell className="font-mono text-[13px] text-muted-foreground">
+                        {e.fechaReprogramada ?? '—'}
+                      </TableCell>
                       <TableCell className="font-mono text-[13px]">{e.fechaEntrega ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{e.conductor ?? '—'}</TableCell>
                       <TableCell>

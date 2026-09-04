@@ -20,6 +20,11 @@ export interface EntregaInforme {
   /** Número de factura del generador de carga: la llave con la que el cliente
    *  cuadra el informe contra su propio Excel. */
   factura: string | null
+  /** Segunda fecha tras una novedad ("2DA FECHA" en el archivo del cliente).
+   *  NUNCA sustituye a `fechaProgramada` en el cálculo — ver `aTiempo` abajo:
+   *  la dueña confirmó que el cumplimiento se mide SIEMPRE contra la primera,
+   *  la de la malla. Se expone sólo para poder analizar causas de reprogramación. */
+  fechaReprogramada: string | null
   /** Quién entregó. El cliente lo pide en su formato ("¿qué carro lo entregó?"). */
   conductor: string | null
   tienda: string
