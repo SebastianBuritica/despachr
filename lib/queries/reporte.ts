@@ -12,6 +12,7 @@ import type { EstadoEntrega, TipoNovedad } from '@/types'
 interface FilaCruda {
   numero_factura: string | null
   fecha_reprogramada: string | null
+  foto_cumplido_url: string | null
   routes: { profiles: { name: string | null } | null } | { profiles: { name: string | null } | null }[] | null
   address: string | null
   city: string | null
@@ -40,7 +41,8 @@ export async function entregasDelInforme(
     .from('deliveries')
     .select(
       'address, city, estado, fecha_programada, fecha_reprogramada, numero_factura, ' +
-        'hora_salida_punto, observaciones, issues(tipo_novedad), routes!inner(fecha, profiles(name))'
+        'hora_salida_punto, observaciones, foto_cumplido_url, ' +
+        'issues(tipo_novedad), routes!inner(fecha, profiles(name))'
     )
     .eq('client_id', clienteId)
     .gte('routes.fecha', desde)
@@ -56,6 +58,7 @@ export async function entregasDelInforme(
     return {
       factura: f.numero_factura,
       fechaReprogramada: f.fecha_reprogramada,
+      fotoCumplidoUrl: f.foto_cumplido_url,
       conductor: perfil?.name ?? null,
       tienda: f.address ?? '—',
       ciudad: f.city ?? '—',

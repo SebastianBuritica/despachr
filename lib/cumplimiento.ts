@@ -34,6 +34,26 @@ export interface EntregaInforme {
   fechaEntrega: string | null
   novedad: TipoNovedad | null
   observaciones: string | null
+  /** La foto de la factura firmada, si ya volvió. Null = todavía no llega —
+   *  esto es LITERALMENTE lo que Girle persigue con el cuaderno físico. */
+  fotoCumplidoUrl: string | null
+}
+
+/**
+ * Estado del CUMPLIDO — distinto del estado de la ENTREGA.
+ *
+ * El archivo real del cliente separa dos preguntas que en nuestro schema
+ * quedaban mezcladas en una sola columna `estado`: "¿llegó la mercancía?"
+ * (ESTATUS) y "¿ya volvió el papel firmado?" (CUMPLIDO). Una entrega puede
+ * estar ENTREGADA y con el cumplido PENDIENTE durante 15-20 días — es
+ * exactamente el cuello de botella que este producto existe para cerrar.
+ *
+ * `null` cuando la entrega ni siquiera se hizo: la pregunta "¿volvió el papel?"
+ * no aplica todavía.
+ */
+export function estadoCumplido(e: Pick<EntregaInforme, 'estado' | 'fotoCumplidoUrl'>): 'ENTREGADO' | 'PENDIENTE' | null {
+  if (e.estado !== 'entregado') return null
+  return e.fotoCumplidoUrl ? 'ENTREGADO' : 'PENDIENTE'
 }
 
 export interface Cumplimiento {

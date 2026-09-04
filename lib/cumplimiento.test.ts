@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { calcularCumplimiento, type EntregaInforme } from './cumplimiento'
+import { calcularCumplimiento, estadoCumplido, type EntregaInforme } from './cumplimiento'
 
 const e = (p: Partial<EntregaInforme>): EntregaInforme => ({
-  factura: null, conductor: null, fechaReprogramada: null,
+  factura: null, conductor: null, fechaReprogramada: null, fotoCumplidoUrl: null,
   tienda: 'X', ciudad: 'Barranquilla', estado: 'entregado',
   fechaProgramada: '2026-08-24', fechaEntrega: '2026-08-24',
   novedad: null, observaciones: null, ...p,
@@ -54,5 +54,22 @@ describe('fechaReprogramada nunca entra al cálculo', () => {
     ])
     expect(r.aTiempo).toBe(0)
     expect(r.tarde).toBe(1)
+  })
+})
+
+describe('estadoCumplido — distinto del estado de la entrega', () => {
+  it('null cuando la mercancía ni siquiera se entregó', () => {
+    // "¿volvió el papel?" no aplica todavía si no hubo entrega.
+    expect(estadoCumplido(e({ estado: 'novedad' }))).toBeNull()
+    expect(estadoCumplido(e({ estado: 'pendiente' }))).toBeNull()
+  })
+
+  it('PENDIENTE cuando se entregó pero el papel firmado no ha vuelto', () => {
+    // El caso real del archivo del cliente: ESTATUS=ENTREGADO, CUMPLIDO=PENDIENTE.
+    expect(estadoCumplido(e({ estado: 'entregado', fotoCumplidoUrl: null }))).toBe('PENDIENTE')
+  })
+
+  it('ENTREGADO cuando el papel ya volvió', () => {
+    expect(estadoCumplido(e({ estado: 'entregado', fotoCumplidoUrl: 'cumplidos/x.jpg' }))).toBe('ENTREGADO')
   })
 })

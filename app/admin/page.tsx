@@ -12,7 +12,7 @@
 // sería poner una cifra que se le entrega a un cliente detrás de una llamada
 // que puede fallar.
 import { useCallback, useEffect, useState } from 'react'
-import { FileText, Sparkles, TriangleAlert } from 'lucide-react'
+import { Download, FileText, Sparkles, TriangleAlert } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -162,6 +162,18 @@ export default function ReportesPage() {
             className="h-9 rounded-md border border-border bg-background px-2 text-sm"
           />
         </label>
+
+        {/* Enlace normal, no fetch+blob: es un GET que devuelve un archivo con
+            Content-Disposition — el navegador ya sabe descargarlo. */}
+        {resumen && resumen.total > 0 && (
+          <a
+            href={`/api/informe/exportar?clienteId=${clienteId}&desde=${desde}&hasta=${hasta}`}
+            className="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted"
+          >
+            <Download className="size-4" />
+            Descargar para Casablanca
+          </a>
+        )}
       </Card>
 
       {error && (
