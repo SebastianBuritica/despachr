@@ -52,6 +52,12 @@ Despachr es una Progressive Web Application (PWA) moderna para gestión logísti
    - `NEXT_PUBLIC_SUPABASE_URL`: URL de tu proyecto Supabase
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Clave anónima de Supabase
 
+   Y, para los agentes de IA (`/admin`, `/dashboard/cumplidos`), al menos una de:
+   - `ANTHROPIC_API_KEY`: se usa primero si está presente
+   - `GEMINI_API_KEY`: respaldo gratuito (Google AI Studio, sin tarjeta) si no hay la de Anthropic
+
+   Sin ninguna de las dos, esas pantallas siguen funcionando — sólo sin la parte de IA.
+
 4. **Ejecutar en desarrollo**
    ```bash
    npm run dev
