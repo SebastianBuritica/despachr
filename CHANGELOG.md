@@ -164,3 +164,46 @@ a usar.
 **Hallazgo que evita trabajo perdido:** el RNDC (obligatorio, Decreto 1017 de 2025) ya lo resuelve
 SISTRAN para este cliente. Sigue siendo una cuña real frente a los competidores regionales, pero **no
 es el camino de entrada al piloto**.
+
+## 2026-09-01/05 — Fase 3.2 (parcial): el agente de cumplido, exportar a Casablanca, y un respaldo de proveedor
+
+Con un lote real de cumplidos (PDF de CamScanner, 23 facturas selladas a mano) se pudo diseñar el
+agente de cumplido en vez de adivinarlo. El documento resultó ser: factura impresa con certeza
+(número, punto, dirección) + un sello de caucho manuscrito que decide lo único que importa — la
+fecha real de entrega — y que cambia de posición y nitidez en cada punto. Por eso el agente
+**propone y una persona confirma** (`app/dashboard/cumplidos`, `app/api/cumplidos`), y por eso el
+prompt es explícito: null vale más que un dato inventado. El PDF se parte en el navegador sin
+librería (`lib/cumplidos.ts` escanea los marcadores de bytes JPEG que CamScanner incrusta) porque 23
+páginas por una llamada al modelo no cabe en el timeout de una función serverless.
+
+Dos fotos reales del archivo que hoy llena la operación ("RELACION GENERAL DE FACTURAS" y "RELACION
+DE ENTREGAS ... CASABLANCA") reescribieron el objetivo del proyecto: **el entregable no es nuestro
+informe bonito, es el archivo del cliente, ya lleno.** Eso reveló una distinción que el schema no
+tenía separada — ESTATUS (¿llegó la mercancía?) y CUMPLIDO (¿ya volvió el papel firmado?) son dos
+preguntas distintas, y una entrega puede estar ENTREGADA con el CUMPLIDO en PENDIENTE durante 15-20
+días: es literalmente el cuello de botella que este producto existe para cerrar, ahora con columna
+propia (`estadoCumplido` en `lib/cumplimiento.ts`). También reveló la reprogramación (`2DA FECHA`):
+cuando una entrega falla se corre el compromiso en la MISMA fila, no se crea una entrega nueva — y
+por indicación explícita de la dueña, el cumplimiento se mide SIEMPRE contra la fecha original de la
+malla, nunca contra la reprogramada (migración `010`, `fecha_reprogramada`). El adaptador de
+Casablanca (`lib/exportadores/casablanca.ts`) vive deliberadamente fuera del núcleo — es el primer
+cliente, no el único, y su formato no debe filtrarse a `lib/cumplimiento.ts`.
+
+Migraciones `009` (`numero_factura`, único POR CLIENTE — la llave entre el Excel del cliente, la
+factura física y la fila) y `010` corridas en producción con el CLI de Supabase (`supabase db query
+--linked -f archivo.sql`), no con Claude Chrome: el proyecto ya tenía el CLI logueado y el proyecto
+linkeado, cero fricción y cero tokens de navegación por migración — se documentó en memoria para no
+volver a montar el rodeo del navegador.
+
+El pago en la consola de Anthropic quedó trabado varios días ("no podemos autenticar" con dos
+tarjetas de bancos distintos, mismo error — apunta a 3D Secure, no a fondos). `lib/ia/informe.ts` y
+`lib/ia/cumplido.ts` centralizan un respaldo: sin `ANTHROPIC_API_KEY` pero con `GEMINI_API_KEY` (tier
+gratis real, sin tarjeta), los dos agentes corren igual. Es un respaldo para seguir probando la app,
+no una validación de calidad — leer el sello manuscrito es la tarea difícil que el proyecto está
+midiendo, y esa medición sólo cuenta hecha con Opus 5.
+
+**Sin cerrar al terminar esta sesión:** los 5 commits de este tramo (`9329395`…`54ea8b1`) siguen sin
+subir ni mergear a `main`; `docs/reunion-2026-08-24.md` sigue sin decisión (commit vs. fuera del repo
+— trae márgenes y nombres del equipo); el usuario de Girle (rol `coordinador`) no se ha creado; y el
+emparejamiento por factura sigue sin una sola factura real cargada (`FEV...`) — sólo las sintéticas
+de la semilla.

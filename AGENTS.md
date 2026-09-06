@@ -326,6 +326,16 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
   (como `cumplido.ts`): la página pasa el del navegador, la API uno de servidor. Filtra por la fecha
   de la RUTA, no por `fecha_programada` — filtrar por ella escondería justo las entregas sin
   compromiso que el cálculo intenta hacer visibles.
+- `exportadores/casablanca.ts` — el formato exacto del cliente ("RELACION DE ENTREGAS...", columnas
+  B-J), fuera del núcleo a propósito (regla del núcleo, arriba): el día que llegue el cliente #2 con
+  su propio Excel, se agrega `exportadores/<cliente>.ts` y este archivo no se toca.
+- `ia/informe.ts` y `ia/cumplido.ts` — dónde viven los dos agentes de IA (redactar el informe, leer
+  el cumplido escaneado). **Eligen proveedor por variable de entorno, no por parámetro**: con
+  `ANTHROPIC_API_KEY` usan Claude; sin ella, y con `GEMINI_API_KEY`, caen a Gemini (respaldo agregado
+  2026-09 mientras el pago de la consola de Anthropic estuvo trabado). Las rutas (`app/api/informe`,
+  `app/api/cumplidos`) no saben cuál corrió — sólo hacen auth y arman la respuesta. Dos esquemas de
+  salida estructurada por agente, uno por dialecto (Claude: JSON Schema con `type: [x,"null"]`;
+  Gemini: tipos en MAYÚSCULA + `nullable: true`) — no son intercambiables como objeto.
 - `supabase.ts` — Supabase client initialization
 - `utils.ts` — Helpers: `cn()`, `formatDate()`, `calculateDistance()`
 

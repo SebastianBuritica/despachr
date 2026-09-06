@@ -1,111 +1,109 @@
-# Despachr — Current Status (2026-08-31)
+# Despachr — Current Status (2026-09-05)
 
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr · **Supabase:** `mxgfkwwdhnoumboftjal`
 
-**One line:** el producto **cambió de forma** — dejó de ser "PWA de gestión logística" (paneles que
-la gente opera) y pasa a ser **back-office agéntico** (trabajo que se hace solo). El primer agente
-está construido y corriendo local; falta commit, saldo de API y conectarlo a datos reales.
+**One line:** los 2 primeros agentes (informe, cumplido) están construidos y verificados con datos
+reales de la operación; **5 commits siguen sin subir a `main`**; el pago en la consola de Anthropic
+lleva días trabado y hay un respaldo con Gemini mientras se resuelve; falta el Excel real de David
+para cerrar el ciclo completo.
 
-> Doc map: `AGENTS.md` referencia durable + **la tesis y la regla del núcleo** (auto-cargado) ·
-> **este archivo** = estado + siguientes pasos · `CHANGELOG.md` historia ·
-> `SUPABASE-PENDIENTE.md` runbook de infra · `PREGUNTAS-CLIENTE.md` preguntas abiertas.
-
----
-
-## Lo que cambió esta sesión (y por qué)
-
-La reunión con la dueña del 2026-08-24 (notas en Notion, transcritas) reordenó el producto. Tres
-hallazgos que no estaban en ningún documento del repo:
-
-1. **El dolor #1 no era lo construido.** No es la app del conductor ni el mapa: es **Girle**,
-   llenando a mano el Excel que manda el cliente, persiguiendo cumplidos que llegan **15–20 días
-   tarde**, con un cuaderno físico de respaldo, y filtrando a mano para sacar el % de la reunión de
-   los viernes. Ese puesto existe en toda transportadora del país.
-2. **La fecha comprometida sí existe** — viene en el Excel del cliente, por factura. Era el dato que
-   `STATUS.md` daba por imposible y que bloqueaba el "% a tiempo". Una columna (`008`).
-3. **El RNDC ya lo resuelve SISTRAN** para este cliente. La cuña regulatoria es real para el mercado,
-   pero **no es el camino de entrada al piloto**. No construir RNDC.
+> Doc map: `AGENTS.md` referencia durable — **la tesis, la regla del núcleo, y ahora `lib/ia/`**
+> (auto-cargado) · **este archivo** = estado + siguientes pasos · `CHANGELOG.md` historia completa ·
+> `PREGUNTAS-CLIENTE.md` preguntas abiertas.
 
 ---
 
-## ✅ Hecho
+## ✅ Hecho, verificado con datos reales
 
-**Fase 3.1 — informe de cumplimiento (el agente 2).**
-- Migración `008` (`deliveries.fecha_programada`) corrida en producción.
-- Semilla de una semana real de Casablanca (35 entregas, 3 novedades, 2 fuera de fecha).
-- `lib/cumplimiento.ts` — la aritmética, con 4 tests. **Los números los calcula código, nunca el
-  modelo**: este informe se le entrega a un cliente que paga.
-- `app/api/informe/route.ts` — el agente redactor (`claude-opus-5`, salida estructurada). Verifica
-  sesión y rol propios porque **el matcher del middleware excluye `/api`** a propósito.
-- `app/admin/page.tsx` — el informe, ahora la única pantalla del admin.
-- Verificado contra la base: **85.7% cumplimiento · 91.4% efectividad**. Cuadra exacto.
+**Fase 3.1 — informe de cumplimiento.** Migración `008` en prod. `lib/cumplimiento.ts` calcula, el
+agente sólo redacta. Verificado contra la base: 85.7% cumplimiento, 91.4% efectividad, cuadrando
+exacto.
 
-**Limpieza (−425 líneas netas).** Borradas las tres pantallas mock del admin (Métricas, Clientes,
-Facturación), sus cuatro componentes exclusivos, `lib/mock/` entero y `demo-data-notice.tsx`. **No
-queda un solo dato inventado en la UI.** No eran deuda a completar: eran vistas para mirar, y ninguna
-le quitaba trabajo a nadie.
+**Fase 3.2 (parcial) — agente de cumplido.** Con un PDF real de CamScanner (23 facturas selladas a
+mano, ver `docs/`) se diseñó de verdad, no se adivinó: número de factura impreso (certeza alta),
+fecha real de entrega manuscrita en un sello que cambia de posición y nitidez por punto (por eso es
+copiloto, no autopiloto). `lib/cumplidos.ts` parte el PDF en el navegador sin librería — verificado
+23/23 páginas contra el archivo real.
 
-`build` + `lint` + 54 tests en verde.
+**Exportar a Casablanca.** Dos fotos del archivo real que la operación llena a mano cambiaron el
+objetivo: el entregable es el Excel del cliente, ya lleno, no un informe propio. Reveló ESTATUS vs
+CUMPLIDO (¿llegó? vs ¿volvió el papel firmado?) y la reprogramación (2DA FECHA, migración `010` — el
+cumplimiento se mide SIEMPRE contra la fecha original, nunca la reprogramada, por indicación directa
+de la dueña). El adaptador vive fuera del núcleo (`lib/exportadores/casablanca.ts`). Verificado con
+round-trip real: se escribe el `.xlsx`, se relee, título/encabezados/filas calzan.
+
+**Respaldo de proveedor de IA.** El pago en la consola de Anthropic lleva **varios días** trabado:
+"no podemos autenticar" con dos tarjetas de bancos distintos, mismo error → apunta a 3D Secure, no a
+fondos. `lib/ia/informe.ts` y `lib/ia/cumplido.ts` centralizan: con `ANTHROPIC_API_KEY` usan Claude;
+sin ella, con `GEMINI_API_KEY` (tier gratis real de Google AI Studio, sin tarjeta), usan Gemini. El
+día que vuelva la llave de Anthropic, Claude se prefiere solo, cero cambios de código.
+
+**Migraciones `009` y `010` corridas en producción** con el CLI de Supabase (`supabase db query
+--linked -f archivo.sql`) — ya logueado y linkeado, cero fricción de navegador. Ese es ahora el
+camino para toda migración futura; no volver a montar un prompt para Claude Chrome.
+
+`build` + `lint` + **73 tests** en verde.
 
 ---
 
 ## ⬜ Cola inmediata
 
-1. **Commit.** Todo está suelto en `main`. Va en rama `feat/informe-cumplimiento`.
-   ⚠️ **No usar `git add -A`**: hay sin trackear `SECURITY-AUDIT-2026-08-15.md` (que por decisión
-   propia **no entra al repo público** — tiene pasos de explotación), `docs/` y cinco
-   `.claude/skills/`.
-2. **Saldo de API.** La consola está en $0.00 y el pago falla con "no podemos autenticar" con **dos**
-   tarjetas distintas → probable bloqueo de extensiones sobre el iframe de 3D Secure. Probar en
-   incógnito. Sin saldo, las cifras salen igual; sólo falta la redacción.
-3. **Rotación hecha:** una `sk-ant-…` se filtró al chat el 2026-08-30 y fue revocada. La nueva caduca
-   el 31 dic 2026.
+1. **Push + PR.** 5 commits en `feat/informe-cumplimiento` (`9329395`…`54ea8b1`), ninguno subido.
+2. **Decidir `docs/reunion-2026-08-24.md`.** Sigue sin commitear — trae márgenes (22%) y nombres del
+   equipo; el repo es público. Recomendación: fuera del repo, sólo como contexto del proyecto de
+   Claude. Alternativa: `.gitignore`. Sigue pendiente de que Sebastian decida.
+3. **Crear el usuario de Girle** como `coordinador` en el dashboard de Supabase — 2 minutos, cero
+   código. Sin esto, la persona que más usaría `/dashboard/cumplidos` no tiene por dónde entrar.
+4. **Resolver el pago de Anthropic** (o seguir en Gemini): llamar al banco por 3D Secure en compras
+   internacionales, probar en incógnito, o usar la tarjeta de alguien más en la misma cuenta.
+5. **El Excel real de David** (no sólo las fotos) — para verificar encabezados al 100% antes de
+   construir el importador. Sin él, el ciclo completo (Excel → entregas → fotos → Excel lleno) no
+   cierra.
 
 ---
 
 ## 🚧 Gaps honestos
 
-- **Los datos reales no entran.** Hoy viven en SISTRAN, el Excel del cliente y fotos de WhatsApp. El
-  informe corre sobre **semilla**. Al mostrarlo hay que decirlo: es la *forma* del entregable, no la
-  semana real.
-- **El agente de cumplido no existe.** Es el que de verdad le quita el trabajo a Girle. Sin él,
-  alguien sigue tecleando.
-- **Sin gráficas.** La dueña pidió *"con dashboards, con gráficas"*. Hoy son cifras y una tabla.
-- **Girle no tiene rol.** No es admin (no debe ver rentabilidad), ni coordinadora, ni conductora. La
-  persona que más va a usar el informe no tiene por dónde entrar.
-- **Falta "qué carro entregó"** en la tabla. El cliente lo pide y el dato está (`routes.driver_id`).
-- **Single-tenant.** Cero `company_id`, 27 policies por rol. Bloquea al cliente #2 — el activo que
-  más pesa para YC.
-- Landing desalineada: sigue vendiendo "PWA de gestión logística". Cambiarla **cuando** el agente de
-  cumplido exista, no antes: escribir la promesa primero es prometer lo que no se cumple.
-- Contraste verificado por aritmética, no por `axe`. `npm run qa` sigue sin correrse de verdad.
+- **Cero facturas reales cargadas.** `numero_factura` funciona y está probado, pero sólo contra la
+  semilla sintética (`CB-0824-01`); las reales del PDF (`FEV76883`...) no están en la base, así que
+  `/dashboard/cumplidos` va a marcar "sin emparejar" hasta que entre el Excel real.
+- **La calidad de Gemini en la tarea difícil no está medida.** Sirve para probar la app de punta a
+  punta; no reemplaza medir con Opus 5 antes de confiar el % de aciertos del copiloto.
+- **`SignaturePad` sigue sin confirmar con Isaac** si se puede borrar (evidencia duplicada — ver
+  AGENTS.md, la restricción del conductor).
+- Sin gráficas en el informe — la dueña las pidió explícitamente. Es trabajo del agente de diseño.
+- `npm run qa` no se ha corrido desde que se borraron 3 pantallas mock y se agregaron 2 rutas nuevas.
+- Landing sigue vendiendo "PWA de gestión logística" — se corrige cuando el agente 1 esté cerrando
+  entregas de verdad, no antes.
+- Contraste verificado por aritmética, no por `axe`.
 
 ---
 
 ## ▶️ Siguiente trabajo de ingeniería
 
-1. **Fase 3.2 — agente de cumplido, en COPILOTO.** Lee la foto de la factura firmada → propone los
-   campos → un humano confirma con un toque. La **tasa de confirmación sin corrección** decide
-   cuándo se quita el humano.
-2. **Fase 3.3 — multi-tenant.** Prerequisito del cliente #2 (y del primero fuera de Colombia: son la
-   misma migración). Su costo sólo sube con datos reales encima.
-3. Post: agentes de despacho (Isaac) y facturación (Yuli). **Nunca** el de Osmelia.
+1. **Cerrar Fase 3.2** — que el agente de cumplido escriba, no sólo proponga: cablear a
+   `confirmarCumplido`/`reportarNovedad` una vez medida la tasa de confirmación sin corrección sobre
+   datos reales.
+2. **El importador del Excel de David** — bloqueado por el archivo real.
+3. **Fase 3.3 — multi-tenant.** Prerequisito del cliente #2, sin tocar todavía.
 
 ---
 
-## Pendientes del dueño (de la reunión)
+## Pendientes del dueño (de la reunión, sin cambios)
 
-- Sesión con **Yuli** (lun/mié/vie 2–5pm) e **Isaac** (jue/vie) para ver SISTRAN por dentro. Es cloud.
-- Segunda reunión para alcance de bodega (fase 2 / WMS). **No adelantarla.**
-- Costo de tokens: **contestado** — ~$0.04 por informe; ~$1.60/mes con 10 clientes semanales.
-  Envolver la IA en la app sale mucho más barato que dos suscripciones de $20.
+- Sesión con **Yuli** (lun/mié/vie 2–5pm) e **Isaac** (jue/vie) para ver SISTRAN por dentro.
+- Segunda reunión para alcance de bodega (fase 2 / WMS). No adelantarla.
 
 ---
 
 ## Notas
 
-- Migraciones: SQL hand-run y trackeado en `scripts/migrations/` (`001`–`008`).
+- Migraciones: SQL hand-run y trackeado en `scripts/migrations/` (`001`–`010`). Correrlas con
+  `supabase db query --linked -f scripts/migrations/XXX.sql` — el CLI ya está logueado y linkeado.
 - Rol nuevo se promueve por `app_metadata`, nunca `user_metadata` (ver `007`).
-- **Nunca dejar que una credencial llegue al chat.** Ha pasado tres veces. El vector nuevo
-  (2026-08-30): copiar el bloque `curl` de ejemplo que la consola de Anthropic muestra con la key
-  incrustada.
+- **Nunca dejar que una credencial llegue al chat.** Ha pasado varias veces; el vector más reciente
+  es copiar el bloque `curl`/código de ejemplo que la consola de un proveedor muestra con la key
+  incrustada. Las llaves de esta sesión (Anthropic, Gemini) se metieron con `read -rs` en terminal,
+  nunca pegadas al chat.
+- `.env.local.example` estuvo fuera del repo desde el inicio del proyecto por un `.env*` sin
+  excepción en `.gitignore` — corregido 2026-09-05, ahora sí se commitea.
