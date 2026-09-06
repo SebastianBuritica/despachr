@@ -21,13 +21,8 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { supabase } from '@/lib/supabase'
 import { calcularCumplimiento, type Cumplimiento, type EntregaInforme } from '@/lib/cumplimiento'
+import type { Analisis } from '@/lib/ia/informe'
 import { entregasDelInforme } from '@/lib/queries/reporte'
-
-interface Analisis {
-  resumen: string
-  hallazgos: string[]
-  oportunidades: { texto: string; dependeDe: 'nosotros' | 'cliente' | 'punto' }[]
-}
 
 const DEPENDE_UI = {
   nosotros: { label: 'Depende de nosotros', tone: 'warning' as const },

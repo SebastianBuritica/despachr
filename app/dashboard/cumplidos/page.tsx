@@ -18,16 +18,8 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { extraerPaginasJpeg } from '@/lib/cumplidos'
+import type { ExtraidoCumplido as Extraido } from '@/lib/ia/cumplido'
 
-interface Extraido {
-  numero_factura: string | null
-  punto_entrega: string | null
-  fecha_entrega: string | null
-  confianza_fecha: 'alta' | 'media' | 'baja'
-  hora_entrega: string | null
-  recibido_por: string | null
-  novedad: { tipo: string; descripcion: string } | null
-}
 interface Entrega {
   id: string
   address: string
