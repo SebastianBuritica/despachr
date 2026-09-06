@@ -50,16 +50,15 @@ const SEGMENTS = {
       { path: '/dashboard/rutas', label: 'rutas' },
       { path: '/dashboard/conductores', label: 'conductores' },
       { path: '/dashboard/clientes', label: 'clientes' },
+      { path: '/dashboard/cumplidos', label: 'cumplidos' },
     ],
   },
+  // Admin quedó reducido a UNA pantalla el 2026-08-30 (se borraron clientes,
+  // facturacion y reportes — eran mock). Si esta lista vuelve a crecer, que
+  // sea porque la pantalla existe de verdad, no por copiar el patrón viejo.
   admin: {
     role: 'admin',
-    routes: [
-      { path: '/admin', label: 'metricas' },
-      { path: '/admin/clientes', label: 'clientes' },
-      { path: '/admin/facturacion', label: 'facturacion' },
-      { path: '/admin/reportes', label: 'reportes' },
-    ],
+    routes: [{ path: '/admin', label: 'informe-de-cumplimiento' }],
   },
   driver: {
     role: 'conductor',

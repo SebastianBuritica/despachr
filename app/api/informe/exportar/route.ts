@@ -48,7 +48,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Parámetros inválidos.' }, { status: 400 })
   }
 
-  const entregas = await entregasDelInforme(db, clienteId, desde, hasta)
+  let entregas
+  try {
+    entregas = await entregasDelInforme(db, clienteId, desde, hasta)
+  } catch (e) {
+    console.error('Fallo cargando las entregas para exportar:', e)
+    return NextResponse.json({ error: 'No se pudieron cargar las entregas.' }, { status: 502 })
+  }
   if (entregas.length === 0) {
     return NextResponse.json({ error: 'No hay entregas en ese rango.' }, { status: 404 })
   }

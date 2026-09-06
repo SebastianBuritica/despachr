@@ -10,6 +10,18 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI } from '@google/genai'
 
+// El SDK de Gemini stringifica sus errores como `ApiError: {json crudo}` — sin
+// esto ese JSON completo se ve tal cual en la tabla de /dashboard/cumplidos,
+// donde lo lee Girle. Se extrae sólo `.error.message` cuando se puede.
+function mensajeGemini(e: unknown): string {
+  const bruto = e instanceof Error ? e.message : String(e)
+  try {
+    return JSON.parse(bruto)?.error?.message ?? bruto
+  } catch {
+    return bruto
+  }
+}
+
 export interface ExtraidoCumplido {
   numero_factura: string | null
   punto_entrega: string | null
@@ -154,7 +166,7 @@ export async function leerCumplido(
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
       const respuesta = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash', // '2.5' quedó retirado para cuentas nuevas — ver STATUS.md 2026-09-06
         contents: [
           {
             role: 'user',
@@ -169,8 +181,8 @@ export async function leerCumplido(
       })
       return { extraido: respuesta.text ? JSON.parse(respuesta.text) : null }
     } catch (e) {
-      console.error('Fallo leyendo el cumplido con Gemini:', String(e))
-      return { extraido: null, error: String(e) }
+      console.error('Fallo leyendo el cumplido con Gemini:', mensajeGemini(e))
+      return { extraido: null, error: mensajeGemini(e) }
     }
   }
 

@@ -9,11 +9,30 @@ import { fechaOperacion } from '@/lib/fecha'
 import type { EntregaInforme } from '@/lib/cumplimiento'
 import type { EstadoEntrega, TipoNovedad } from '@/types'
 
+// `routes.driver_id` referencia a `drivers.id`, y `drivers.id` (a su vez) a
+// `profiles.id` — es una tabla de extensión 1:1, NO una relación directa
+// routes→profiles. Pedir `routes!inner(profiles(name))` sin pasar por `drivers`
+// falla en silencio del lado de PostgREST (`PGRST200: no relationship found`),
+// que es justo el bug que dejó `/admin` sin cargar nunca — nadie lo vio porque
+// la verificación siempre fue por SQL directo, nunca cargando la pantalla real.
 interface FilaCruda {
   numero_factura: string | null
   fecha_reprogramada: string | null
   foto_cumplido_url: string | null
-  routes: { profiles: { name: string | null } | null } | { profiles: { name: string | null } | null }[] | null
+  routes:
+    | {
+        driver:
+          | { profiles: { name: string | null } | null }
+          | { profiles: { name: string | null } | null }[]
+          | null
+      }
+    | {
+        driver:
+          | { profiles: { name: string | null } | null }
+          | { profiles: { name: string | null } | null }[]
+          | null
+      }[]
+    | null
   address: string | null
   city: string | null
   estado: EstadoEntrega
@@ -42,7 +61,7 @@ export async function entregasDelInforme(
     .select(
       'address, city, estado, fecha_programada, fecha_reprogramada, numero_factura, ' +
         'hora_salida_punto, observaciones, foto_cumplido_url, ' +
-        'issues(tipo_novedad), routes!inner(fecha, profiles(name))'
+        'issues(tipo_novedad), routes!inner(fecha, driver:drivers(profiles(name)))'
     )
     .eq('client_id', clienteId)
     .gte('routes.fecha', desde)
@@ -54,7 +73,8 @@ export async function entregasDelInforme(
   return (data ?? []).map((d) => {
     const f = d as unknown as FilaCruda
     const ruta = Array.isArray(f.routes) ? f.routes[0] : f.routes
-    const perfil = Array.isArray(ruta?.profiles) ? ruta?.profiles[0] : ruta?.profiles
+    const conductor = Array.isArray(ruta?.driver) ? ruta?.driver[0] : ruta?.driver
+    const perfil = Array.isArray(conductor?.profiles) ? conductor?.profiles[0] : conductor?.profiles
     return {
       factura: f.numero_factura,
       fechaReprogramada: f.fecha_reprogramada,

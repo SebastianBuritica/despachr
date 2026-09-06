@@ -64,7 +64,19 @@ export async function POST(request: Request) {
     )
   }
 
-  const entregas = await entregasDelInforme(db, clienteId, desde, hasta)
+  // Un error de datos (RLS, un join mal escrito, un timeout) NO puede tumbar
+  // la respuesta con un 500 desnudo — el QA de 2026-09-06 encontró exactamente
+  // eso: el join a `drivers` estaba mal y la ruta moría sin cuerpo, silencioso.
+  let entregas
+  try {
+    entregas = await entregasDelInforme(db, clienteId, desde, hasta)
+  } catch (e) {
+    console.error('Fallo cargando las entregas del informe:', e)
+    return NextResponse.json(
+      { cumplimiento: null, analisis: null, error: 'No se pudieron cargar las entregas.' },
+      { status: 502 }
+    )
+  }
   const cumplimiento = calcularCumplimiento(entregas)
 
   // Sin entregas no hay nada que redactar. Pedirle al modelo que escriba sobre
