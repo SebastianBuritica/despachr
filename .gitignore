@@ -58,3 +58,7 @@ next-env.d.ts
 # Auditoría de seguridad: se mantiene FUERA del repo público a propósito
 # (contiene pasos de explotación reproducibles). Ver AGENTS.md.
 SECURITY-AUDIT-*.md
+
+# Estado local del CLI de Supabase — cambia en cada `supabase db query`, nunca
+# debió trackearse (entró por accidente en 046ea7f).
+supabase/.temp/
