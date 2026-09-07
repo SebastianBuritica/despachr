@@ -207,3 +207,29 @@ subir ni mergear a `main`; `docs/reunion-2026-08-24.md` sigue sin decisión (com
 — trae márgenes y nombres del equipo); el usuario de Girle (rol `coordinador`) no se ha creado; y el
 emparejamiento por factura sigue sin una sola factura real cargada (`FEV...`) — sólo las sintéticas
 de la semilla.
+
+## 2026-09-07 — el lote real expone el segundo bug: cuota de Gemini, no calidad de lectura
+
+Con `STATUS.md` puesto al día, un agente de QA nuevo (sesión separada, sin memoria de la anterior)
+pudo arrancar directo desde la documentación sin re-diagnosticar el bug de `/admin` ya cerrado —
+confirmó que sigue en PASS y se fue directo al gap real que quedaba abierto: medir la calidad de
+lectura del sello manuscrito, pero esta vez con las 23 facturas reales del PDF, no con 1 página de
+prueba.
+
+El resultado no fue sobre calidad: **18 de 23 fallaron por límite de cuota/velocidad del tier gratis
+de Gemini**, agotado a mitad de un lote semanal real. `leerCumplido` no reintentaba nada — cualquier
+bache tumbaba esa página para siempre. Es un hallazgo distinto del `503` de "alta demanda" que se
+había verificado el día anterior (ese es un apagón temporal que le pasa igual a cuentas pagadas; este
+es un tope de cuota que sí depende del volumen, y donde pagar Gemini sí ayudaría si el tope es
+genuinamente diario).
+
+`lib/ia/reintentar.ts` agrega reintento con backoff (hasta 3 intentos) sólo ante 429/503 — no ante
+errores que no cambian con un segundo intento (esquema mal formado, modelo inexistente, permisos).
+Respeta el `retryDelay` que la propia API de Google manda en el error en vez de adivinar un tiempo de
+espera fijo. Cableado en los dos agentes de IA. Sin solucionar del todo: reintentar no fabrica más
+cuota diaria si el tope es genuinamente por día — sólo absorbe baches transitorios dentro de una
+cuota que todavía tiene margen. Queda pendiente reverificar el lote real completo una vez la cuota
+gratis de hoy resetee.
+
+Nota aparte, de higiene: `supabase/.temp/` (estado local del CLI, cambia en cada `supabase db query`)
+estaba trackeado por accidente desde hacía semanas — se dejó de rastrear y se agregó al `.gitignore`.

@@ -20,6 +20,7 @@
 // escribirlo para el mínimo común, perdiendo precisión en ambos.
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI } from '@google/genai'
+import { conReintentoGemini } from '@/lib/ia/reintentar'
 import type { Cumplimiento, EntregaInforme } from '@/lib/cumplimiento'
 
 // El SDK de Gemini stringifica sus errores como `ApiError: {json crudo}` — sin
@@ -157,15 +158,19 @@ export async function redactarInforme(
   if (process.env.GEMINI_API_KEY) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-      const respuesta = await ai.models.generateContent({
-        model: 'gemini-3.6-flash', // '2.5' quedó retirado para cuentas nuevas — ver STATUS.md 2026-09-06
-        contents: prompt,
-        config: {
-          systemInstruction: SISTEMA,
-          responseMimeType: 'application/json',
-          responseSchema: ESQUEMA_GEMINI,
-        },
-      })
+      // Ver lib/ia/reintentar.ts — el mismo tope de tier gratis que afecta al
+      // agente de cumplido puede tocar a este, aunque aquí sea 1 llamada/semana.
+      const respuesta = await conReintentoGemini(() =>
+        ai.models.generateContent({
+          model: 'gemini-3.6-flash', // '2.5' quedó retirado para cuentas nuevas — ver STATUS.md 2026-09-06
+          contents: prompt,
+          config: {
+            systemInstruction: SISTEMA,
+            responseMimeType: 'application/json',
+            responseSchema: ESQUEMA_GEMINI,
+          },
+        })
+      )
       return { analisis: respuesta.text ? JSON.parse(respuesta.text) : null }
     } catch (e) {
       console.error('Fallo redactando el informe con Gemini:', mensajeGemini(e))

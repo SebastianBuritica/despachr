@@ -39,7 +39,7 @@ solo, cero cambios de código.
 --linked -f archivo.sql`) — ya logueado y linkeado, cero fricción de navegador. Camino estándar para
 toda migración futura.
 
-`build` + `lint` + **73 tests** en verde.
+`build` + `lint` + **78 tests** en verde.
 
 ### 🔧 Bug real encontrado y corregido por el barrido de QA (2026-09-06/07)
 
@@ -64,11 +64,25 @@ correctas, "Generar análisis" completa (tras un `503` transitorio de Gemini —
 descarga de `.xlsx` sin error, lectura de PDF en `/dashboard/cumplidos` completa sin el 404 viejo.
 Barrido completo: 34/34 pantallas, 0 errores de consola/JS, sólo el backlog conocido de contraste.
 
-**Sobre el `503` de Gemini que salió durante la prueba:** es "alta demanda" — un apagón temporal de
-Google, **no relacionado con el tier gratis** (confirmado: un `503` le pasa igual a cuentas pagadas;
-lo que sí cambia con el pago es el límite de velocidad, 15 vs 150-300 peticiones/min, irrelevante a
-nuestro volumen). Reintentar lo resuelve. Verificado en vivo con un `curl` directo contra la API
-(fuera de la app): `HTTP 200` normal momentos después. No hace falta pagar Gemini para esto.
+**Sobre el `503` de Gemini que salió durante la primera prueba (1 página):** es "alta demanda" — un
+apagón temporal de Google, **no relacionado con el tier gratis** (confirmado: un `503` le pasa igual
+a cuentas pagadas). Verificado en vivo con un `curl` directo: `HTTP 200` momentos después.
+
+### 🔧 Segundo hallazgo real, distinto del anterior (QA 2026-09-07, lote real de 23 páginas)
+
+A volumen real (no 1 página, las 23 del PDF real), **18 de 23 facturas fallaban** — no por mala
+lectura, por límite de cuota/velocidad del tier gratis de `gemini-3.6-flash` agotándose a mitad de
+lote (esto SÍ es distinto del `503` de arriba: aquí importa el volumen, y pagar Gemini sí ayudaría
+si el tope es genuinamente diario). Causa raíz de código: `leerCumplido` no reintentaba nada.
+
+Corregido: `lib/ia/reintentar.ts` — reintento con backoff (hasta 3 intentos) sólo ante 429/503,
+respetando el `retryDelay` que la propia API de Google manda en el error en vez de adivinar un
+tiempo de espera. Cableado en los dos agentes (`lib/ia/cumplido.ts`, `lib/ia/informe.ts`). 5 tests
+nuevos con timers falsos (sin esto el suite se vuelve lento en silencio — ya pasó una vez).
+
+**Esto NO fabrica más cuota diaria** si el tope es genuinamente por día — sólo absorbe baches
+transitorios. **Pendiente de reverificar con el lote real completo** cuando la cuota gratis de hoy
+resetee (se agotó corriendo la prueba dos veces) o cuando el pago de Anthropic se resuelva.
 
 ---
 
@@ -81,8 +95,12 @@ nuestro volumen). Reintentar lo resuelve. Verificado en vivo con un `curl` direc
 3. **Crear el usuario de Girle** como `coordinador` en el dashboard de Supabase — 2 minutos, cero
    código. Sin esto, la persona que más usaría `/dashboard/cumplidos` no tiene por dónde entrar.
 4. **El pago de Anthropic sigue trabado** (3D Secure, no fondos — mismo error con 2 tarjetas
-   distintas). El respaldo de Gemini funciona bien; no es urgente resolverlo, pero sigue pendiente si
-   se quiere medir la calidad real de Opus 5 en la tarea difícil (ver gap abajo).
+   distintas). Con el reintento ya cableado, el respaldo de Gemini debería aguantar un lote real —
+   falta reverificarlo (punto 6). Sigue pendiente además para medir la calidad real de Opus 5 en la
+   tarea difícil (ver gap abajo).
+6. **Reverificar el lote real de 23 páginas con el reintento puesto**, cuando la cuota gratis de
+   Gemini resetee — el fix de hoy no se probó contra el caso real que lo motivó, sólo con tests
+   unitarios (mockeados).
 5. **El Excel real de David** (no sólo las fotos) — para verificar encabezados al 100% antes de
    construir el importador. Sin él, el ciclo completo (Excel → entregas → fotos → Excel lleno) no
    cierra.
@@ -94,10 +112,10 @@ nuestro volumen). Reintentar lo resuelve. Verificado en vivo con un `curl` direc
 - **Cero facturas reales cargadas.** `numero_factura` funciona y está probado, pero sólo contra la
   semilla sintética (`CB-0824-01`); las reales del PDF (`FEV76883`...) no están en la base, así que
   `/dashboard/cumplidos` va a marcar "sin emparejar" con un PDF real hasta que entre el Excel de David.
-- **La calidad de lectura del sello manuscrito no está medida con volumen real.** La prueba manual
-  usó un PDF de una sola página de prueba, no las 23 facturas reales de Casablanca. Confirmado que
-  LEE (no 404, no crash) — no confirmado qué tan bien acierta la fecha/nombre manuscritos. Con Gemini
-  Flash gratis o con Opus 5, esa medición sigue pendiente.
+- **La calidad de lectura del sello manuscrito sigue sin medirse con un lote real limpio.** El
+  intento con las 23 páginas reales falló en 18 por cuota agotada (ver arriba), no por mala lectura —
+  pero eso significa que tampoco hay todavía una medición real de qué tan bien acierta la fecha/nombre
+  manuscritos en las 5 que sí pasaron. Pendiente del punto 6 de la cola inmediata.
 - **`SignaturePad` sigue sin confirmar con Isaac** si se puede borrar (evidencia duplicada — ver
   AGENTS.md, la restricción del conductor).
 - Sin gráficas en el informe — la dueña las pidió explícitamente. Es trabajo del agente de diseño.

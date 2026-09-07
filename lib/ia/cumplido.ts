@@ -9,6 +9,7 @@
 // pago se resuelva, antes de apostarle a estos números en producción.
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI } from '@google/genai'
+import { conReintentoGemini } from '@/lib/ia/reintentar'
 
 // El SDK de Gemini stringifica sus errores como `ApiError: {json crudo}` — sin
 // esto ese JSON completo se ve tal cual en la tabla de /dashboard/cumplidos,
@@ -165,20 +166,24 @@ export async function leerCumplido(
   if (process.env.GEMINI_API_KEY) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-      const respuesta = await ai.models.generateContent({
-        model: 'gemini-3.6-flash', // '2.5' quedó retirado para cuentas nuevas — ver STATUS.md 2026-09-06
-        contents: [
-          {
-            role: 'user',
-            parts: [{ inlineData: { mimeType, data: imagenBase64 } }, { text: INSTRUCCION }],
+      // Un lote real son ~23 llamadas seguidas — el tope del tier gratis se
+      // toca de verdad (QA 2026-09-07: 18/23 fallaban sin esto). Ver reintentar.ts.
+      const respuesta = await conReintentoGemini(() =>
+        ai.models.generateContent({
+          model: 'gemini-3.6-flash', // '2.5' quedó retirado para cuentas nuevas — ver STATUS.md 2026-09-06
+          contents: [
+            {
+              role: 'user',
+              parts: [{ inlineData: { mimeType, data: imagenBase64 } }, { text: INSTRUCCION }],
+            },
+          ],
+          config: {
+            systemInstruction: SISTEMA,
+            responseMimeType: 'application/json',
+            responseSchema: ESQUEMA_GEMINI,
           },
-        ],
-        config: {
-          systemInstruction: SISTEMA,
-          responseMimeType: 'application/json',
-          responseSchema: ESQUEMA_GEMINI,
-        },
-      })
+        })
+      )
       return { extraido: respuesta.text ? JSON.parse(respuesta.text) : null }
     } catch (e) {
       console.error('Fallo leyendo el cumplido con Gemini:', mensajeGemini(e))
