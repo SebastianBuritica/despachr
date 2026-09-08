@@ -2,10 +2,14 @@
 
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr · **Supabase:** `mxgfkwwdhnoumboftjal`
 
-**One line:** el agente de cumplido lee el sello manuscrito con **~92% de precisión, medido contra
-el PDF real**, sobre Gemini pagado (el pago de Anthropic sigue trabado, ya no es urgente resolverlo).
-Los 2 primeros agentes están construidos y verificados de punta a punta con Playwright real.
-**13 commits siguen sin subir a `main`**. Falta el Excel real de David para cerrar el ciclo completo.
+**One line:** Fase 3.2 ya CIERRA la entrega, no sólo propone — `/dashboard/cumplidos` tiene un botón
+"Confirmar" por fila (siempre manual, la confianza "Alta" no basta). El agente de cumplido lee el
+sello manuscrito con **~92% de precisión, medido contra el PDF real**, sobre Gemini pagado (el pago
+de Anthropic sigue trabado, ya no es urgente resolverlo). Los 2 primeros agentes están construidos y
+verificados de punta a punta con Playwright real; el paso de escritura de Fase 3.2 tiene build+lint+
+tests en verde pero **sin verificar en el navegador con datos reales** (no hay facturas reales
+cargadas — ver gaps abajo). Commits sin subir a `main`. Falta el Excel real de David para cerrar el
+ciclo completo.
 
 > Doc map: `AGENTS.md` referencia durable — la tesis, la regla del núcleo, `lib/ia/` (auto-cargado) ·
 > **este archivo** = estado + siguientes pasos · `CHANGELOG.md` historia completa ·
@@ -19,11 +23,20 @@ Los 2 primeros agentes están construidos y verificados de punta a punta con Pla
 agente sólo redacta. Cifras confirmadas **en la pantalla real** (no sólo por SQL): 85.7%
 cumplimiento, 91.4% efectividad, columna de conductor sin error.
 
-**Fase 3.2 (parcial) — agente de cumplido.** Diseñado con un PDF real de CamScanner (23 facturas
-selladas a mano, ver `docs/`): número de factura impreso (certeza alta), fecha real de entrega
-manuscrita en un sello que cambia de posición y nitidez por punto (por eso es copiloto, no
+**Fase 3.2 — agente de cumplido, lectura Y cierre.** Diseñado con un PDF real de CamScanner (23
+facturas selladas a mano, ver `docs/`): número de factura impreso (certeza alta), fecha real de
+entrega manuscrita en un sello que cambia de posición y nitidez por punto (por eso es copiloto, no
 autopiloto). `lib/cumplidos.ts` parte el PDF en el navegador sin librería — 23/23 páginas verificado.
 Lectura real confirmada funcionando en `/dashboard/cumplidos` (ver hallazgo del QA abajo).
+**Cierre (2026-09-08, mismo día):** botón "Confirmar" por fila llama a
+`cerrarCumplidoDesdeExtraccion`/`cerrarNovedadDesdeExtraccion` (`lib/queries/coordinator.ts`) — NO
+las funciones del conductor (`confirmarCumplido`/`reportarNovedad`): esas habrían fallado por FK
+(`delivery_events.driver_id` exige que quien confirma sea conductor, y Girle no lo es) y habrían
+grabado GPS/hora de la oficina como si fueran los de la entrega real. Escribe `hora_salida_punto`
+directo desde la fecha manuscrita — sin esto el informe habría excluido estas entregas en silencio
+(deriva "a tiempo" de esa columna). Migración `011` (ya en prod) le da a coordinador/admin INSERT en
+el bucket `cumplidos` (antes sólo tenían SELECT). **Sin verificar en el navegador con una factura
+real** — no hay ninguna cargada todavía (ver gaps).
 
 **Exportar a Casablanca.** El entregable es el Excel del cliente, ya lleno, no un informe propio.
 ESTATUS vs CUMPLIDO (¿llegó? vs ¿volvió el papel firmado?) y la reprogramación (2DA FECHA, migración
@@ -131,10 +144,9 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
 5. **El Excel real de David** (no sólo las fotos) — para verificar encabezados al 100% antes de
    construir el importador. Sin él, el ciclo completo (Excel → entregas → fotos → Excel lleno) no
    cierra.
-6. **Decidir cómo se diseña el paso de escritura de Fase 3.2** a la luz del hallazgo de hoy: la
-   confianza "Alta" del modelo no es 100% confiable (un escaneo degradado la tuvo mal, dos llamadas
-   sobre la MISMA imagen dieron respuestas distintas). No cablear una confirmación de un toque que
-   confíe ciegamente en "Alta" sin discutirlo primero.
+6. **Verificar el cierre de Fase 3.2 en el navegador con una factura real** — build+lint+tests están
+   en verde pero nadie ha hecho clic en "Confirmar" contra datos reales todavía (bloqueado por el
+   mismo punto 5: no hay facturas reales cargadas en `deliveries.numero_factura`).
 
 ---
 
@@ -160,9 +172,9 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
 
 ## ▶️ Siguiente trabajo de ingeniería
 
-1. **Cerrar Fase 3.2** — que el agente de cumplido escriba, no sólo proponga: cablear a
-   `confirmarCumplido`/`reportarNovedad` una vez medida la tasa de confirmación sin corrección sobre
-   datos reales (bloqueado por el punto anterior: falta volumen real para medir).
+1. **Verificar Fase 3.2 en el navegador** con una factura real cargada, y medir la tasa de
+   confirmación-sin-corrección sobre volumen real — es lo que algún día decide si el humano se quita
+   del paso, no la fe (ver AGENTS.md).
 2. **El importador del Excel de David** — bloqueado por el archivo real.
 3. **Fase 3.3 — multi-tenant.** Prerequisito del cliente #2, sin tocar todavía.
 

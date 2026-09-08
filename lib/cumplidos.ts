@@ -58,3 +58,20 @@ export function mismaFactura(a: string | null | undefined, b: string | null | un
   const nb = normalizarFactura(b)
   return na !== null && na === nb
 }
+
+/**
+ * `deliveries.hora_salida_punto` desde la fecha (+hora opcional) manuscrita
+ * que leyó el agente de cumplido. `lib/cumplimiento.ts` deriva "a tiempo" de
+ * esa columna — una conversión de zona equivocada aquí corre el cumplimiento
+ * un día sin que se note hasta que alguien compare contra el papel.
+ */
+export function horaSalidaDesdeExtraccion(extraido: {
+  fecha_entrega: string | null
+  hora_entrega: string | null
+}): string | null {
+  if (!extraido.fecha_entrega) return null
+  // Colombia no tiene horario de verano: -05:00 es un offset fijo. Sin hora
+  // manuscrita, mediodía es un punto neutro que no cruza medianoche al
+  // convertir de vuelta a la fecha calendario de Bogotá.
+  return `${extraido.fecha_entrega}T${extraido.hora_entrega ?? '12:00'}:00-05:00`
+}

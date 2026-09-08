@@ -13,7 +13,11 @@
 // caiga lo suficiente se quita el paso; esa decisión la toma el número, no la fe.
 //
 // NO cierra la entrega. Devuelve una propuesta. El cierre lo hace el cliente
-// llamando a `confirmarCumplido`/`reportarNovedad`, que ya están probados.
+// llamando a `cerrarCumplidoDesdeExtraccion`/`cerrarNovedadDesdeExtraccion`
+// (`lib/queries/coordinator.ts`) tras la confirmación humana en la pantalla —
+// NO `confirmarCumplido`/`reportarNovedad` del conductor: esas registran un
+// delivery_event con GPS/hora de quien confirma, y aquí quien confirma no es
+// quien entregó.
 //
 // QUIÉN LEE (Claude o Gemini) vive en `lib/ia/cumplido.ts`, no aquí — esta ruta
 // sólo hace auth, valida el archivo, y empareja la respuesta por factura.
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
   if (norm) {
     const { data } = await db
       .from('deliveries')
-      .select('id, address, city, estado, fecha_programada, numero_factura, clients(name)')
+      .select('id, route_id, address, city, estado, fecha_programada, numero_factura, clients(name)')
       .not('numero_factura', 'is', null)
     entrega = (data ?? []).find((d) => normalizarFactura(d.numero_factura) === norm) ?? null
   }

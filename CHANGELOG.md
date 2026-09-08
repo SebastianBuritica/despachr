@@ -23,6 +23,33 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 
 ---
 
+## Fase 3.2 — el agente de cumplido cierra la entrega (no sólo propone)
+
+- **`feat/informe-cumplimiento`:** `/dashboard/cumplidos` ganó un botón "Confirmar" por fila — la
+  lectura del sello sigue siendo copiloto (nunca se auto-cierra, ni con confianza "Alta"; el hallazgo
+  del 2026-09-08 de que la confianza no es 100% estable sigue vigente), pero ahora la confirmación
+  humana efectivamente cierra la entrega. El plan original en el código decía "cablear a
+  `confirmarCumplido`/`reportarNovedad`" (las funciones del conductor) — trazar el camino completo
+  mostró que eso habría fallado, no sólo estado mal diseñado: esas funciones insertan un
+  `delivery_event` con `driver_id = auth.uid()`, y quien confirma el lote (Girle) no tiene fila en
+  `drivers`, así que el insert habría violado la FK. Y aunque no la violara, habría grabado el GPS y
+  la hora de HOY en la oficina como si fuera la entrega real, de hace días. Se escribieron dos
+  funciones nuevas en `lib/queries/coordinator.ts` (`cerrarCumplidoDesdeExtraccion`,
+  `cerrarNovedadDesdeExtraccion`) que llaman directo a los primitivos ya probados
+  (`marcarEntregada`-equivalente, `crearNovedad`+`marcarConNovedad`) sin pasar por el evento de GPS.
+  Esto reveló un segundo problema real: `lib/cumplimiento.ts` deriva "a tiempo" de
+  `hora_salida_punto`, que normalmente sólo pone el trigger del evento de salida — sin ese evento, la
+  columna se habría quedado `null` para siempre y la entrega habría desaparecido del informe **en
+  silencio**. Se corrigió escribiendo `hora_salida_punto` directo desde la fecha (+ hora opcional)
+  manuscrita que extrajo el modelo — es, de hecho, un dato más fiel que un evento GPS de la oficina
+  días después. Tercer hallazgo: la policy de storage `cumplidos_driver_insert` sólo dejaba subir al
+  conductor dueño de la ruta; coordinador/admin sólo tenían SELECT. Migración `011` agrega
+  `cumplidos_coord_insert` (espeja `cumplidos_read`, mismo bucket, mismos roles), ya corrida en
+  producción. 3 tests nuevos para `horaSalidaDesdeExtraccion` (la conversión de zona horaria: un
+  error ahí correría el cumplimiento un día sin que nadie lo note hasta comparar contra el papel).
+
+---
+
 ## Segmento F — contraste, tablas en móvil y barra de estado
 
 - **`chore/a11y-polish`:** los 30 avisos `color-contrast` del audit no eran 30 problemas sino **tres tokens** usados en muchos sitios, así que se arreglaron en la raíz en vez de parchear pantallas. Se calcularon los ratios reales antes de tocar nada, y ese cálculo cambió el arreglo obvio: **(1)** `text-brand` como TEXTO daba **2.86:1** sobre superficie oscura. La tentación era aclarar `--brand`, pero blanco sobre `#1D9E75` sólo da **3.39:1** y eso habría roto todos los FONDOS de marca (avatares, barras de progreso, el check del cumplido). Se separaron los usos: `--brand` sigue siendo color de fondo (blanco encima = 6.20:1) y el nuevo **`--brand-ink`** es el verde de texto, que sí se aclara en oscuro (5.23:1). Migrados los 14 sitios que lo usaban como texto; de paso desaparece el parche manual `text-brand dark:text-white` que se repetía en 7 archivos. **(2)** `--faint` daba **2.56:1** sobre blanco. Sólo `#71717a` pasa, que es exactamente `--muted-foreground` — sobre fondo blanco **no hay margen** entre "legible" y "más tenue", y se documentó así para que nadie lo vuelva a aclarar. En oscuro quedó `#85858e` (antes 3.67:1). **(3)** Landing: la atribución del mapa en `white/40` (3.74:1) y un gris del mockup en 2.56:1. **Todos los pares verificados ≥4.5:1 por cálculo** (script de ratios WCAG, no a ojo). **Tablas en móvil:** el diagnóstico del audit era "clipean", pero el contenedor ya tenía `overflow-x-auto` — el problema real es que `<table class="w-full">` se **encoge** para caber, así que nunca desborda y las columnas se apelmazan; con `min-w-*` ahora desbordan y se deslizan. **Barra de estado:** `theme_color` es un valor único en el manifiesto, así que no puede seguir al tema; se dejó alineado a `--background` oscuro y el color por tema se resuelve con `viewport.themeColor` y media queries en el layout, que es lo que el navegador sí honra.

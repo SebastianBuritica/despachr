@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { extraerPaginasJpeg, normalizarFactura, mismaFactura } from './cumplidos'
+import {
+  extraerPaginasJpeg,
+  normalizarFactura,
+  mismaFactura,
+  horaSalidaDesdeExtraccion,
+} from './cumplidos'
 
 /** PDF de mentira: bytes cualesquiera con JPEGs incrustados. */
 function pdfCon(...jpegs: number[][]): Uint8Array {
@@ -47,5 +52,27 @@ describe('normalizarFactura', () => {
     expect(mismaFactura(null, null)).toBe(false)
     expect(mismaFactura('FEV', 'ABC')).toBe(false) // sin dígitos → null
     expect(normalizarFactura('FEV00076883')).toBe('76883')
+  })
+})
+
+describe('horaSalidaDesdeExtraccion', () => {
+  it('sin fecha manuscrita, null — no inventa un cierre', () => {
+    expect(horaSalidaDesdeExtraccion({ fecha_entrega: null, hora_entrega: '14:30' })).toBeNull()
+  })
+
+  it('con hora manuscrita, la usa tal cual en -05:00', () => {
+    const iso = horaSalidaDesdeExtraccion({ fecha_entrega: '2026-08-11', hora_entrega: '14:30' })
+    expect(iso).toBe('2026-08-11T14:30:00-05:00')
+    // Y la fecha calendario de Bogotá que se recupera es la misma que se metió.
+    expect(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date(iso!))).toBe(
+      '2026-08-11'
+    )
+  })
+
+  it('sin hora manuscrita, mediodía no cruza medianoche al volver a Bogotá', () => {
+    const iso = horaSalidaDesdeExtraccion({ fecha_entrega: '2026-08-11', hora_entrega: null })
+    expect(
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date(iso!))
+    ).toBe('2026-08-11')
   })
 })

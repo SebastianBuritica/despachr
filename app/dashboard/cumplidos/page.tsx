@@ -3,25 +3,30 @@
 // Lectura del lote de cumplidos — el trabajo que hoy se hace abriendo un PDF de
 // 23 facturas selladas a mano y transcribiéndolas una por una.
 //
-// ALCANCE DELIBERADO: esta pantalla LEE Y PROPONE. Todavía no cierra entregas.
-// Lo desconocido del proyecto era si el modelo puede leer un sello de caucho
-// relleno a mano; el paso de escritura es mecánico y se cablea cuando la calidad
-// de la lectura esté medida sobre lotes reales, no antes.
+// COPILOTO: el modelo LEE Y PROPONE, una persona CONFIRMA fila por fila (nunca
+// automático, ni con confianza "Alta" — ver el hallazgo de confianza inestable
+// en STATUS.md 2026-09-08). "Confirmar" llama a `cerrarCumplidoDesdeExtraccion`/
+// `cerrarNovedadDesdeExtraccion` (`lib/queries/coordinator.ts`), NO a
+// `confirmarCumplido`/`reportarNovedad` del conductor — ver el porqué ahí.
 //
 // EL PDF SE PARTE EN EL NAVEGADOR: 23 páginas × una llamada al modelo no cabe en
 // el timeout de una función serverless. Una página por request, con progreso real.
 import { useState } from 'react'
-import { FileUp, Loader2, TriangleAlert, CircleCheck, CircleHelp } from 'lucide-react'
+import { toast } from 'sonner'
+import { FileUp, Loader2, TriangleAlert, CircleCheck, CircleHelp, Check } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { extraerPaginasJpeg } from '@/lib/cumplidos'
+import { cerrarCumplidoDesdeExtraccion, cerrarNovedadDesdeExtraccion } from '@/lib/queries/coordinator'
 import type { ExtraidoCumplido as Extraido } from '@/lib/ia/cumplido'
 
 interface Entrega {
   id: string
+  route_id: string
   address: string
   city: string
   fecha_programada: string | null
@@ -29,9 +34,12 @@ interface Entrega {
 }
 interface Fila {
   pagina: number
+  imagen: Blob
   extraido?: Extraido
   entrega?: Entrega | null
   error?: string
+  cerrando?: boolean
+  cerrado?: boolean
 }
 
 const CONFIANZA = {
@@ -57,21 +65,46 @@ export default function CumplidosPage() {
     // Secuencial a propósito: es un lote semanal, no una ruta caliente. En serie
     // el progreso es honesto y no hay ráfaga de peticiones contra el modelo.
     for (let i = 0; i < paginas.length; i++) {
+      const imagen = new Blob([paginas[i]], { type: 'image/jpeg' })
       const cuerpo = new FormData()
-      cuerpo.append('pagina', new Blob([paginas[i]], { type: 'image/jpeg' }), `p${i + 1}.jpg`)
+      cuerpo.append('pagina', imagen, `p${i + 1}.jpg`)
       try {
         const r = await fetch('/api/cumplidos', { method: 'POST', body: cuerpo })
         const json = await r.json()
-        setFilas((f) => [...f, { pagina: i + 1, ...json }])
+        setFilas((f) => [...f, { pagina: i + 1, imagen, ...json }])
       } catch (err) {
         setFilas((f) => [
           ...f,
-          { pagina: i + 1, error: err instanceof Error ? err.message : 'Falló la lectura' },
+          { pagina: i + 1, imagen, error: err instanceof Error ? err.message : 'Falló la lectura' },
         ])
       }
     }
     setLeyendo(false)
     e.target.value = ''
+  }
+
+  // Confirmación humana, siempre manual — incluso con confianza "Alta": el lote
+  // real de 23 facturas mostró que la confianza que reporta el modelo no es
+  // 100% estable (ver STATUS.md 2026-09-08), así que ninguna fila se auto-cierra.
+  async function confirmar(f: Fila) {
+    if (!f.entrega || !f.extraido) return
+    setFilas((fs) => fs.map((x) => (x.pagina === f.pagina ? { ...x, cerrando: true } : x)))
+    const archivo = new File([f.imagen], `p${f.pagina}.jpg`, { type: 'image/jpeg' })
+    try {
+      if (f.extraido.novedad) {
+        await cerrarNovedadDesdeExtraccion(f.entrega.route_id, f.entrega.id, f.extraido.novedad, archivo)
+      } else {
+        await cerrarCumplidoDesdeExtraccion(f.entrega.route_id, f.entrega.id, f.extraido, archivo)
+      }
+      setFilas((fs) =>
+        fs.map((x) => (x.pagina === f.pagina ? { ...x, cerrando: false, cerrado: true } : x))
+      )
+    } catch (err) {
+      setFilas((fs) => fs.map((x) => (x.pagina === f.pagina ? { ...x, cerrando: false } : x)))
+      toast.error('No se pudo cerrar la entrega', {
+        description: err instanceof Error ? err.message : 'Error desconocido',
+      })
+    }
   }
 
   const conMatch = filas.filter((f) => f.entrega).length
@@ -119,6 +152,7 @@ export default function CumplidosPage() {
                 <TableHead>Recibió</TableHead>
                 <TableHead>Novedad</TableHead>
                 <TableHead>Entrega en el sistema</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -126,7 +160,7 @@ export default function CumplidosPage() {
                 <TableRow key={f.pagina}>
                   <TableCell className="font-mono text-[13px] text-faint">{f.pagina}</TableCell>
                   {f.error || !f.extraido ? (
-                    <TableCell colSpan={6} className="text-sm text-destructive">
+                    <TableCell colSpan={7} className="text-sm text-destructive">
                       <TriangleAlert className="mr-1 inline size-4" />
                       {f.error ?? 'Sin lectura'}
                     </TableCell>
@@ -171,6 +205,25 @@ export default function CumplidosPage() {
                           </span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {f.cerrado ? (
+                          <StatusBadge tone="success">Cerrada</StatusBadge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!f.entrega || f.cerrando}
+                            onClick={() => confirmar(f)}
+                          >
+                            {f.cerrando ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Check className="size-4" />
+                            )}
+                            Confirmar
+                          </Button>
+                        )}
+                      </TableCell>
                     </>
                   )}
                 </TableRow>
@@ -182,8 +235,8 @@ export default function CumplidosPage() {
 
       {filas.length > 0 && !leyendo && (
         <p className="text-[13px] text-muted-foreground">
-          Esta pantalla todavía no cierra entregas: sólo lee y propone. El cierre se cablea cuando la
-          calidad de la lectura esté medida sobre lotes reales.
+          Revisa cada fila antes de confirmar — la confianza &quot;Alta&quot; del modelo ayuda pero no
+          garantiza el dato (ver STATUS.md). Confirmar cierra la entrega en el sistema.
         </p>
       )}
     </div>
