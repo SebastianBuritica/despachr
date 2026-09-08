@@ -124,6 +124,24 @@ fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde
 > está en el papel que fotografía y que además devuelve físicamente. Es candidata a borrarse —
 > pendiente de confirmar con el coordinador.
 
+> **Confirmado, no sólo previsto (2026-09-08, conversación con la dueña):** los conductores no van a
+> reportar desde una app distinta de WhatsApp — punto. La app del conductor (Fase 1.1–1.4: datos
+> reales + GPS, foto/firma real, novedades, cola offline) queda **construida y funcionando, pero sin
+> validar adopción real** — es el mismo patrón que ya reveló el hallazgo de Fase 3.2: algo puede estar
+> bien construido y medido y aun así no ser lo que el negocio necesita. No se borra (no cuesta nada
+> que exista, y borrarla es más grande de lo que parece: cola offline, service worker, login OTP), pero
+> **deja de ser la vía para llegar al conductor.**
+>
+> **Consecuencia para lo que falta por construir:** los **Agentes 3 (Despacho) y 4 (Facturación)** — a
+> los que les toca cuando termine lo actual — deben diseñarse **WhatsApp-first para todo lo que toque
+> al conductor**, no "app con WhatsApp de respaldo". No bloquea nada de lo ya construido: el cierre del
+> cumplido (Agente 1) ya no depende de la app del conductor — corre por el mismo canal informal
+> (WhatsApp → PDF semanal → `/dashboard/cumplidos`), así que esto es una confirmación de que ese diseño
+> iba bien encaminado, no un cambio de rumbo para él.
+>
+> **Encontrar la forma correcta de optimizarle el tiempo al conductor por WhatsApp queda deliberadamente
+> después de terminar los 4 agentes** — decisión explícita de Sebastian, no un olvido.
+
 ### Business KPIs
 - **On-time delivery %** (metric coordinators obsess over)
 - **Cost per km** and margin by client
@@ -522,8 +540,15 @@ Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2.1  — coordinator: real routes/drivers/clients + Realtime                          [done]
 Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas                 [done]
 Fase 3.1  — informe de cumplimiento + agente redactor (migración 008)                    [done]
-Fase 3.2  — agente de CUMPLIDO: lee la foto, cierra la entrega  ← EL SIGUIENTE
-Fase 3.3  — multi-tenant (`company_id` + reescribir las 27 policies) → cliente #2
+Fase 3.2  — agente de CUMPLIDO: lee la foto Y cierra la entrega     [construido, sin verificar
+            con factura real todavía — falta el Excel de David, ver STATUS.md]
+Fase 4    — agente de DESPACHO (Isaac): arma la malla, notifica — WhatsApp-first, no      ← EL SIGUIENTE
+            app-first (confirmado 2026-09-08: los conductores no van a reportar desde una
+            app distinta de WhatsApp, ver "La restricción del conductor" arriba)
+Fase 5    — agente de FACTURACIÓN (Yuli): el cumplido cerrado dispara la factura
+Fase 6    — multi-tenant (`company_id` + reescribir las 27 policies) → cliente #2
+Post-v1   — la forma correcta de optimizarle el tiempo al conductor por WhatsApp (deliberadamente
+            después de los 4 agentes, no un olvido)
 ```
 
 > **Fase 3.2 se despacha en modo COPILOTO, no autopiloto.** El modelo propone los campos, un humano

@@ -176,7 +176,14 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
    confirmación-sin-corrección sobre volumen real — es lo que algún día decide si el humano se quita
    del paso, no la fe (ver AGENTS.md).
 2. **El importador del Excel de David** — bloqueado por el archivo real.
-3. **Fase 3.3 — multi-tenant.** Prerequisito del cliente #2, sin tocar todavía.
+3. **Fase 4 — agente de Despacho (Isaac).** Diseñarlo WhatsApp-first para todo lo que toque al
+   conductor — confirmado 2026-09-08 (conversación de Sebastian con la dueña) que los conductores no
+   van a reportar desde una app distinta de WhatsApp. La app del conductor (Fase 1.1–1.4) se queda tal
+   cual, construida y sin borrar, pero deja de ser la vía para llegar a él — ver AGENTS.md.
+4. **Fase 5 — agente de Facturación (Yuli)**, luego **Fase 6 — multi-tenant** (antes "Fase 3.3").
+   Ninguna tocada todavía.
+5. **Post-v1, deliberadamente después de los 4 agentes:** la forma correcta de optimizarle el tiempo
+   al conductor por WhatsApp (reemplazo eventual de la app del conductor).
 
 ---
 
