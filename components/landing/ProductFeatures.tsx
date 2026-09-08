@@ -39,10 +39,11 @@ export function ProductFeatures() {
             Una sola plataforma
           </p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-[40px] sm:leading-tight">
-            Del documento que llega por WhatsApp al informe que se entrega solo
+            Del documento que llega por un canal informal al informe que se entrega solo
           </h2>
           <p className="mt-3 text-[#64748B]">
-            Cada agente le quita un salto de transcripción manual a tu back-office.
+            Cada agente le quita un salto de transcripción manual a tu back-office — sin importar
+            si el documento llega por WhatsApp, correo o papel.
           </p>
         </Reveal>
 

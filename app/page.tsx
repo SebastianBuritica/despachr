@@ -65,8 +65,8 @@ export default function LandingPage() {
             </div>
 
             <h1 className="mt-5 animate-fade-up text-[44px] font-extrabold leading-[1.05] tracking-tight [animation-delay:.16s] sm:text-[60px]">
-              La foto de la factura firmada llega por WhatsApp.{' '}
-              <span className="text-[#1D9E75]">Despachr la lee y cierra la entrega.</span>
+              La factura firmada llega.{' '}
+              <span className="text-[#1D9E75]">Despachr la lee y cierra la entrega sola.</span>
             </h1>
 
             <p className="mt-5 max-w-[480px] animate-fade-up text-lg text-[#94A3B8] [animation-delay:.24s]">
