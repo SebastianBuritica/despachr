@@ -16,8 +16,8 @@ const STEPS = [
   },
   {
     n: '03',
-    title: 'La IA cierra el ciclo',
-    desc: 'Lee la factura firmada, cierra el cumplido y escribe el informe de cumplimiento — sin que nadie transcriba un Excel.',
+    title: 'La IA propone, tú confirmas',
+    desc: 'Lee la factura firmada y arma el cierre; confirmas con un toque y el informe de cumplimiento se escribe solo.',
     tone: 'tint' as const,
   },
 ]

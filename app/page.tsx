@@ -70,8 +70,8 @@ export default function LandingPage() {
             </h1>
 
             <p className="mt-5 max-w-[480px] animate-fade-up text-lg text-[#94A3B8] [animation-delay:.24s]">
-              La IA lee el sello manuscrito, cierra el cumplido y escribe el informe de
-              cumplimiento — el trabajo que hoy alguien hace a mano, transcribiendo un Excel.
+              La IA lee el sello manuscrito y arma el cierre — confirmas con un toque, y el
+              informe de cumplimiento se escribe solo. Se acabó transcribir un Excel a mano.
             </p>
 
             <div className="mt-7 flex animate-fade-up flex-wrap items-center gap-3 [animation-delay:.32s]">
