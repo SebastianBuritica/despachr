@@ -61,17 +61,17 @@ export default function LandingPage() {
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#1D9E75]/70" />
                 <span className="relative inline-flex size-2 rounded-full bg-[#1D9E75]" />
               </span>
-              Plataforma logística en tiempo real
+              IA para el back-office logístico
             </div>
 
             <h1 className="mt-5 animate-fade-up text-[44px] font-extrabold leading-[1.05] tracking-tight [animation-delay:.16s] sm:text-[60px]">
-              Toda tu operación de carga,{' '}
-              <span className="text-[#1D9E75]">en tiempo real.</span>
+              La foto de la factura firmada llega por WhatsApp.{' '}
+              <span className="text-[#1D9E75]">Despachr la lee y cierra la entrega.</span>
             </h1>
 
             <p className="mt-5 max-w-[480px] animate-fade-up text-lg text-[#94A3B8] [animation-delay:.24s]">
-              Conductores, rutas y cumplimiento sincronizados — desde el primer despacho hasta la
-              última entrega. Sin llamadas, sin hojas de cálculo.
+              La IA lee el sello manuscrito, cierra el cumplido y escribe el informe de
+              cumplimiento — el trabajo que hoy alguien hace a mano, transcribiendo un Excel.
             </p>
 
             <div className="mt-7 flex animate-fade-up flex-wrap items-center gap-3 [animation-delay:.32s]">
@@ -92,21 +92,12 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 flex animate-fade-up items-center gap-3 [animation-delay:.4s]">
-              <div className="flex -space-x-2">
-                {['CM', 'AG'].map((a) => (
-                  <span
-                    key={a}
-                    className="flex size-8 items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-[#0F6E56] text-[10px] font-semibold text-white"
-                  >
-                    {a}
-                  </span>
-                ))}
-                <span className="flex size-8 items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-[#1C1C1F] text-[10px] font-semibold text-[#94A3B8]">
-                  +9
-                </span>
-              </div>
+              <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-[#0F6E56] text-[10px] font-semibold text-white">
+                CB
+              </span>
               <p className="max-w-xs text-xs text-[#64748B]">
-                Empresas de transporte de carga ya operan con Despachr en Colombia.
+                En piloto real con una transportadora colombiana — sobre su operación de todos
+                los días.
               </p>
             </div>
           </div>
@@ -150,7 +141,7 @@ export default function LandingPage() {
           <div className="pointer-events-none absolute -right-10 bottom-0 size-72 rounded-full bg-[#1D9E75]/30 blur-3xl" />
           <div className="relative">
             <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-[42px]">
-              Empieza a operar en tiempo real
+              Deja que la IA haga el papeleo
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-white/80">
               Digitaliza tu operación de carga hoy. Sin instalaciones, sin contratos largos.

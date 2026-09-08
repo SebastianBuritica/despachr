@@ -16,8 +16,8 @@ const STEPS = [
   },
   {
     n: '03',
-    title: 'Mides el resultado',
-    desc: 'Cumplimiento, toneladas y márgenes se actualizan solos. Decides con datos, no con supuestos.',
+    title: 'La IA cierra el ciclo',
+    desc: 'Lee la factura firmada, cierra el cumplido y escribe el informe de cumplimiento — sin que nadie transcriba un Excel.',
     tone: 'tint' as const,
   },
 ]

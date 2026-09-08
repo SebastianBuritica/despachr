@@ -1,4 +1,4 @@
-import { Smartphone, MapPin, BarChart3, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Smartphone, MapPin, ScanText, Sparkles, type LucideIcon } from 'lucide-react'
 import { Reveal } from '@/components/landing/Reveal'
 
 interface Feature {
@@ -9,6 +9,16 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
+    icon: ScanText,
+    title: 'Cumplido leído por IA',
+    desc: 'Sube el lote de facturas selladas a mano y la IA lee fecha de entrega, quién recibió y novedades. Si no puede leer algo con certeza, lo dice — nunca inventa un dato.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Informe redactado solo',
+    desc: 'El cumplimiento semanal por cliente, hoy armado filtrando un Excel a mano, sale calculado y redactado — listo para exportar en el formato exacto que tu cliente espera.',
+  },
+  {
     icon: Smartphone,
     title: 'App del conductor',
     desc: 'Lista de entregas, navegación, timer en sitio y captura de cumplido con foto y firma — todo desde el celular, incluso sin señal.',
@@ -17,16 +27,6 @@ const FEATURES: Feature[] = [
     icon: MapPin,
     title: 'Coordinación en vivo',
     desc: 'Mapa con todas las rutas, estado de cada parada y alertas automáticas de retrasos o entregas fuera de ventana.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Métricas y márgenes',
-    desc: 'Cumplimiento, toneladas y rentabilidad por cliente y ruta. Reportes listos para junta, sin armar nada a mano.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Cumplido digital',
-    desc: 'Evidencia de cada entrega — foto, firma y hora — sincronizada al instante. Adiós a las remesas en papel.',
   },
 ]
 
@@ -39,10 +39,10 @@ export function ProductFeatures() {
             Una sola plataforma
           </p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-[40px] sm:leading-tight">
-            Del celular del conductor al margen por cliente
+            Del documento que llega por WhatsApp al informe que se entrega solo
           </h2>
           <p className="mt-3 text-[#64748B]">
-            Cada eslabón de tu operación, conectado en tiempo real.
+            Cada agente le quita un salto de transcripción manual a tu back-office.
           </p>
         </Reveal>
 
