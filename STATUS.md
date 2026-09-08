@@ -132,21 +132,21 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
 
 ## ⬜ Cola inmediata
 
-1. **Push + PR.** 8 commits en `feat/informe-cumplimiento` (`9329395`…`46635d3`), ninguno subido.
-2. **Decidir `docs/reunion-2026-08-24.md`.** Sigue sin commitear — trae márgenes (22%) y nombres del
-   equipo; el repo es público. Recomendación: fuera del repo, sólo como contexto del proyecto de
-   Claude. Sigue pendiente de que Sebastian decida.
-3. **Crear el usuario de Girle** como `coordinador` en el dashboard de Supabase — 2 minutos, cero
-   código. Sin esto, la persona que más usaría `/dashboard/cumplidos` no tiene por dónde entrar.
-4. **El pago de Anthropic sigue trabado** (3D Secure, no fondos — mismo error con 2 tarjetas
-   distintas). Ya no es urgente: Gemini pagado mide ~92% de precisión en la tarea difícil (ver
-   arriba) y es suficiente para seguir. Sigue pendiente sólo si se quiere comparar contra Opus 5.
-5. **El Excel real de David** (no sólo las fotos) — para verificar encabezados al 100% antes de
-   construir el importador. Sin él, el ciclo completo (Excel → entregas → fotos → Excel lleno) no
-   cierra.
+1. ~~Push + PR.~~ **Hecho (2026-09-08).** PR #53 al día con Fase 3.2 (cierre) + el reposicionamiento
+   de la landing hacia los agentes de IA (antes vendía "tiempo real" genérico).
+2. ~~Decidir `docs/reunion-2026-08-24.md`.~~ **Resuelto (2026-09-08).** El archivo era un extracto de
+   una nota de reunión de Notion que ya vive completa ahí, en privado — se borró del working tree
+   (nunca se commiteó). Notion queda como única fuente; el agente tiene acceso de lectura directo si
+   hace falta ese contexto de nuevo.
+3. **Crear el usuario de Girle** como `coordinador` — esperando su email para invitarla por Admin API
+   (sin dashboard de Supabase ni Chrome) y promoverla por SQL, igual que las migraciones.
+4. ~~El pago de Anthropic~~ **Descartado (2026-09-08, decisión de Sebastian).** Gemini pagado queda
+   como la conexión de IA; no se vuelve a intentar resolver el 3D Secure de Anthropic.
+5. **El Excel real de David** (no sólo las fotos) — llega mañana. Bloquea el importador y la
+   verificación real de Fase 3.2 (punto 6).
 6. **Verificar el cierre de Fase 3.2 en el navegador con una factura real** — build+lint+tests están
    en verde pero nadie ha hecho clic en "Confirmar" contra datos reales todavía (bloqueado por el
-   mismo punto 5: no hay facturas reales cargadas en `deliveries.numero_factura`).
+   punto 5: no hay facturas reales cargadas en `deliveries.numero_factura`).
 
 ---
 
