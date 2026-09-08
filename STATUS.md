@@ -1,11 +1,11 @@
-# Despachr — Current Status (2026-09-07)
+# Despachr — Current Status (2026-09-08)
 
 **Live:** https://despachr.vercel.app · **Repo:** github.com/SebastianBuritica/despachr · **Supabase:** `mxgfkwwdhnoumboftjal`
 
-**One line:** los 2 primeros agentes (informe, cumplido) están construidos, **verificados de punta a
-punta con Playwright real** (no sólo SQL), y un bug real que los tumbaba ya está corregido y
-reverificado. **8 commits siguen sin subir a `main`**. El pago en la consola de Anthropic sigue
-trabado; el respaldo con Gemini funciona. Falta el Excel real de David para cerrar el ciclo completo.
+**One line:** el agente de cumplido lee el sello manuscrito con **~92% de precisión, medido contra
+el PDF real**, sobre Gemini pagado (el pago de Anthropic sigue trabado, ya no es urgente resolverlo).
+Los 2 primeros agentes están construidos y verificados de punta a punta con Playwright real.
+**13 commits siguen sin subir a `main`**. Falta el Excel real de David para cerrar el ciclo completo.
 
 > Doc map: `AGENTS.md` referencia durable — la tesis, la regla del núcleo, `lib/ia/` (auto-cargado) ·
 > **este archivo** = estado + siguientes pasos · `CHANGELOG.md` historia completa ·
@@ -84,9 +84,34 @@ nuevos con timers falsos (sin esto el suite se vuelve lento en silencio — ya p
 ~20 llamadas/día del tier gratis. Resuelto de raíz el 2026-09-08: **Gemini pasó a tier pagado**
 (Google Cloud Billing, misma tarjeta que le había fallado dos veces a Anthropic — pagó limpio, sin
 3D Secure, lo que apunta a que el problema era específico del checkout de Anthropic/Stripe, no del
-banco). Mismo `GEMINI_API_KEY`, cero cambios de código. **Pendiente: reverificar el lote real de 23
-páginas** con pago + reintento ya activos — la primera vez que se podría medir de verdad la calidad
-de lectura del sello manuscrito sobre un lote completo, no sólo si falla o no.
+banco). Mismo `GEMINI_API_KEY`, cero cambios de código.
+
+### 🎯 La pregunta que abrió el proyecto, contestada (2026-09-08)
+
+Con el tope de cuota resuelto, se corrió el lote real completo (23 páginas) y — por primera vez — se
+verificó CADA lectura contra la imagen original, no sólo si el modelo respondía sin error.
+
+**Las 23/23 completaron limpio.** Cero errores de red/cuota, cero errores de consola.
+
+**Precisión sobre 11 páginas verificadas a mano contra el PDF real: ~92% (12/13 lecturas correctas,
+contando abstenciones).** Dos abstenciones correctas (páginas sin fecha visible → `null`, tal como
+pide el diseño: *"null vale más que un dato inventado"*, funcionando). Dos errores reales:
+- **Un escaneo degradado leído con confianza "Alta" cuando debió ser "Dudosa"** (año mal leído,
+  2020 en vez de 2026) — la confianza no capturó este caso.
+- **Un documento con dos fechas candidatas impresas** donde el modelo mezcló ambas en un valor
+  híbrido — sí bajó la confianza a "Revisar", pero el dato seguía siendo falso.
+
+**Hallazgo adicional, no buscado pero importante:** dos páginas son el mismo escaneo duplicado
+byte-por-byte, y el modelo dio **respuestas distintas** en dos llamadas separadas sobre la MISMA
+imagen — ambas marcadas "Alta". Es evidencia directa de que la confianza reportada por el modelo no
+es 100% estable ni siquiera sobre el mismo input exacto.
+
+**Conclusión, con evidencia y no con fe:** el diseño de copiloto (proponer, humano confirma) era la
+decisión correcta desde el principio — la confianza "Alta" ayuda pero no basta por sí sola para saltar
+la revisión humana. También reveló que la operación real trae mucha más variedad de formato de la que
+el prompt del sistema asume hoy (sólo describe un "RECIBO DE MERCANCÍA"; el lote real trae
+confirmaciones Makro con fecha impresa, devoluciones, reportes PriceSmart en inglés) — el modelo se
+las arregló bien igual, pero el prompt podría ampliarse para nombrar esos formatos explícitamente.
 
 ---
 
@@ -99,15 +124,15 @@ de lectura del sello manuscrito sobre un lote completo, no sólo si falla o no.
 3. **Crear el usuario de Girle** como `coordinador` en el dashboard de Supabase — 2 minutos, cero
    código. Sin esto, la persona que más usaría `/dashboard/cumplidos` no tiene por dónde entrar.
 4. **El pago de Anthropic sigue trabado** (3D Secure, no fondos — mismo error con 2 tarjetas
-   distintas). Con el reintento ya cableado, el respaldo de Gemini debería aguantar un lote real —
-   falta reverificarlo (punto 6). Sigue pendiente además para medir la calidad real de Opus 5 en la
-   tarea difícil (ver gap abajo).
-6. **Reverificar el lote real de 23 páginas con el reintento puesto**, cuando la cuota gratis de
-   Gemini resetee — el fix de hoy no se probó contra el caso real que lo motivó, sólo con tests
-   unitarios (mockeados).
+   distintas). Ya no es urgente: Gemini pagado mide ~92% de precisión en la tarea difícil (ver
+   arriba) y es suficiente para seguir. Sigue pendiente sólo si se quiere comparar contra Opus 5.
 5. **El Excel real de David** (no sólo las fotos) — para verificar encabezados al 100% antes de
    construir el importador. Sin él, el ciclo completo (Excel → entregas → fotos → Excel lleno) no
    cierra.
+6. **Decidir cómo se diseña el paso de escritura de Fase 3.2** a la luz del hallazgo de hoy: la
+   confianza "Alta" del modelo no es 100% confiable (un escaneo degradado la tuvo mal, dos llamadas
+   sobre la MISMA imagen dieron respuestas distintas). No cablear una confirmación de un toque que
+   confíe ciegamente en "Alta" sin discutirlo primero.
 
 ---
 
@@ -116,10 +141,11 @@ de lectura del sello manuscrito sobre un lote completo, no sólo si falla o no.
 - **Cero facturas reales cargadas.** `numero_factura` funciona y está probado, pero sólo contra la
   semilla sintética (`CB-0824-01`); las reales del PDF (`FEV76883`...) no están en la base, así que
   `/dashboard/cumplidos` va a marcar "sin emparejar" con un PDF real hasta que entre el Excel de David.
-- **La calidad de lectura del sello manuscrito sigue sin medirse con un lote real limpio.** El
-  intento con las 23 páginas reales falló en 18 por cuota agotada (ver arriba), no por mala lectura —
-  pero eso significa que tampoco hay todavía una medición real de qué tan bien acierta la fecha/nombre
-  manuscritos en las 5 que sí pasaron. Pendiente del punto 6 de la cola inmediata.
+- **Medido, no es un gap:** la precisión de lectura del sello manuscrito ya se midió (~92% sobre lo
+  verificado a mano, ver arriba, 2026-09-08). Lo que sí queda abierto: el prompt del sistema
+  (`lib/ia/cumplido.ts`) sólo describe un "RECIBO DE MERCANCÍA", y el lote real trae más formatos
+  (confirmaciones Makro con fecha impresa, devoluciones, reportes PriceSmart en inglés) — el modelo
+  los manejó bien igual, pero ampliar el prompt para nombrarlos podría subir la precisión más.
 - **`SignaturePad` sigue sin confirmar con Isaac** si se puede borrar (evidencia duplicada — ver
   AGENTS.md, la restricción del conductor).
 - Sin gráficas en el informe — la dueña las pidió explícitamente. Es trabajo del agente de diseño.

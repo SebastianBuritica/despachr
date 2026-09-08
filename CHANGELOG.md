@@ -233,3 +233,38 @@ gratis de hoy resetee.
 
 Nota aparte, de higiene: `supabase/.temp/` (estado local del CLI, cambia en cada `supabase db query`)
 estaba trackeado por accidente desde hacía semanas — se dejó de rastrear y se agregó al `.gitignore`.
+
+## 2026-09-08 — la pregunta que abrió el proyecto, contestada: ~92% de precisión, medido
+
+Con Gemini en tier pagado (resuelve el tope de ~20 llamadas/día del hallazgo anterior), se corrió el
+lote real completo (23 páginas) por tercera vez. Las 23/23 completaron sin un solo error de red o
+cuota — confirma que el fix de ayer (reintento + pago) resolvió el problema de raíz, no a medias.
+
+Pero esta vez el QA no se detuvo en "¿falla o no?": extrajo las 23 páginas JPEG con el mismo código
+que usa la app, y verificó 11 de ellas a mano contra la imagen real — comparando lo que el modelo dijo
+contra lo que el sello manuscrito realmente dice. Es la primera medición real de la pregunta que abrió
+el proyecto entero: ¿puede un modelo de IA leer un sello de caucho firmado a mano en una factura
+colombiana? Respuesta, con evidencia: **sí, ~92% de precisión** (12/13 lecturas correctas contando
+abstenciones).
+
+Dos abstenciones correctas — el modelo devolvió `null` en vez de inventar una fecha donde no había
+ninguna visible, exactamente como pide el diseño ("null vale más que un dato inventado"). Dos errores
+reales, y los dos informativos: un escaneo genuinamente degradado leído con confianza "Alta" cuando
+debió ser "Dudosa" (se equivocó de década, 2020 por 2026); y un documento con dos fechas candidatas
+impresas donde el modelo mezcló ambas en un valor híbrido (sí bajó la confianza, el dato igual quedó
+falso). Y un hallazgo que nadie pidió pero pesa: dos páginas resultaron ser el mismo escaneo duplicado
+byte por byte, y el modelo dio **respuestas distintas** en dos llamadas sobre la misma imagen exacta —
+evidencia directa de que "confianza Alta" no es una garantía estable.
+
+Conclusión operativa: el diseño de copiloto (proponer, humano confirma) que se decidió por intuición
+al principio del proyecto queda confirmado por datos, no por fe — la confianza del modelo ayuda pero
+no basta sola para saltarse la revisión humana. Cablear el paso de escritura de Fase 3.2 sin discutir
+antes cómo tratar la confianza "Alta" sería ignorar este hallazgo.
+
+De paso: el prompt del sistema en `lib/ia/cumplido.ts` sólo describe el formato "RECIBO DE MERCANCÍA",
+pero el lote real trae mucha más variedad (confirmaciones Makro con fecha impresa, devoluciones,
+reportes PriceSmart en inglés) — el modelo los manejó bien de todos modos, pero nombrarlos explícitamente
+podría subir la precisión más.
+
+Limpieza: se borraron ~7 archivos de debris (capturas y scripts temporales) que tres corridas de QA
+sucesivas fueron dejando sueltos en `scripts/`, sin comitear nunca — ninguno tocaba código de producción.
