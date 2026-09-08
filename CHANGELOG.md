@@ -23,6 +23,33 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 
 ---
 
+## Fase 3.2 — el agente de cumplido cierra la entrega (no sólo propone)
+
+- **`feat/informe-cumplimiento`:** `/dashboard/cumplidos` ganó un botón "Confirmar" por fila — la
+  lectura del sello sigue siendo copiloto (nunca se auto-cierra, ni con confianza "Alta"; el hallazgo
+  del 2026-09-08 de que la confianza no es 100% estable sigue vigente), pero ahora la confirmación
+  humana efectivamente cierra la entrega. El plan original en el código decía "cablear a
+  `confirmarCumplido`/`reportarNovedad`" (las funciones del conductor) — trazar el camino completo
+  mostró que eso habría fallado, no sólo estado mal diseñado: esas funciones insertan un
+  `delivery_event` con `driver_id = auth.uid()`, y quien confirma el lote (Girle) no tiene fila en
+  `drivers`, así que el insert habría violado la FK. Y aunque no la violara, habría grabado el GPS y
+  la hora de HOY en la oficina como si fuera la entrega real, de hace días. Se escribieron dos
+  funciones nuevas en `lib/queries/coordinator.ts` (`cerrarCumplidoDesdeExtraccion`,
+  `cerrarNovedadDesdeExtraccion`) que llaman directo a los primitivos ya probados
+  (`marcarEntregada`-equivalente, `crearNovedad`+`marcarConNovedad`) sin pasar por el evento de GPS.
+  Esto reveló un segundo problema real: `lib/cumplimiento.ts` deriva "a tiempo" de
+  `hora_salida_punto`, que normalmente sólo pone el trigger del evento de salida — sin ese evento, la
+  columna se habría quedado `null` para siempre y la entrega habría desaparecido del informe **en
+  silencio**. Se corrigió escribiendo `hora_salida_punto` directo desde la fecha (+ hora opcional)
+  manuscrita que extrajo el modelo — es, de hecho, un dato más fiel que un evento GPS de la oficina
+  días después. Tercer hallazgo: la policy de storage `cumplidos_driver_insert` sólo dejaba subir al
+  conductor dueño de la ruta; coordinador/admin sólo tenían SELECT. Migración `011` agrega
+  `cumplidos_coord_insert` (espeja `cumplidos_read`, mismo bucket, mismos roles), ya corrida en
+  producción. 3 tests nuevos para `horaSalidaDesdeExtraccion` (la conversión de zona horaria: un
+  error ahí correría el cumplimiento un día sin que nadie lo note hasta comparar contra el papel).
+
+---
+
 ## Segmento F — contraste, tablas en móvil y barra de estado
 
 - **`chore/a11y-polish`:** los 30 avisos `color-contrast` del audit no eran 30 problemas sino **tres tokens** usados en muchos sitios, así que se arreglaron en la raíz en vez de parchear pantallas. Se calcularon los ratios reales antes de tocar nada, y ese cálculo cambió el arreglo obvio: **(1)** `text-brand` como TEXTO daba **2.86:1** sobre superficie oscura. La tentación era aclarar `--brand`, pero blanco sobre `#1D9E75` sólo da **3.39:1** y eso habría roto todos los FONDOS de marca (avatares, barras de progreso, el check del cumplido). Se separaron los usos: `--brand` sigue siendo color de fondo (blanco encima = 6.20:1) y el nuevo **`--brand-ink`** es el verde de texto, que sí se aclara en oscuro (5.23:1). Migrados los 14 sitios que lo usaban como texto; de paso desaparece el parche manual `text-brand dark:text-white` que se repetía en 7 archivos. **(2)** `--faint` daba **2.56:1** sobre blanco. Sólo `#71717a` pasa, que es exactamente `--muted-foreground` — sobre fondo blanco **no hay margen** entre "legible" y "más tenue", y se documentó así para que nadie lo vuelva a aclarar. En oscuro quedó `#85858e` (antes 3.67:1). **(3)** Landing: la atribución del mapa en `white/40` (3.74:1) y un gris del mockup en 2.56:1. **Todos los pares verificados ≥4.5:1 por cálculo** (script de ratios WCAG, no a ojo). **Tablas en móvil:** el diagnóstico del audit era "clipean", pero el contenedor ya tenía `overflow-x-auto` — el problema real es que `<table class="w-full">` se **encoge** para caber, así que nunca desborda y las columnas se apelmazan; con `min-w-*` ahora desbordan y se deslizan. **Barra de estado:** `theme_color` es un valor único en el manifiesto, así que no puede seguir al tema; se dejó alineado a `--background` oscuro y el color por tema se resuelve con `viewport.themeColor` y media queries en el layout, que es lo que el navegador sí honra.
@@ -122,3 +149,149 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 - **Landing (marketing):** `/` con tema oscuro; v2 de 8 secciones (nav/hero → Producto → Cómo funciona → Plataforma → Precios → CTA → footer). Componentes: `LiveMapCard`, `DemoMockup`, `ProductFeatures`, `HowItWorks`, `Pricing`, `Reveal`.
 - **Marca / iconos:** símbolo "Ruta-D" en `components/brand/BrandMark.tsx`. **PWA**: `app/manifest.ts` (icons 192/512) + apple-touch-icon 180. Assets en `public/brand/`.
 - **QA tooling (skill + subagent):** `scripts/qa.mjs` (Playwright) login por rol y recorre todas las rutas en desktop+mobile y light/dark, capturando screenshots + errores consola/JS + axe → `assets/qa/<timestamp>/` (gitignored). Skill `/qa [segmento]`, subagente `qa`, `npm run qa`.
+
+## 2026-08-30/31 — Fase 3.1: el producto cambia de forma
+
+La reunión con la dueña (2026-08-24, transcrita en Notion) reordenó el producto. Hasta aquí Despachr
+era una **herramienta que la gente opera**: paneles, mapas, tableros. Ese es el molde en el que Drivin
+y SimpliRoute llevan diez años ganando. Lo que la operación real pide es otra cosa: **software que
+hace el trabajo**. Concretamente, el trabajo de Girle — llenar a mano el Excel que manda el cliente,
+persiguiendo cumplidos que llegan 15–20 días tarde, y filtrarlo para sacar el porcentaje de la
+reunión de los viernes.
+
+**Lo construido.** Migración `008` (`deliveries.fecha_programada`): el compromiso viene en el Excel
+semanal del cliente, y sin él "a tiempo" no existía — era el dato que STATUS.md daba por imposible.
+Con eso, `lib/cumplimiento.ts` (la aritmética, 4 tests), `lib/queries/reporte.ts` (datos, con el
+cliente de Supabase inyectado como en `cumplido.ts`), `app/api/informe/route.ts` (el agente redactor,
+`claude-opus-5`) y el informe como única pantalla del admin. Verificado contra la base: 85.7% de
+cumplimiento, 91.4% de efectividad.
+
+**La decisión que sostiene todo:** los números los calcula código, el modelo **sólo redacta**. Recibe
+los totales ya hechos y tiene prohibido producir cifras nuevas. No es estética — este informe se le
+entrega al cliente que paga, y un porcentaje alucinado es una factura mal sustentada. Corolario: si
+la llamada al modelo falla, el informe sigue en pie completo.
+
+Dos detalles que salieron de la voz de la dueña y quedaron en el producto: cada oportunidad de mejora
+dice **de quién depende** (nosotros / cliente / punto — su modelo mental textual), y la pantalla
+**declara la base del porcentaje** cuando hay entregas sin compromiso, porque un cumplimiento
+calculado sobre una base recortada en silencio se ve idéntico a uno bueno.
+
+**Lo borrado (−425 líneas netas).** Las tres pantallas mock del admin (Métricas, Clientes,
+Facturación), sus cuatro componentes exclusivos, `lib/mock/` entero y `demo-data-notice.tsx`. No eran
+deuda pendiente de completar: eran vistas para mirar, y ninguna le quitaba trabajo a nadie. El
+`demo-data-notice` se autodestruyó según su propia regla — "cuando ninguna página lo importe, bórralo".
+No queda un solo dato inventado en la UI.
+
+**Corregido en AGENTS.md** contra la fuente real: era **SIGO**, no "Cigo"; el plazo es de **15 días**,
+no 30; el margen objetivo es **22%** y lo calcula SISTRAN solo; existen los **anexos**. Y se añadió
+la restricción que condiciona todo lo que se le pida al conductor: refrigerados, ventana de recibo
+hasta las 10–11am, colas de descargue de hasta 2 horas. Cualquier paso nuevo entre 7 y 10am no se va
+a usar.
+
+**Hallazgo que evita trabajo perdido:** el RNDC (obligatorio, Decreto 1017 de 2025) ya lo resuelve
+SISTRAN para este cliente. Sigue siendo una cuña real frente a los competidores regionales, pero **no
+es el camino de entrada al piloto**.
+
+## 2026-09-01/05 — Fase 3.2 (parcial): el agente de cumplido, exportar a Casablanca, y un respaldo de proveedor
+
+Con un lote real de cumplidos (PDF de CamScanner, 23 facturas selladas a mano) se pudo diseñar el
+agente de cumplido en vez de adivinarlo. El documento resultó ser: factura impresa con certeza
+(número, punto, dirección) + un sello de caucho manuscrito que decide lo único que importa — la
+fecha real de entrega — y que cambia de posición y nitidez en cada punto. Por eso el agente
+**propone y una persona confirma** (`app/dashboard/cumplidos`, `app/api/cumplidos`), y por eso el
+prompt es explícito: null vale más que un dato inventado. El PDF se parte en el navegador sin
+librería (`lib/cumplidos.ts` escanea los marcadores de bytes JPEG que CamScanner incrusta) porque 23
+páginas por una llamada al modelo no cabe en el timeout de una función serverless.
+
+Dos fotos reales del archivo que hoy llena la operación ("RELACION GENERAL DE FACTURAS" y "RELACION
+DE ENTREGAS ... CASABLANCA") reescribieron el objetivo del proyecto: **el entregable no es nuestro
+informe bonito, es el archivo del cliente, ya lleno.** Eso reveló una distinción que el schema no
+tenía separada — ESTATUS (¿llegó la mercancía?) y CUMPLIDO (¿ya volvió el papel firmado?) son dos
+preguntas distintas, y una entrega puede estar ENTREGADA con el CUMPLIDO en PENDIENTE durante 15-20
+días: es literalmente el cuello de botella que este producto existe para cerrar, ahora con columna
+propia (`estadoCumplido` en `lib/cumplimiento.ts`). También reveló la reprogramación (`2DA FECHA`):
+cuando una entrega falla se corre el compromiso en la MISMA fila, no se crea una entrega nueva — y
+por indicación explícita de la dueña, el cumplimiento se mide SIEMPRE contra la fecha original de la
+malla, nunca contra la reprogramada (migración `010`, `fecha_reprogramada`). El adaptador de
+Casablanca (`lib/exportadores/casablanca.ts`) vive deliberadamente fuera del núcleo — es el primer
+cliente, no el único, y su formato no debe filtrarse a `lib/cumplimiento.ts`.
+
+Migraciones `009` (`numero_factura`, único POR CLIENTE — la llave entre el Excel del cliente, la
+factura física y la fila) y `010` corridas en producción con el CLI de Supabase (`supabase db query
+--linked -f archivo.sql`), no con Claude Chrome: el proyecto ya tenía el CLI logueado y el proyecto
+linkeado, cero fricción y cero tokens de navegación por migración — se documentó en memoria para no
+volver a montar el rodeo del navegador.
+
+El pago en la consola de Anthropic quedó trabado varios días ("no podemos autenticar" con dos
+tarjetas de bancos distintos, mismo error — apunta a 3D Secure, no a fondos). `lib/ia/informe.ts` y
+`lib/ia/cumplido.ts` centralizan un respaldo: sin `ANTHROPIC_API_KEY` pero con `GEMINI_API_KEY` (tier
+gratis real, sin tarjeta), los dos agentes corren igual. Es un respaldo para seguir probando la app,
+no una validación de calidad — leer el sello manuscrito es la tarea difícil que el proyecto está
+midiendo, y esa medición sólo cuenta hecha con Opus 5.
+
+**Sin cerrar al terminar esta sesión:** los 5 commits de este tramo (`9329395`…`54ea8b1`) siguen sin
+subir ni mergear a `main`; `docs/reunion-2026-08-24.md` sigue sin decisión (commit vs. fuera del repo
+— trae márgenes y nombres del equipo); el usuario de Girle (rol `coordinador`) no se ha creado; y el
+emparejamiento por factura sigue sin una sola factura real cargada (`FEV...`) — sólo las sintéticas
+de la semilla.
+
+## 2026-09-07 — el lote real expone el segundo bug: cuota de Gemini, no calidad de lectura
+
+Con `STATUS.md` puesto al día, un agente de QA nuevo (sesión separada, sin memoria de la anterior)
+pudo arrancar directo desde la documentación sin re-diagnosticar el bug de `/admin` ya cerrado —
+confirmó que sigue en PASS y se fue directo al gap real que quedaba abierto: medir la calidad de
+lectura del sello manuscrito, pero esta vez con las 23 facturas reales del PDF, no con 1 página de
+prueba.
+
+El resultado no fue sobre calidad: **18 de 23 fallaron por límite de cuota/velocidad del tier gratis
+de Gemini**, agotado a mitad de un lote semanal real. `leerCumplido` no reintentaba nada — cualquier
+bache tumbaba esa página para siempre. Es un hallazgo distinto del `503` de "alta demanda" que se
+había verificado el día anterior (ese es un apagón temporal que le pasa igual a cuentas pagadas; este
+es un tope de cuota que sí depende del volumen, y donde pagar Gemini sí ayudaría si el tope es
+genuinamente diario).
+
+`lib/ia/reintentar.ts` agrega reintento con backoff (hasta 3 intentos) sólo ante 429/503 — no ante
+errores que no cambian con un segundo intento (esquema mal formado, modelo inexistente, permisos).
+Respeta el `retryDelay` que la propia API de Google manda en el error en vez de adivinar un tiempo de
+espera fijo. Cableado en los dos agentes de IA. Sin solucionar del todo: reintentar no fabrica más
+cuota diaria si el tope es genuinamente por día — sólo absorbe baches transitorios dentro de una
+cuota que todavía tiene margen. Queda pendiente reverificar el lote real completo una vez la cuota
+gratis de hoy resetee.
+
+Nota aparte, de higiene: `supabase/.temp/` (estado local del CLI, cambia en cada `supabase db query`)
+estaba trackeado por accidente desde hacía semanas — se dejó de rastrear y se agregó al `.gitignore`.
+
+## 2026-09-08 — la pregunta que abrió el proyecto, contestada: ~92% de precisión, medido
+
+Con Gemini en tier pagado (resuelve el tope de ~20 llamadas/día del hallazgo anterior), se corrió el
+lote real completo (23 páginas) por tercera vez. Las 23/23 completaron sin un solo error de red o
+cuota — confirma que el fix de ayer (reintento + pago) resolvió el problema de raíz, no a medias.
+
+Pero esta vez el QA no se detuvo en "¿falla o no?": extrajo las 23 páginas JPEG con el mismo código
+que usa la app, y verificó 11 de ellas a mano contra la imagen real — comparando lo que el modelo dijo
+contra lo que el sello manuscrito realmente dice. Es la primera medición real de la pregunta que abrió
+el proyecto entero: ¿puede un modelo de IA leer un sello de caucho firmado a mano en una factura
+colombiana? Respuesta, con evidencia: **sí, ~92% de precisión** (12/13 lecturas correctas contando
+abstenciones).
+
+Dos abstenciones correctas — el modelo devolvió `null` en vez de inventar una fecha donde no había
+ninguna visible, exactamente como pide el diseño ("null vale más que un dato inventado"). Dos errores
+reales, y los dos informativos: un escaneo genuinamente degradado leído con confianza "Alta" cuando
+debió ser "Dudosa" (se equivocó de década, 2020 por 2026); y un documento con dos fechas candidatas
+impresas donde el modelo mezcló ambas en un valor híbrido (sí bajó la confianza, el dato igual quedó
+falso). Y un hallazgo que nadie pidió pero pesa: dos páginas resultaron ser el mismo escaneo duplicado
+byte por byte, y el modelo dio **respuestas distintas** en dos llamadas sobre la misma imagen exacta —
+evidencia directa de que "confianza Alta" no es una garantía estable.
+
+Conclusión operativa: el diseño de copiloto (proponer, humano confirma) que se decidió por intuición
+al principio del proyecto queda confirmado por datos, no por fe — la confianza del modelo ayuda pero
+no basta sola para saltarse la revisión humana. Cablear el paso de escritura de Fase 3.2 sin discutir
+antes cómo tratar la confianza "Alta" sería ignorar este hallazgo.
+
+De paso: el prompt del sistema en `lib/ia/cumplido.ts` sólo describe el formato "RECIBO DE MERCANCÍA",
+pero el lote real trae mucha más variedad (confirmaciones Makro con fecha impresa, devoluciones,
+reportes PriceSmart en inglés) — el modelo los manejó bien de todos modos, pero nombrarlos explícitamente
+podría subir la precisión más.
+
+Limpieza: se borraron ~7 archivos de debris (capturas y scripts temporales) que tres corridas de QA
+sucesivas fueron dejando sueltos en `scripts/`, sin comitear nunca — ninguno tocaba código de producción.

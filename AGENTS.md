@@ -26,7 +26,55 @@ This file consolidates the **durable** things an AI agent needs to understand De
 
 **Despachr** is a Progressive Web Application for managing logistics operations in Colombian and Latin American transport companies. It digitalizes workflows currently handled with Excel and WhatsApp.
 
-**One sentence:** Real-time logistics management PWA that replaces manual tracking with digital, mobile-first operations.
+**One sentence:** The back-office of a freight company — the delivery record fills itself, and the
+weekly compliance report the client receives is produced without anyone transcribing anything.
+
+### 🧭 Tesis (leer antes de proponer cualquier feature)
+
+Las cuatro personas del back-office hacen **el mismo trabajo**: *un documento llega por un canal
+informal, un humano le extrae los datos, y los teclea en un sistema formal.*
+
+| Persona | Documento que llega | Sistema donde lo mete |
+|---|---|---|
+| Isaac (coordinador) | WhatsApp + facturas físicas | SISTRAN |
+| Girle (asistente) | fotos de cumplidos | el Excel del cliente |
+| Yuli (contadora) | cumplidos cerrados | SISTRAN + SIGO |
+| La gerente | datos operativos sueltos | propuestas e informes |
+
+Eso no es un problema colombiano: **toda pyme logística del mundo corre sobre documentos que llegan
+por canales informales.**
+
+**El objeto único es el expediente de la entrega** (`deliveries`): una fila que acumula lo
+comprometido (`fecha_programada`), lo que pasó (eventos con GPS), lo que lo prueba (cumplido,
+novedad), lo que vale (flete) y lo que se reportó. Cada rol hace hoy **un salto** de esa acumulación
+a mano; cada agente automatiza **un salto**. No son cuatro módulos — es un objeto y cuatro agentes.
+
+**Los 4 agentes, en orden de dolor:**
+
+| # | Agente | Le quita trabajo a | Estado |
+|---|---|---|---|
+| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Girle | lectura **medida (~92%)**, falta cablear el cierre ← **el siguiente** |
+| 2 | **Informe** — cumplimiento semanal por cliente, redactado | Girle + gerencia | **hecho** |
+| 3 | **Despacho** — del requerimiento arma la malla y notifica | Isaac | después |
+| 4 | **Facturación** — el cumplido cerrado dispara la factura | Yuli | al final |
+
+**El que NO se construye:** el de Osmelia (estados financieros, NIF, DIAN). Contabilidad regulada,
+externa, con responsabilidad legal. Bajísimo apalancamiento, altísimo riesgo. Fuera del producto.
+
+### ⚖️ REGLA DEL NÚCLEO (no negociable)
+
+**Nada específico de un país entra al núcleo.** SISTRAN, SIGO, DIAN, RNDC, el formato de Excel de un
+cliente — todos son **adaptadores en el borde**. El núcleo es el expediente + los agentes.
+
+Respetarla cuesta $0 hoy y es lo que permite un cliente en Perú o México sin reescribir. No
+respetarla siembra `sistran_sync_id` por media base de datos. Si una propuesta mete lógica de un país
+en el core, **la propuesta está mal**, no la regla.
+
+### 📏 Las tres métricas (no se cuentan pantallas)
+
+1. **% de cumplidos cerrados sin corrección humana** (0% → 95%) — cuándo el copiloto pasa a piloto
+2. **Horas de back-office liberadas por semana**
+3. **Días entre entrega e informe al cliente** (hoy 15–20 → objetivo 0)
 
 ### Key Facts
 - **Founder:** Sebastian Buritica
@@ -52,9 +100,47 @@ This system reflects an **actual operational workflow** from the pilot client:
 
 **CLOSE-OF-WEEK:** 
 - Generate invoice in **Sistran** (TMS software client currently uses)
-- Export XML to **Cigo** (accounting software, integrated with Sistran)
+- Export XML to **SIGO** (accounting software; también factura lo que Sistran no genera — bodegaje, transporte subcontratado)
 - Upload to **DIAN** (Colombian tax authority)
-- 30-day payment terms to client
+- **15-day** payment terms típicos (20–45 en la práctica; la rotación de cartera es dato de Osmelia)
+
+### ⏱️ La restricción del conductor (condiciona TODO lo que se le pida)
+
+De la reunión con la dueña (2026-08-24), y es la razón por la que los conductores **no reportan en
+tiempo real hoy**:
+
+- Mercancía **refrigerada**. Las cadenas reciben **hasta las 10–11am, máximo**.
+- Los puntos abren a las 7am. Las colas de descargue llegan a **2 horas**.
+- Quedan ~3 horas para 5–6 entregas. *"Si el conductor se queda organizando y tomando fotos, pierde
+  tiempo."*
+- Cada parada son varios documentos (factura + albarán); un solo negocio puede ser 2–3 facturas.
+- Las facturas **físicas firmadas hay que devolverlas igual** — se arma un paquete semanal al cliente.
+
+**Consecuencia de diseño:** cualquier paso nuevo que se le agregue al conductor entre 7 y 10am no se
+va a usar. La única jugada viable es **no pedirle trabajo nuevo, sino el mismo por otro canal**: ya
+fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde.
+
+> Bajo esta luz, la **firma digital** (`SignaturePad`) es evidencia **duplicada**: la firma legal ya
+> está en el papel que fotografía y que además devuelve físicamente. Es candidata a borrarse —
+> pendiente de confirmar con el coordinador.
+
+> **Confirmado, no sólo previsto (2026-09-08, conversación con la dueña):** los conductores no van a
+> reportar desde una app distinta de WhatsApp — punto. La app del conductor (Fase 1.1–1.4: datos
+> reales + GPS, foto/firma real, novedades, cola offline) queda **construida y funcionando, pero sin
+> validar adopción real** — es el mismo patrón que ya reveló el hallazgo de Fase 3.2: algo puede estar
+> bien construido y medido y aun así no ser lo que el negocio necesita. No se borra (no cuesta nada
+> que exista, y borrarla es más grande de lo que parece: cola offline, service worker, login OTP), pero
+> **deja de ser la vía para llegar al conductor.**
+>
+> **Consecuencia para lo que falta por construir:** los **Agentes 3 (Despacho) y 4 (Facturación)** — a
+> los que les toca cuando termine lo actual — deben diseñarse **WhatsApp-first para todo lo que toque
+> al conductor**, no "app con WhatsApp de respaldo". No bloquea nada de lo ya construido: el cierre del
+> cumplido (Agente 1) ya no depende de la app del conductor — corre por el mismo canal informal
+> (WhatsApp → PDF semanal → `/dashboard/cumplidos`), así que esto es una confirmación de que ese diseño
+> iba bien encaminado, no un cambio de rumbo para él.
+>
+> **Encontrar la forma correcta de optimizarle el tiempo al conductor por WhatsApp queda deliberadamente
+> después de terminar los 4 agentes** — decisión explícita de Sebastian, no un olvido.
 
 ### Business KPIs
 - **On-time delivery %** (metric coordinators obsess over)
@@ -66,17 +152,21 @@ This system reflects an **actual operational workflow** from the pilot client:
 
 ## 👥 User Roles & Workflows
 
-### **Admin** (Owner/Manager)
-- Full system access
-- Views: KPI dashboard, client profitability, driver performance, AR aging
-- Actions: approve routes, manage clients, set prices
+**Two tiers in practice, not three** (decisión 2026-09-08): back-office staff — Isaac, Girle, Yuli,
+la dueña — all share the same `/dashboard` panel, regardless of whether their DB role is `coordinador`
+or `admin`. `admin` doesn't unlock its own screens; it's reserved for two things that only happen by
+SQL (`supabase db query --linked`), never through the app UI: promoting another profile's `role`
+(`protect_profile_columns`, migración 007) and deleting objects from the `cumplidos` bucket. Everyday
+provisioning — "give Isaac an account" — is `coordinador`; `admin` is for the rare case that needs
+those two specific SQL-only powers, not a routine login tier. The **driver** stays genuinely separate
+— a different mobile-only interface for someone in the field, not a privilege distinction.
 
-### **Coordinator** (Logistics Planner)
-- Builds **malla** (weekly route plan)
-- Real-time monitoring: sees truck positions on map
+### **Back-office staff** (`coordinador` role — Isaac, Girle, Yuli, and the owner day-to-day)
+- Builds **malla** (weekly route plan), assigns drivers/vehicles, despacha
+- Real-time monitoring: sees truck positions on map, live delivery state
 - Receives alerts: "Truck at point 3 for 65 minutes" → escalate to driver
-- Manages live delivery state and captures issues
-- Cannot see financials
+- Reads and closes cumplidos (`/dashboard/cumplidos`, Fase 3.2)
+- Runs the weekly compliance report (`/dashboard/informe`, Fase 3.1)
 
 ### **Driver** (Third-party Contractor)
 - Mobile-first PWA (no app store, no install)
@@ -100,7 +190,9 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **consolidado** | Multiple clients in same truck |
 | **exclusivo** | Full truck for one client only, fixed rate |
 | **Sistran** | TMS (Transport Management System) — client's main software |
-| **Cigo** | Accounting software integrated with Sistran |
+| **SIGO** | Software contable. Factura a la DIAN lo que Sistran no genera (bodegaje, transporte subcontratado); se enlaza con Sistran por XML |
+| **anexo** | Cargo extra sobre el flete que va en el manifiesto (p. ej. ~100k por descargue) |
+| **generador de carga** | El cliente que origina el despacho (p. ej. Casablanca). El destino es la tienda, no el cliente |
 | **DIAN** | Colombian Tax Authority |
 | **punto** | Stop/delivery location on a route |
 | **evento** | Timestamped action: arrival, departure, photo, issue report |
@@ -122,6 +214,7 @@ This system reflects an **actual operational workflow** from the pilot client:
 | **Auth** | Supabase Auth — **two login paths at `/login`, in tabs**: **phone/SMS-OTP** (default; drivers) and **email/password** (admin/coordinator), plus password reset. OTP calls `signInWithOtp` with **`shouldCreateUser: false`** — sign-in never creates accounts; users are admin-provisioned and public signup is off. `profiles.phone` / `auth.users.phone` are stored **without** the leading `+` (e.g. `573229596618`) — always go through `lib/phone.ts` (`normalizePhone` to send, `formatPhoneDisplay` to show, `toTelHref` for dialing). |
 | **Storage** | Supabase Storage — bucket privado `cumplidos`; **conectado** al cumplido del conductor (foto + firma, Fase 1.2) vía `lib/storage.ts` |
 | **Realtime** | Supabase Realtime — **conectado** en la app del conductor (routes/deliveries, Fase 1.1/1.2); el mapa del coordinador es pendiente (Fase 2) |
+| **IA** | `lib/ia/informe.ts` + `lib/ia/cumplido.ts` — Claude si hay `ANTHROPIC_API_KEY`, si no Gemini con `GEMINI_API_KEY` (elegido por variable de entorno, no por código). Anthropic sigue bloqueado por un fallo de pago (3D Secure) sin resolver; **Gemini está en tier pagado** (Google Cloud Billing, gasto real medido: ~COP 500 por el lote semanal completo). `lib/ia/reintentar.ts` reintenta 429/503 respetando el `retryDelay` de Google. |
 | **Deploy** | Vercel (auto-deploy from main) |
 | **Maps** | **MapLibre GL + tiles CARTO** (`dark_all`/`light_all` según el tema). Sin token ni cuenta de facturación — misma razón por la que la landing ya usaba CARTO. El mapa dibuja las entregas por `deliveries.latitude/longitude` y la **última posición conocida** de cada ruta desde `delivery_events` (no hay tracking continuo en el schema: el último evento con coords es el mejor dato real, y por eso la UI muestra su hora). |
 | **Alerts** | Tabla `alerts` **conectada** en el panel del coordinador (ver + resolver, con constancia de quién y cuándo). La **llena** la edge function `check-tiempo-en-punto` con service role — el coordinador no tiene policy de INSERT a propósito. Telegram sigue pendiente de desplegar. |
@@ -181,21 +274,24 @@ app/
 ├── (auth)/login/          # Login split público (registro público eliminado)
 │   ├── forgot-password/   #   Pide el enlace de recuperación (no revela si el correo existe)
 │   └── reset-password/    #   Fija la contraseña nueva (sesión de recuperación vía ?code=)
-├── dashboard/             # COORDINADOR (protegido, solo rol coordinador)
+├── dashboard/             # STAFF de back-office (protegido, roles coordinador Y admin — un solo panel)
 │   ├── page.tsx           #   Operación en vivo
-│   ├── rutas/ conductores/ clientes/   # sub-páginas
-│   └── layout.tsx         #   → <DashboardShell variant="coordinator">
-├── admin/                 # ADMIN (protegido, solo rol admin)
-│   ├── page.tsx           #   Métricas
-│   ├── clientes/ facturacion/ reportes/
-│   └── layout.tsx         #   → <DashboardShell variant="admin">
+│   ├── rutas/ conductores/ clientes/ cumplidos/   # sub-páginas
+│   ├── informe/           #   Informe de cumplimiento (cifras + análisis redactado)
+│   └── layout.tsx         #   → <DashboardShell>
+├── api/informe/route.ts   # Agente 2: redacta el informe. La llave NUNCA va al navegador
 ├── driver/                # CONDUCTOR (protegido) → <DriverApp/> (mobile)
 ├── page.tsx               # Landing (pública, oscura fija)
 ├── manifest.ts            # PWA manifest (iconos, standalone)
 └── layout.tsx             # Root: ThemeProvider + Tooltip + Toaster + metadata iconos
 ```
-> Ruteo por rol en `middleware.ts` — `homeForRole`: admin→`/admin`, coordinador→`/dashboard`,
-> conductor→`/driver`. Cada segmento protegido por su rol.
+> Ruteo por rol en `middleware.ts` — `homeForRole`: admin y coordinador → `/dashboard` (mismo panel),
+> conductor → `/driver`. **`admin` no desbloquea ninguna pantalla propia** (decisión 2026-09-08): sólo
+> puede cambiar el `role` de otro perfil (`protect_profile_columns`, migración 007) y borrar del
+> bucket `cumplidos` — ninguna de las dos cosas tiene UI, se hacen por SQL directo (`supabase db
+> query --linked`), así que no justifican un panel aparte. Isaac, Girle y quien vea el informe
+> navegan el mismo `/dashboard`; sólo el conductor tiene una app distinta, porque su interfaz es
+> genuinamente otra (móvil, en campo), no una cuestión de privilegio.
 
 ### `/components` — React Components
 
@@ -204,8 +300,9 @@ badge, table, tabs, avatar, progress, separator, dialog, sheet, dropdown-menu, s
 tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/warning).
 
 **Layout (`/components/layout/`)**:
-- `DashboardShell.tsx` — shell reutilizable (frame 1320px + **sidebar claro** Linear + topbar
-  con toggle de tema + user card con logout). Prop `variant: 'coordinator' | 'admin'`.
+- `DashboardShell.tsx` — shell del panel de back-office (frame 1320px + **sidebar claro** Linear +
+  topbar con toggle de tema + user card con logout). Sin prop de variante — un solo panel para
+  coordinador y admin (ver la nota de ruteo arriba).
 - `PageHeader.tsx` — header de página estándar (título + subtítulo + acción).
 
 **Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveClock`, `LiveMap` (MapLibre real),
@@ -221,7 +318,9 @@ tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/
 **Otros**: `theme/ThemeProvider` + `theme/ThemeToggle` · `brand/BrandMark` (isotipo Ruta-D).
 El logout vive en el user card del `DashboardShell`; no hay componente `LogoutButton` suelto.
 
-> Datos **mock** en `lib/mock/{coordinator,admin,driver}.ts` (en producción → Supabase/API).
+> **No queda un solo mock.** `lib/mock/` se borró el 2026-08-30 junto con las tres pantallas de
+> admin que lo consumían. Toda pantalla lee de Supabase. Si vuelve a aparecer un dato inventado
+> en la UI, es un bug, no un placeholder.
 
 ### `/lib` — Utilities & Clients
 - `offline/` — resiliencia sin señal del conductor: `db.ts` (IndexedDB, sin librería),
@@ -245,6 +344,25 @@ El logout vive en el user card del `DashboardShell`; no hay componente `LogoutBu
 - `cumplido.ts` / `novedad.ts` — orquestación de los dos cierres posibles de una entrega
   (entregada o con novedad). Misma forma: dependencias inyectadas, progreso mutable para reanudar,
   y el cambio de estado SIEMPRE de último. Ambas probadas y ambas encolables offline.
+- `cumplimiento.ts` — la ARITMÉTICA del informe (probada). Vive fuera de `queries/` para poder
+  probarse sin red. Dos decisiones que no son obvias: el % se calcula **sólo** sobre entregas con
+  `fecha_programada` y el informe **declara cuántas excluyó** (una base recortada en silencio se ve
+  idéntica a una buena); y "a tiempo" se compara a nivel de FECHA, porque el compromiso que manda el
+  cliente es un día, no una hora.
+- `queries/reporte.ts` — el camino de datos del informe. Recibe el cliente de Supabase **inyectado**
+  (como `cumplido.ts`): la página pasa el del navegador, la API uno de servidor. Filtra por la fecha
+  de la RUTA, no por `fecha_programada` — filtrar por ella escondería justo las entregas sin
+  compromiso que el cálculo intenta hacer visibles.
+- `exportadores/casablanca.ts` — el formato exacto del cliente ("RELACION DE ENTREGAS...", columnas
+  B-J), fuera del núcleo a propósito (regla del núcleo, arriba): el día que llegue el cliente #2 con
+  su propio Excel, se agrega `exportadores/<cliente>.ts` y este archivo no se toca.
+- `ia/informe.ts` y `ia/cumplido.ts` — dónde viven los dos agentes de IA (redactar el informe, leer
+  el cumplido escaneado). **Eligen proveedor por variable de entorno, no por parámetro**: con
+  `ANTHROPIC_API_KEY` usan Claude; sin ella, y con `GEMINI_API_KEY`, caen a Gemini (respaldo agregado
+  2026-09 mientras el pago de la consola de Anthropic estuvo trabado). Las rutas (`app/api/informe`,
+  `app/api/cumplidos`) no saben cuál corrió — sólo hacen auth y arman la respuesta. Dos esquemas de
+  salida estructurada por agente, uno por dialecto (Claude: JSON Schema con `type: [x,"null"]`;
+  Gemini: tipos en MAYÚSCULA + `nullable: true`) — no son intercambiables como objeto.
 - `supabase.ts` — Supabase client initialization
 - `utils.ts` — Helpers: `cn()`, `formatDate()`, `calculateDistance()`
 
@@ -398,10 +516,16 @@ before it's proposed. Current state and the active segment live in **STATUS.md**
 - **Alerts live end-to-end** — `pg_cron` + edge function insertando en `alerts`, visibles y resolubles en el panel. **El push externo NO es requisito de v1.**
 - **Resilience/UX baseline** — error/loading/not-found boundaries and empty states.
 
+**In scope for v1 (añadido 2026-08-30, tras la reunión con la dueña):**
+- **Informe de cumplimiento por cliente** — el entregable que hoy se arma llenando a mano el Excel
+  del generador de carga y filtrándolo antes de la reunión del viernes. Es el **único artefacto del
+  producto que ve el cliente que paga**, y por eso pesa más que cualquier pantalla interna.
+
 **Out of scope for v1 (deferred):**
-- **Admin panel depth** — KPIs, charts, billing workflow, reports, client CRUD → **v1.1**, once real
-  data has accumulated (the pilot doesn't need ROA/ROE to stop using Excel).
-- Multi-tenant, pricing, route optimization, Sistran/Cigo integration → **post-v1**.
+- **Admin panel depth** — KPIs, charts, billing workflow, client CRUD → **cancelado, no diferido.**
+  Las tres pantallas mock se **borraron** el 2026-08-30. No eran una deuda a completar: eran vistas
+  para mirar, y ninguna le quitaba trabajo a nadie. Lo que sí lo quita es el agente de cumplido.
+- Multi-tenant, pricing, route optimization, Sistran/SIGO integration → **post-v1**.
 - The a11y contrast backlog (35 axe warnings) → tracked, **not v1**.
 
 ### Sequence
@@ -415,8 +539,32 @@ Fase 1.4  — driver: cola offline (IndexedDB) + service worker + snapshot de ru
 Manual    — Telegram bot + pg_cron deploy (owner runs these)
 Fase 2.1  — coordinator: real routes/drivers/clients + Realtime                          [done]
 Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas                 [done]
-            (el planificador de malla sigue esperando peso_kg/volumen_m3 → migración 008)
+Fase 3.1  — informe de cumplimiento + agente redactor (migración 008)                    [done]
+Fase 3.2  — agente de CUMPLIDO: lee la foto Y cierra la entrega     [construido, sin verificar
+            con factura real todavía — falta el Excel de David, ver STATUS.md]
+Fase 4    — agente de DESPACHO (Isaac): arma la malla, notifica — WhatsApp-first, no      ← EL SIGUIENTE
+            app-first (confirmado 2026-09-08: los conductores no van a reportar desde una
+            app distinta de WhatsApp, ver "La restricción del conductor" arriba)
+Fase 5    — agente de FACTURACIÓN (Yuli): el cumplido cerrado dispara la factura
+Fase 6    — multi-tenant (`company_id` + reescribir las 27 policies) → cliente #2
+Post-v1   — la forma correcta de optimizarle el tiempo al conductor por WhatsApp (deliberadamente
+            después de los 4 agentes, no un olvido)
 ```
+
+> **Fase 3.2 se despacha en modo COPILOTO, no autopiloto.** El modelo propone los campos, un humano
+> confirma con un toque. La **tasa de confirmación sin corrección** es la métrica que decide cuándo
+> se quita el humano — no la fe.
+>
+> **Validado con datos, no con intuición (2026-09-08):** sobre el lote real de 23 facturas de
+> Casablanca, la lectura del sello manuscrito acertó **~92%** de lo verificado a mano contra la
+> imagen original — buena noticia, la tesis del producto funciona. Pero el mismo lote reveló que
+> **la confianza "Alta" del modelo no es una garantía estable**: un escaneo degradado se leyó mal con
+> confianza Alta, y la MISMA imagen exacta, llamada dos veces, dio dos respuestas distintas, ambas
+> Alta. **Consecuencia de diseño, no negociable:** el paso de escritura no puede confiar ciegamente
+> en `confianza_fecha === 'alta'` para saltarse la revisión humana — necesita, como mínimo, seguir
+> pidiendo confirmación aunque la confianza sea alta, hasta que haya una métrica mejor que la
+> confianza que el propio modelo reporta de sí mismo. Detalle completo del hallazgo en el
+> `CHANGELOG.md` del 2026-09-08 (dos abstenciones correctas, dos errores reales, la duplicada).
 
 > **Auth reality:** phone/SMS-OTP login **is built** (Fase 1.3b) — `/login` shows two tabs, phone
 > first. Phone numbers have **no leading `+`** anywhere in the DB (`573229596618`); never build a
@@ -449,12 +597,11 @@ Fase 2.2  — coordinator: mapa real (MapLibre+CARTO) + alertas conectadas      
 > action) and `components/ui/coming-soon.tsx` (wraps a `disabled` control with a "Próximamente"
 > tooltip so unbuilt CTAs read as pending, not broken).
 >
-> **`components/ui/demo-data-notice.tsx`** is the same idea applied to the *data* instead of the
-> control: it marks a screen still reading from `lib/mock/*`. A dead CTA is visibly dead; an invented
-> metric is not — it reads exactly like a real one. It is added **per page, not in the layout**, so
-> Fase 2 can connect one view at a time and delete only that page's line while the rest stay honestly
-> marked. **Rule: a page that imports from `lib/mock/*` renders `<DemoDataNotice />`.** When no page
-> imports it any more, delete the component.
+>
+> **`demo-data-notice.tsx` ya no existe** — cumplió su función y se borró con el último mock
+> (2026-08-30), exactamente como decía su propia regla. La lección que deja: un CTA muerto se ve
+> muerto, pero una métrica inventada se lee igual que una real. Por eso ahora la regla es más dura:
+> **no hay pantallas de relleno.** Si algo no tiene datos reales, no se despacha.
 
 ---
 

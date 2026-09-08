@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...salvo la plantilla sin secretos: documenta qué variables existen. Nunca
+# había estado en el repo por este mismo patrón — bug de scaffold, no diseño.
+!.env.local.example
 
 # vercel
 .vercel
@@ -51,3 +54,11 @@ next-env.d.ts
 
 # Salida de scripts/rotate-test-passwords.mjs — contraseñas en claro, se borra a mano
 .secrets-rotacion.txt
+
+# Auditoría de seguridad: se mantiene FUERA del repo público a propósito
+# (contiene pasos de explotación reproducibles). Ver AGENTS.md.
+SECURITY-AUDIT-*.md
+
+# Estado local del CLI de Supabase — cambia en cada `supabase db query`, nunca
+# debió trackearse (entró por accidente en 046ea7f).
+supabase/.temp/
