@@ -134,17 +134,21 @@ fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde
 
 ## 👥 User Roles & Workflows
 
-### **Admin** (Owner/Manager)
-- Full system access
-- Views: KPI dashboard, client profitability, driver performance, AR aging
-- Actions: approve routes, manage clients, set prices
+**Two tiers in practice, not three** (decisión 2026-09-08): back-office staff — Isaac, Girle, Yuli,
+la dueña — all share the same `/dashboard` panel, regardless of whether their DB role is `coordinador`
+or `admin`. `admin` doesn't unlock its own screens; it's reserved for two things that only happen by
+SQL (`supabase db query --linked`), never through the app UI: promoting another profile's `role`
+(`protect_profile_columns`, migración 007) and deleting objects from the `cumplidos` bucket. Everyday
+provisioning — "give Isaac an account" — is `coordinador`; `admin` is for the rare case that needs
+those two specific SQL-only powers, not a routine login tier. The **driver** stays genuinely separate
+— a different mobile-only interface for someone in the field, not a privilege distinction.
 
-### **Coordinator** (Logistics Planner)
-- Builds **malla** (weekly route plan)
-- Real-time monitoring: sees truck positions on map
+### **Back-office staff** (`coordinador` role — Isaac, Girle, Yuli, and the owner day-to-day)
+- Builds **malla** (weekly route plan), assigns drivers/vehicles, despacha
+- Real-time monitoring: sees truck positions on map, live delivery state
 - Receives alerts: "Truck at point 3 for 65 minutes" → escalate to driver
-- Manages live delivery state and captures issues
-- Cannot see financials
+- Reads and closes cumplidos (`/dashboard/cumplidos`, Fase 3.2)
+- Runs the weekly compliance report (`/dashboard/informe`, Fase 3.1)
 
 ### **Driver** (Third-party Contractor)
 - Mobile-first PWA (no app store, no install)
@@ -252,21 +256,24 @@ app/
 ├── (auth)/login/          # Login split público (registro público eliminado)
 │   ├── forgot-password/   #   Pide el enlace de recuperación (no revela si el correo existe)
 │   └── reset-password/    #   Fija la contraseña nueva (sesión de recuperación vía ?code=)
-├── dashboard/             # COORDINADOR (protegido, solo rol coordinador)
+├── dashboard/             # STAFF de back-office (protegido, roles coordinador Y admin — un solo panel)
 │   ├── page.tsx           #   Operación en vivo
-│   ├── rutas/ conductores/ clientes/   # sub-páginas
-│   └── layout.tsx         #   → <DashboardShell variant="coordinator">
-├── admin/                 # ADMIN (protegido, solo rol admin) — UNA pantalla, a propósito
-│   ├── page.tsx           #   Informe de cumplimiento (cifras + análisis redactado)
-│   └── layout.tsx         #   → <DashboardShell variant="admin">
+│   ├── rutas/ conductores/ clientes/ cumplidos/   # sub-páginas
+│   ├── informe/           #   Informe de cumplimiento (cifras + análisis redactado)
+│   └── layout.tsx         #   → <DashboardShell>
 ├── api/informe/route.ts   # Agente 2: redacta el informe. La llave NUNCA va al navegador
 ├── driver/                # CONDUCTOR (protegido) → <DriverApp/> (mobile)
 ├── page.tsx               # Landing (pública, oscura fija)
 ├── manifest.ts            # PWA manifest (iconos, standalone)
 └── layout.tsx             # Root: ThemeProvider + Tooltip + Toaster + metadata iconos
 ```
-> Ruteo por rol en `middleware.ts` — `homeForRole`: admin→`/admin`, coordinador→`/dashboard`,
-> conductor→`/driver`. Cada segmento protegido por su rol.
+> Ruteo por rol en `middleware.ts` — `homeForRole`: admin y coordinador → `/dashboard` (mismo panel),
+> conductor → `/driver`. **`admin` no desbloquea ninguna pantalla propia** (decisión 2026-09-08): sólo
+> puede cambiar el `role` de otro perfil (`protect_profile_columns`, migración 007) y borrar del
+> bucket `cumplidos` — ninguna de las dos cosas tiene UI, se hacen por SQL directo (`supabase db
+> query --linked`), así que no justifican un panel aparte. Isaac, Girle y quien vea el informe
+> navegan el mismo `/dashboard`; sólo el conductor tiene una app distinta, porque su interfaz es
+> genuinamente otra (móvil, en campo), no una cuestión de privilegio.
 
 ### `/components` — React Components
 
@@ -275,8 +282,9 @@ badge, table, tabs, avatar, progress, separator, dialog, sheet, dropdown-menu, s
 tooltip, sonner) + `status-badge.tsx` (badges de estado: success/neutral/danger/warning).
 
 **Layout (`/components/layout/`)**:
-- `DashboardShell.tsx` — shell reutilizable (frame 1320px + **sidebar claro** Linear + topbar
-  con toggle de tema + user card con logout). Prop `variant: 'coordinator' | 'admin'`.
+- `DashboardShell.tsx` — shell del panel de back-office (frame 1320px + **sidebar claro** Linear +
+  topbar con toggle de tema + user card con logout). Sin prop de variante — un solo panel para
+  coordinador y admin (ver la nota de ruteo arriba).
 - `PageHeader.tsx` — header de página estándar (título + subtítulo + acción).
 
 **Dashboard (`/components/dashboard/`)**: `StatCard`, `RouteProgress`, `LiveClock`, `LiveMap` (MapLibre real),

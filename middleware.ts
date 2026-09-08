@@ -3,8 +3,9 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { homeForRole } from '@/lib/roles'
 import type { RolUsuario } from '@/types'
 
-// Protegemos /dashboard/* (coordinador), /admin/* (admin) y /driver/* (conductor);
-// el resto (/, /login, /forgot-password, /reset-password) es público.
+// Protegemos /dashboard/* (coordinador y admin — mismo panel, ver lib/roles.ts)
+// y /driver/* (conductor); el resto (/, /login, /forgot-password,
+// /reset-password) es público.
 
 export async function middleware(request: NextRequest) {
   // Respuesta base: el cliente de Supabase puede refrescar tokens y reescribir cookies aquí.
@@ -21,10 +22,7 @@ export async function middleware(request: NextRequest) {
   // `lib/supabase.ts` hace lo equivalente para el cliente del navegador.
   if (!supabaseUrl || !supabaseAnonKey) {
     const { pathname } = request.nextUrl
-    const isProtected =
-      pathname.startsWith('/dashboard') ||
-      pathname.startsWith('/admin') ||
-      pathname.startsWith('/driver')
+    const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/driver')
     if (isProtected) {
       console.error(
         'Faltan NEXT_PUBLIC_SUPABASE_URL y/o NEXT_PUBLIC_SUPABASE_ANON_KEY: ' +
@@ -62,13 +60,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isDashboardRoute = pathname.startsWith('/dashboard')
-  const isAdminRoute = pathname.startsWith('/admin')
   const isDriverRoute = pathname.startsWith('/driver')
   const isLogin = pathname === '/login'
 
   // --- Sin sesión -----------------------------------------------------------
   if (!user) {
-    if (isDashboardRoute || isAdminRoute || isDriverRoute) {
+    if (isDashboardRoute || isDriverRoute) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
@@ -88,7 +85,7 @@ export async function middleware(request: NextRequest) {
   // Sesión válida pero sin perfil/rol: estado roto. No adivinamos panel (evita mandar
   // a un rol al panel equivocado y el bucle de redirección hacia homeForRole(null)).
   if (profileError || !role) {
-    if (isDashboardRoute || isAdminRoute || isDriverRoute) {
+    if (isDashboardRoute || isDriverRoute) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('error', 'perfil')
       return NextResponse.redirect(loginUrl)
@@ -103,13 +100,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(home, request.url))
   }
 
-  // /dashboard/* solo coordinador.
-  if (isDashboardRoute && role !== 'coordinador') {
-    return NextResponse.redirect(new URL(home, request.url))
-  }
-
-  // /admin/* solo admin.
-  if (isAdminRoute && role !== 'admin') {
+  // /dashboard/* — coordinador y admin comparten el mismo panel (ver lib/roles.ts).
+  if (isDashboardRoute && role !== 'coordinador' && role !== 'admin') {
     return NextResponse.redirect(new URL(home, request.url))
   }
 

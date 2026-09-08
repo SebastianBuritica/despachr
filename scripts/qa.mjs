@@ -51,14 +51,16 @@ const SEGMENTS = {
       { path: '/dashboard/conductores', label: 'conductores' },
       { path: '/dashboard/clientes', label: 'clientes' },
       { path: '/dashboard/cumplidos', label: 'cumplidos' },
+      { path: '/dashboard/informe', label: 'informe-de-cumplimiento' },
     ],
   },
-  // Admin quedó reducido a UNA pantalla el 2026-08-30 (se borraron clientes,
-  // facturacion y reportes — eran mock). Si esta lista vuelve a crecer, que
-  // sea porque la pantalla existe de verdad, no por copiar el patrón viejo.
+  // `/admin` como panel aparte se retiró el 2026-09-08: el informe se movió a
+  // /dashboard/informe (coordinador y admin comparten un solo panel, ver
+  // lib/roles.ts). Este segmento se queda sólo para confirmar que una cuenta
+  // admin sigue entrando sin quedar huérfana — no es una pantalla distinta.
   admin: {
     role: 'admin',
-    routes: [{ path: '/admin', label: 'informe-de-cumplimiento' }],
+    routes: [{ path: '/dashboard', label: 'panel-como-admin' }],
   },
   driver: {
     role: 'conductor',

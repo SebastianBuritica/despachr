@@ -32,8 +32,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-type ShellVariant = 'coordinator' | 'admin'
-
 interface NavItem {
   label: string
   href: string
@@ -41,26 +39,20 @@ interface NavItem {
   exact?: boolean
 }
 
-const NAV: Record<ShellVariant, { section: string; items: NavItem[] }> = {
-  coordinator: {
-    section: 'Operación',
-    items: [
-      { label: 'Operación en vivo', href: '/dashboard', icon: LayoutGrid, exact: true },
-      { label: 'Rutas', href: '/dashboard/rutas', icon: RouteIcon },
-      { label: 'Conductores', href: '/dashboard/conductores', icon: Users },
-      { label: 'Clientes', href: '/dashboard/clientes', icon: Building2 },
-      { label: 'Cumplidos', href: '/dashboard/cumplidos', icon: FileText },
-    ],
-  },
-  admin: {
-    section: 'Administración',
-    items: [
-      // Una sola pantalla a propósito. Las de métricas/clientes/facturación
-      // eran datos inventados: se borraron en vez de dejarlas marcadas como demo.
-      { label: 'Informe de cumplimiento', href: '/admin', icon: FileText, exact: true },
-    ],
-  },
-}
+// Un solo panel para todo el staff de back-office (coordinador Y admin — ver
+// lib/roles.ts: admin no desbloquea una pantalla propia, sólo permisos por
+// SQL que la app no expone). Antes había un `variant="admin"` con una sola
+// pantalla (el informe); vivía aparte porque el rol lo exigía, no porque el
+// contenido fuera distinto — Isaac, Girle y quien vea el informe navegan el
+// mismo menú.
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Operación en vivo', href: '/dashboard', icon: LayoutGrid, exact: true },
+  { label: 'Rutas', href: '/dashboard/rutas', icon: RouteIcon },
+  { label: 'Conductores', href: '/dashboard/conductores', icon: Users },
+  { label: 'Clientes', href: '/dashboard/clientes', icon: Building2 },
+  { label: 'Cumplidos', href: '/dashboard/cumplidos', icon: FileText },
+  { label: 'Informe de cumplimiento', href: '/dashboard/informe', icon: FileText },
+]
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrador',
@@ -77,16 +69,9 @@ function isActive(pathname: string, item: NavItem): boolean {
   return item.exact ? pathname === item.href : pathname.startsWith(item.href)
 }
 
-export function DashboardShell({
-  variant,
-  children,
-}: {
-  variant: ShellVariant
-  children: React.ReactNode
-}) {
+export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { profile, loading: cargandoSesion } = useAuth()
-  const { section, items } = NAV[variant]
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const name = profile?.name ?? 'Usuario'
@@ -94,8 +79,7 @@ export function DashboardShell({
 
   const sidebar = (
     <SidebarNav
-      section={section}
-      items={items}
+      items={NAV_ITEMS}
       pathname={pathname}
       name={name}
       roleLabel={roleLabel}
@@ -127,7 +111,7 @@ export function DashboardShell({
 
         {/* Main */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar variant={variant} onOpenMenu={() => setMobileOpen(true)} />
+          <Topbar onOpenMenu={() => setMobileOpen(true)} />
           <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
         </div>
       </div>
@@ -136,7 +120,6 @@ export function DashboardShell({
 }
 
 function SidebarNav({
-  section,
   items,
   pathname,
   name,
@@ -144,7 +127,6 @@ function SidebarNav({
   cargandoSesion,
   onNavigate,
 }: {
-  section: string
   items: NavItem[]
   pathname: string
   name: string
@@ -160,7 +142,7 @@ function SidebarNav({
       </div>
 
       <p className="px-5 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted">
-        {section}
+        Operación
       </p>
 
       <nav className="flex flex-col gap-1 px-3">
@@ -206,32 +188,7 @@ function MenuButton({ onOpenMenu }: { onOpenMenu: () => void }) {
   )
 }
 
-function Topbar({
-  variant,
-  onOpenMenu,
-}: {
-  variant: ShellVariant
-  onOpenMenu: () => void
-}) {
-  if (variant === 'admin') {
-    return (
-      <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
-        <div className="flex items-center gap-2">
-          <MenuButton onOpenMenu={onOpenMenu} />
-          {/* En móvil la etiqueta cede el ancho: sin esto, PeriodToggle + ThemeToggle
-              se salen del viewport y el toggle de tema queda inalcanzable (el header
-              no tiene scroll propio y la página tampoco desborda). */}
-          <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
-            Administración
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-        </div>
-      </header>
-    )
-  }
-
+function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
       <div className="flex min-w-0 items-center gap-2">
