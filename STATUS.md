@@ -80,9 +80,13 @@ respetando el `retryDelay` que la propia API de Google manda en el error en vez 
 tiempo de espera. Cableado en los dos agentes (`lib/ia/cumplido.ts`, `lib/ia/informe.ts`). 5 tests
 nuevos con timers falsos (sin esto el suite se vuelve lento en silencio — ya pasó una vez).
 
-**Esto NO fabrica más cuota diaria** si el tope es genuinamente por día — sólo absorbe baches
-transitorios. **Pendiente de reverificar con el lote real completo** cuando la cuota gratis de hoy
-resetee (se agotó corriendo la prueba dos veces) o cuando el pago de Anthropic se resuelva.
+**Esto NO fabricaba más cuota diaria** si el tope era genuinamente por día — y lo era: eran
+~20 llamadas/día del tier gratis. Resuelto de raíz el 2026-09-08: **Gemini pasó a tier pagado**
+(Google Cloud Billing, misma tarjeta que le había fallado dos veces a Anthropic — pagó limpio, sin
+3D Secure, lo que apunta a que el problema era específico del checkout de Anthropic/Stripe, no del
+banco). Mismo `GEMINI_API_KEY`, cero cambios de código. **Pendiente: reverificar el lote real de 23
+páginas** con pago + reintento ya activos — la primera vez que se podría medir de verdad la calidad
+de lectura del sello manuscrito sobre un lote completo, no sólo si falla o no.
 
 ---
 
