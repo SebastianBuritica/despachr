@@ -84,7 +84,9 @@ nuevos con timers falsos (sin esto el suite se vuelve lento en silencio — ya p
 ~20 llamadas/día del tier gratis. Resuelto de raíz el 2026-09-08: **Gemini pasó a tier pagado**
 (Google Cloud Billing, misma tarjeta que le había fallado dos veces a Anthropic — pagó limpio, sin
 3D Secure, lo que apunta a que el problema era específico del checkout de Anthropic/Stripe, no del
-banco). Mismo `GEMINI_API_KEY`, cero cambios de código.
+banco). Mismo `GEMINI_API_KEY`, cero cambios de código. **Gasto real confirmado por el lote
+completo de 23 páginas: COP 100,000 → 99,493, ~COP 500 (~$0.13 USD)** — cuadra con la estimación de
+antes de construir nada.
 
 ### 🎯 La pregunta que abrió el proyecto, contestada (2026-09-08)
 

@@ -25,12 +25,15 @@ Al armar un camión, ¿qué se llena primero, **el peso o el espacio**?
 
 ## B. Qué significa "a tiempo"
 
-> Es **el indicador que más importa**, pero ahora mismo el sistema no puede calcularlo: no hay contra
-> qué comparar la hora de llegada.
+> Es **el indicador que más importa**, y ya se puede calcular: `deliveries.fecha_programada`
+> (migración `008`) + `lib/cumplimiento.ts` producen el % de cumplimiento real, verificado contra
+> la operación (85.7%/91.4% en la semana de prueba). Lo que sigue abierto es sólo lo de abajo.
 
-**B1.** 🔴 ¿Qué hace que una entrega sea "a tiempo" — una **hora comprometida** o una ventana ("entre
-7 y 11")? ¿La pone el cliente o nosotros? ¿Es igual para todos, o Makro exige distinto que una
-tienda de barrio?
+**B1. 🟡 PARCIALMENTE CONTESTADA** por el Excel real de Casablanca (`docs/`, ver "RELACION DE
+ENTREGAS..."): el compromiso es una **fecha** (día, no hora — columna "Fecha Program Entrega"), y
+**la pone el cliente**, en su Excel semanal. Sigue abierto: ¿aplica igual para todos los clientes, o
+alguno exige además una ventana horaria (p. ej. "antes de las 11am")? Sólo hemos visto el archivo de
+un cliente.
 
 ---
 

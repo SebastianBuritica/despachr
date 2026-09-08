@@ -53,7 +53,7 @@ a mano; cada agente automatiza **un salto**. No son cuatro módulos — es un ob
 
 | # | Agente | Le quita trabajo a | Estado |
 |---|---|---|---|
-| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Girle | pendiente ← **el siguiente** |
+| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Girle | lectura **medida (~92%)**, falta cablear el cierre ← **el siguiente** |
 | 2 | **Informe** — cumplimiento semanal por cliente, redactado | Girle + gerencia | **hecho** |
 | 3 | **Despacho** — del requerimiento arma la malla y notifica | Isaac | después |
 | 4 | **Facturación** — el cumplido cerrado dispara la factura | Yuli | al final |
@@ -192,6 +192,7 @@ fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde
 | **Auth** | Supabase Auth — **two login paths at `/login`, in tabs**: **phone/SMS-OTP** (default; drivers) and **email/password** (admin/coordinator), plus password reset. OTP calls `signInWithOtp` with **`shouldCreateUser: false`** — sign-in never creates accounts; users are admin-provisioned and public signup is off. `profiles.phone` / `auth.users.phone` are stored **without** the leading `+` (e.g. `573229596618`) — always go through `lib/phone.ts` (`normalizePhone` to send, `formatPhoneDisplay` to show, `toTelHref` for dialing). |
 | **Storage** | Supabase Storage — bucket privado `cumplidos`; **conectado** al cumplido del conductor (foto + firma, Fase 1.2) vía `lib/storage.ts` |
 | **Realtime** | Supabase Realtime — **conectado** en la app del conductor (routes/deliveries, Fase 1.1/1.2); el mapa del coordinador es pendiente (Fase 2) |
+| **IA** | `lib/ia/informe.ts` + `lib/ia/cumplido.ts` — Claude si hay `ANTHROPIC_API_KEY`, si no Gemini con `GEMINI_API_KEY` (elegido por variable de entorno, no por código). Anthropic sigue bloqueado por un fallo de pago (3D Secure) sin resolver; **Gemini está en tier pagado** (Google Cloud Billing, gasto real medido: ~COP 500 por el lote semanal completo). `lib/ia/reintentar.ts` reintenta 429/503 respetando el `retryDelay` de Google. |
 | **Deploy** | Vercel (auto-deploy from main) |
 | **Maps** | **MapLibre GL + tiles CARTO** (`dark_all`/`light_all` según el tema). Sin token ni cuenta de facturación — misma razón por la que la landing ya usaba CARTO. El mapa dibuja las entregas por `deliveries.latitude/longitude` y la **última posición conocida** de cada ruta desde `delivery_events` (no hay tracking continuo en el schema: el último evento con coords es el mejor dato real, y por eso la UI muestra su hora). |
 | **Alerts** | Tabla `alerts` **conectada** en el panel del coordinador (ver + resolver, con constancia de quién y cuándo). La **llena** la edge function `check-tiempo-en-punto` con service role — el coordinador no tiene policy de INSERT a propósito. Telegram sigue pendiente de desplegar. |
@@ -518,9 +519,19 @@ Fase 3.3  — multi-tenant (`company_id` + reescribir las 27 policies) → clien
 ```
 
 > **Fase 3.2 se despacha en modo COPILOTO, no autopiloto.** El modelo propone los campos, un humano
-> confirma con un toque. Razón: arranca al ~70% de precisión, y un agente autónomo al 70% es
-> inservible mientras que un copiloto al 70% ya ahorra el día. La **tasa de confirmación sin
-> corrección** es la métrica que decide cuándo se quita el humano — no la fe.
+> confirma con un toque. La **tasa de confirmación sin corrección** es la métrica que decide cuándo
+> se quita el humano — no la fe.
+>
+> **Validado con datos, no con intuición (2026-09-08):** sobre el lote real de 23 facturas de
+> Casablanca, la lectura del sello manuscrito acertó **~92%** de lo verificado a mano contra la
+> imagen original — buena noticia, la tesis del producto funciona. Pero el mismo lote reveló que
+> **la confianza "Alta" del modelo no es una garantía estable**: un escaneo degradado se leyó mal con
+> confianza Alta, y la MISMA imagen exacta, llamada dos veces, dio dos respuestas distintas, ambas
+> Alta. **Consecuencia de diseño, no negociable:** el paso de escritura no puede confiar ciegamente
+> en `confianza_fecha === 'alta'` para saltarse la revisión humana — necesita, como mínimo, seguir
+> pidiendo confirmación aunque la confianza sea alta, hasta que haya una métrica mejor que la
+> confianza que el propio modelo reporta de sí mismo. Detalle completo del hallazgo en el
+> `CHANGELOG.md` del 2026-09-08 (dos abstenciones correctas, dos errores reales, la duplicada).
 
 > **Auth reality:** phone/SMS-OTP login **is built** (Fase 1.3b) — `/login` shows two tabs, phone
 > first. Phone numbers have **no leading `+`** anywhere in the DB (`573229596618`); never build a
