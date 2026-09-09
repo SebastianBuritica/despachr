@@ -9,6 +9,32 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 
 ---
 
+## 2026-09-09 — formato real de Casablanca + Girle provisionada + hallazgo de deliverability
+
+**Exportador de Casablanca actualizado contra 3 archivos reales** (junio, agosto, septiembre — Girle).
+El formato cambió con el tiempo: junio traía "Orden de compra" + peso/cajas, agosto se quedó sólo con
+"Orden de compra", septiembre (el más reciente) la soltó también. Girle pidió traerla de vuelta justo
+después de "Nro documento", sin el resto de lo viejo. De paso apareció un bug real independiente de
+eso: el exportador **nunca escribía "Desc. punto de envio"** (la primera columna del archivo real —
+qué punto es cada fila), aunque el dato ya existía en la app. Migración `012` agrega
+`deliveries.orden_compra`; el exportador ahora reproduce las 11 columnas exactas del archivo real.
+
+**Usuario de Girle creado por SQL directo**, sin dashboard de Supabase ni navegador — `coordinador`,
+schema verificado columna por columna contra una fila real antes de insertar (`auth.users` +
+`auth.identities`, el trigger `handle_new_user` ya existente le puso el rol bien desde el insert).
+El correo de recuperación de contraseña **nunca le llegó** — se probó extremo a extremo mandándolo a
+un Gmail personal (llegó en segundos, a la bandeja principal) contra su dirección real
+(`administrativa@vaniagloballogistics.com`, dominio corporativo) — ni siquiera llegó a spam. Se le puso
+contraseña directo por SQL como salida práctica para el piloto.
+
+**Hallazgo que importa más allá de Girle:** el SMTP compartido por defecto de Supabase
+(`mail.app.supabase.io`) parece filtrarse en dominios corporativos con IT serio — que es el perfil
+típico de cualquier empresa a la que se le venda Despachr, no un caso raro. Documentado en AGENTS.md
+como bloqueante para onboardear cliente #2 (necesita SMTP propio con dominio verificado), aunque no
+bloquea el piloto actual.
+
+---
+
 ## PR ledger
 
 | PR | Work |

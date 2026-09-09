@@ -78,8 +78,9 @@ export async function GET(request: Request) {
 
   for (const fila of filasCasablanca(entregas)) {
     const r = hoja.addRow([
-      fila.numeroDocumento, fila.ciudad, fila.diaEntrega, fila.fechaProgramEntrega,
-      fila.segundaFecha, fila.fechaEntrega, fila.estatus, fila.cumplido, fila.observaciones,
+      fila.puntoEnvio, fila.numeroDocumento, fila.ordenCompra, fila.ciudad, fila.diaEntrega,
+      fila.fechaProgramEntrega, fila.segundaFecha, fila.fechaEntrega, fila.estatus, fila.cumplido,
+      fila.observaciones,
     ])
     // Mismo código de color que el archivo real: amarillo cuando hubo
     // reprogramación — sigue siendo un incumplimiento para el cliente, no un

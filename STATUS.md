@@ -138,8 +138,13 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
    una nota de reunión de Notion que ya vive completa ahí, en privado — se borró del working tree
    (nunca se commiteó). Notion queda como única fuente; el agente tiene acceso de lectura directo si
    hace falta ese contexto de nuevo.
-3. **Crear el usuario de Girle** como `coordinador` — esperando su email para invitarla por Admin API
-   (sin dashboard de Supabase ni Chrome) y promoverla por SQL, igual que las migraciones.
+3. ~~Crear el usuario de Girle.~~ **Hecho (2026-09-09).** `coordinador`, creada por SQL directo (sin
+   dashboard, sin Chrome) — email `administrativa@vaniagloballogistics.com`. El correo de recuperación
+   de contraseña de Supabase **no le llegó** (probado extremo a extremo: sí llegó a un Gmail personal
+   en segundos, nunca llegó a su dominio corporativo, ni a spam) — se le puso contraseña directo por
+   SQL en su lugar, relevada por Sebastian fuera del chat. Ver el hallazgo de deliverability en
+   AGENTS.md: esto **va a repetirse con cualquier cliente futuro** con IT corporativo — hace falta SMTP
+   propio con dominio verificado antes de vender a otra empresa (nueva cola item 7, abajo).
 4. ~~El pago de Anthropic~~ **Descartado (2026-09-08, decisión de Sebastian).** Gemini pagado queda
    como la conexión de IA; no se vuelve a intentar resolver el 3D Secure de Anthropic.
 5. **El Excel real de David** (no sólo las fotos) — llega mañana. Bloquea el importador y la
@@ -147,6 +152,11 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
 6. **Verificar el cierre de Fase 3.2 en el navegador con una factura real** — build+lint+tests están
    en verde pero nadie ha hecho clic en "Confirmar" contra datos reales todavía (bloqueado por el
    punto 5: no hay facturas reales cargadas en `deliveries.numero_factura`).
+7. **SMTP propio para Auth** (Resend/Postmark/SES + dominio verificado SPF/DKIM/DMARC) — no bloquea el
+   piloto (Girle ya tiene contraseña puesta por SQL), pero **sí bloquea onboardear cliente #2**: el
+   correo de recuperación/invitación de Supabase por defecto no le llega a dominios corporativos con
+   filtrado serio (ver hallazgo 2026-09-09 en AGENTS.md). Hacerlo antes de Fase 6 (multi-tenant), no
+   después.
 
 ---
 

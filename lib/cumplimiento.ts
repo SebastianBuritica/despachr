@@ -27,6 +27,8 @@ export interface EntregaInforme {
   fechaReprogramada: string | null
   /** Quién entregó. El cliente lo pide en su formato ("¿qué carro lo entregó?"). */
   conductor: string | null
+  /** Orden de compra del cliente (migración 012) — dato manual, distinto de `factura`. */
+  ordenCompra: string | null
   tienda: string
   ciudad: string
   estado: EstadoEntrega

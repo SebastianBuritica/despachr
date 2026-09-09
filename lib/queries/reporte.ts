@@ -17,6 +17,7 @@ import type { EstadoEntrega, TipoNovedad } from '@/types'
 // la verificación siempre fue por SQL directo, nunca cargando la pantalla real.
 interface FilaCruda {
   numero_factura: string | null
+  orden_compra: string | null
   fecha_reprogramada: string | null
   foto_cumplido_url: string | null
   routes:
@@ -59,7 +60,7 @@ export async function entregasDelInforme(
   const { data, error } = await db
     .from('deliveries')
     .select(
-      'address, city, estado, fecha_programada, fecha_reprogramada, numero_factura, ' +
+      'address, city, estado, fecha_programada, fecha_reprogramada, numero_factura, orden_compra, ' +
         'hora_salida_punto, observaciones, foto_cumplido_url, ' +
         'issues(tipo_novedad), routes!inner(fecha, driver:drivers(profiles(name)))'
     )
@@ -77,6 +78,7 @@ export async function entregasDelInforme(
     const perfil = Array.isArray(conductor?.profiles) ? conductor?.profiles[0] : conductor?.profiles
     return {
       factura: f.numero_factura,
+      ordenCompra: f.orden_compra,
       fechaReprogramada: f.fecha_reprogramada,
       fotoCumplidoUrl: f.foto_cumplido_url,
       conductor: perfil?.name ?? null,

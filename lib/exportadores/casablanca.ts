@@ -4,13 +4,23 @@
 // se agrega `lib/exportadores/<cliente>.ts` y este archivo no se toca.
 //
 // Reproduce el archivo real que hoy se llena a mano ("RELACION DE ENTREGAS
-// <día> <fecha> CASABLANCA", columnas B-J), para que se pueda subir tal cual
-// en vez de servir sólo de referencia.
+// <día> <fecha> CASABLANCA"), para que se pueda subir tal cual en vez de
+// servir sólo de referencia.
+//
+// EL FORMATO CAMBIÓ CON EL TIEMPO (Girle, 2026-09-08, tres archivos reales
+// comparados: junio, agosto, septiembre). Junio traía "Orden de compra" +
+// peso/cajas; agosto se quedó con "Orden de compra" pero soltó peso/cajas;
+// septiembre (el más reciente) soltó también "Orden de compra". Girle pidió
+// traerla de vuelta — justo después de "Nro documento" — sin el resto de lo
+// viejo (peso/cajas NO vuelven). El formato objetivo queda: columnas de
+// septiembre + "Orden de compra" reinsertada en su lugar de agosto/junio.
 import { diaSemanaEs, fechaLargaEs, fechaCortaEs } from '@/lib/fecha'
 import { estadoCumplido, type EntregaInforme } from '@/lib/cumplimiento'
 
 export interface FilaCasablanca {
+  puntoEnvio: string
   numeroDocumento: string
+  ordenCompra: string
   ciudad: string
   diaEntrega: string
   fechaProgramEntrega: string
@@ -22,13 +32,15 @@ export interface FilaCasablanca {
 }
 
 export const ENCABEZADOS_CASABLANCA = [
-  'Nro documento', 'CIUDAD', 'DIA ENTREGA', 'Fecha Program Entrega',
-  '2DA FECHA', 'Fecha Entrega', 'ESTATUS', 'CUMPLIDO', 'OBSERVACIONES',
+  'Desc. punto de envio', 'Nro documento', 'Orden de compra', 'CIUDAD', 'DIA ENTREGA',
+  'Fecha Program Entrega', '2DA FECHA', 'Fecha Entrega', 'ESTATUS', 'CUMPLIDO', 'OBSERVACIONES',
 ] as const
 
 export function filasCasablanca(entregas: EntregaInforme[]): FilaCasablanca[] {
   return entregas.map((e) => ({
+    puntoEnvio: e.tienda,
     numeroDocumento: e.factura ?? '',
+    ordenCompra: e.ordenCompra ?? '',
     ciudad: e.ciudad,
     diaEntrega: e.fechaProgramada ? diaSemanaEs(e.fechaProgramada) : '',
     fechaProgramEntrega: e.fechaProgramada ? fechaCortaEs(e.fechaProgramada) : '',

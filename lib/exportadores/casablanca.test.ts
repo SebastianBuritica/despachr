@@ -3,7 +3,7 @@ import { filasCasablanca, tituloCasablanca } from './casablanca'
 import type { EntregaInforme } from '@/lib/cumplimiento'
 
 const e = (p: Partial<EntregaInforme>): EntregaInforme => ({
-  factura: 'FEV76883', conductor: null, fechaReprogramada: null, fotoCumplidoUrl: null,
+  factura: 'FEV76883', ordenCompra: null, conductor: null, fechaReprogramada: null, fotoCumplidoUrl: null,
   tienda: 'Makro Montería', ciudad: 'Montería', estado: 'entregado',
   fechaProgramada: '2026-08-20', fechaEntrega: '2026-08-20',
   novedad: null, observaciones: null, ...p,
@@ -21,6 +21,13 @@ describe('filasCasablanca', () => {
     const [fila] = filasCasablanca([e({ estado: 'novedad', fechaEntrega: null })])
     expect(fila.estatus).toBe('NO ENTREGADO')
     expect(fila.cumplido).toBe('')
+  })
+
+  it('lleva el punto de envío y la orden de compra, vacía si no hay dato', () => {
+    const [fila] = filasCasablanca([e({ ordenCompra: '67537' })])
+    expect(fila.puntoEnvio).toBe('Makro Montería')
+    expect(fila.ordenCompra).toBe('67537')
+    expect(filasCasablanca([e({ ordenCompra: null })])[0].ordenCompra).toBe('')
   })
 
   it('formatea fechas y día de semana como el archivo real', () => {

@@ -219,6 +219,25 @@ those two specific SQL-only powers, not a routine login tier. The **driver** sta
 | **Maps** | **MapLibre GL + tiles CARTO** (`dark_all`/`light_all` según el tema). Sin token ni cuenta de facturación — misma razón por la que la landing ya usaba CARTO. El mapa dibuja las entregas por `deliveries.latitude/longitude` y la **última posición conocida** de cada ruta desde `delivery_events` (no hay tracking continuo en el schema: el último evento con coords es el mejor dato real, y por eso la UI muestra su hora). |
 | **Alerts** | Tabla `alerts` **conectada** en el panel del coordinador (ver + resolver, con constancia de quién y cuándo). La **llena** la edge function `check-tiempo-en-punto` con service role — el coordinador no tiene policy de INSERT a propósito. Telegram sigue pendiente de desplegar. |
 
+> **Hallazgo de deliverability (2026-09-09, provisionando a Girle) — bloquea escalar a otros clientes,
+> no bloquea el piloto:** el correo de recuperación de contraseña (SMTP genérico que trae Supabase por
+> defecto, remitente `mail.app.supabase.io`) se probó extremo a extremo — llegó en segundos al Gmail
+> personal de Sebastian, directo a la bandeja principal — pero **nunca le llegó a
+> `administrativa@vaniagloballogistics.com`** (dominio corporativo, probablemente Google Workspace o
+> M365), ni siquiera a spam. Causa más probable: filtrado de entrada del dominio corporativo contra un
+> remitente compartido sin reputación propia — **no es un bug de la app**, y por eso el piloto se
+> resolvió con una contraseña puesta directo por SQL (relevada por Sebastian a Girle fuera del chat),
+> sin esperar al correo.
+>
+> **Por qué esto SÍ es un problema para vender a otras empresas:** toda empresa objetivo de Despachr
+> tiene, por definición, un dominio corporativo con su propio filtrado de correo — este no es un caso
+> raro, es el caso típico. Confiar en el SMTP compartido de Supabase para onboarding (invitaciones,
+> reset de contraseña) puede fallar en silencio cliente tras cliente. **La solución conocida, no
+> construida todavía:** configurar SMTP propio en Supabase Auth (Resend/Postmark/SES) con un dominio de
+> envío verificado (SPF/DKIM/DMARC alineados) — un remitente con reputación propia se filtra mucho
+> menos que uno compartido multi-tenant. Post-v1, pero **antes de onboardear cliente #2** (ver
+> STATUS.md), porque si a Girle le pasó, le va a pasar a cualquiera con IT corporativo serio.
+
 ---
 
 ## 🎨 Sistema de diseño (light/dark, escala Zinc)
