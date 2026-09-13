@@ -44,7 +44,7 @@ const PLANS: Plan[] = [
     featuresLabel: 'Todo lo de Arranque, y además:',
     features: [
       'Mapa en vivo + alertas de retraso',
-      'Métricas y rentabilidad por cliente',
+      'Informe de cumplimiento redactado por IA',
       'Reportes exportables',
       'Soporte prioritario',
     ],

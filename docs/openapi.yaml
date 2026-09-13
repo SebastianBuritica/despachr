@@ -1,0 +1,1835 @@
+openapi: 3.1.0
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  DESPACHR — Especificación OpenAPI de la API
+# ──────────────────────────────────────────────────────────────────────────────
+#  La mayoría de la API sigue siendo la superficie gestionada de Supabase,
+#  consumida directamente desde el navegador con la ANON KEY (pública) + el JWT
+#  del usuario — la AUTORIZACIÓN de esa parte NO VIVE EN ESTE DOCUMENTO: vive en
+#  las políticas RLS de scripts/schema.sql y scripts/migrations/*.sql. Cada
+#  operación de abajo documenta, en su descripción, qué rol puede ejecutarla y
+#  por qué política.
+#
+#  DESDE FASE 3.1 (2026-09) Despachr SÍ tiene rutas propias en /app/api — los
+#  dos agentes de IA (informe, cumplido). Usan OTRO modelo de auth por completo:
+#  sesión vía cookie (Supabase SSR), no apikey+JWT contra PostgREST. Documentadas
+#  bajo el tag "Agentes IA", al final de `paths`.
+#
+#  Cinco superficies:
+#    /auth/v1/*       GoTrue           — sesión (email/password hoy; OTP en 1.3b)
+#    /rest/v1/*       PostgREST        — tablas y RPC, filtradas por RLS
+#    /storage/v1/*    Storage          — bucket privado `cumplidos`
+#    /functions/v1/*  Edge Functions   — cron de alertas
+#    /api/*           Next.js (propia) — agentes de IA, auth por cookie de sesión
+#  Realtime (WebSocket) no es HTTP y no se modela aquí; ver la nota en `tags`.
+#
+#  Fuente de verdad del esquema: scripts/schema.sql + migraciones 001–010.
+#  Al cambiar una migración, actualiza este archivo en el mismo PR.
+# ══════════════════════════════════════════════════════════════════════════════
+
+info:
+  title: Despachr API
+  version: '1.0.0-fase-3.2'
+  summary: API de operación logística (rutas, entregas, cumplidos, alertas) sobre Supabase.
+  description: |
+    ## Cómo autenticarse
+
+    Toda petición lleva **dos** credenciales:
+
+    | Header | Valor | Qué es |
+    |---|---|---|
+    | `apikey` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave **pública** del proyecto. Identifica el proyecto, no al usuario. Va en el bundle del navegador. |
+    | `Authorization` | `Bearer <access_token>` | JWT del usuario, emitido por `/auth/v1/token`. Si se omite, Postgres actúa con el rol `anon`. |
+
+    > La anon key **no otorga permisos**: el rol de base de datos que se deriva
+    > de ella (`anon`) casi no tiene políticas RLS a su favor. La autorización
+    > real sale del claim `sub` del JWT (`auth.uid()`) cruzado con
+    > `public.get_my_role()`.
+
+    ## Matriz de roles
+
+    `profiles.role` ∈ `admin` | `coordinador` | `conductor`. Los tres comparten
+    el mismo rol de **base de datos** (`authenticated`); la separación es
+    exclusivamente por política RLS. Consecuencia de diseño importante: **RLS es
+    row-level, no column-level**, así que los datos que un rol no debe ver
+    nunca se ocultan por columna — se aíslan en su propia tabla
+    (`delivery_financials`, `client_invoices`) o se exponen por una función
+    `SECURITY DEFINER` con lista blanca de columnas (`entregas_de_ruta`).
+
+    | Recurso | admin | coordinador | conductor |
+    |---|---|---|---|
+    | `profiles` | todo | lee todos | solo el suyo |
+    | `clients` | lee/escribe | lee | ❌ (usa `rpc/entregas_de_ruta`) |
+    | `drivers` | lee/escribe | lee | solo el suyo |
+    | `weekly_plans` | lee/escribe | lee/escribe | ❌ |
+    | `routes` | todo | lee/crea/edita | lee y edita **las suyas** |
+    | `deliveries` | todo | lee/crea/edita | lee y edita las de **sus** rutas |
+    | `delivery_events` | lee | lee | inserta las de sus rutas · **append-only** |
+    | `issues` | lee/resuelve | lee/resuelve | inserta en sus entregas |
+    | `alerts` | lee/resuelve | lee/resuelve | ❌ · INSERT solo service_role |
+    | `client_invoices` | todo | ❌ | ❌ |
+    | `delivery_financials` | todo | ❌ | ❌ |
+    | Storage `cumplidos` | lee/borra | lee | **solo INSERT** en sus rutas |
+
+    ## Convenciones de PostgREST
+
+    - Filtros por query string: `?columna=eq.valor`, `neq`, `lt`, `gt`, `in.(a,b)`, `is.null`.
+    - `select=` elige columnas y hace *embeds* de relaciones: `select=id,drivers(license_plate)`.
+    - Un `GET` devuelve **siempre un array**, salvo que se pida
+      `Accept: application/vnd.pgrst.object+json` (entonces exige exactamente 1 fila).
+    - `POST`/`PATCH` devuelven `[]` salvo `Prefer: return=representation`.
+    - **RLS no da 403.** Una fila prohibida simplemente no existe para ti: los
+      `GET` devuelven `[]` y los `PATCH` afectan 0 filas con `204`. Un `42501`
+      solo aparece cuando falla un `WITH CHECK` de INSERT/UPDATE.
+
+    ## Errores
+
+    Formato uniforme de PostgREST (`#/components/schemas/Error`). Los códigos que
+    importan operativamente: `42501` (violación de RLS), `23505` (índice único —
+    p. ej. dos alertas activas para la misma entrega), `23503` (FK), `PGRST116`
+    (se pidió objeto único y no hubo exactamente una fila).
+
+    ---
+    ⚠️ **Este documento describe la API tal como está desplegada hoy, incluidos
+    los defectos.** Las operaciones marcadas con ⚠️ son hallazgos abiertos del
+    audit de seguridad — ver `SECURITY-AUDIT-2026-08-15.md`.
+  contact:
+    name: Sebastian Buritica
+    url: https://github.com/SebastianBuritica/despachr
+  license:
+    name: Propietario
+
+externalDocs:
+  description: AGENTS.md — dominio, glosario y convenciones
+  url: https://github.com/SebastianBuritica/despachr/blob/main/AGENTS.md
+
+servers:
+  - url: https://{projectRef}.supabase.co
+    description: Proyecto Supabase
+    variables:
+      projectRef:
+        default: mxgfkwwdhnoumboftjal
+        description: Ref del proyecto (visible en .mcp.json; no es un secreto)
+
+security:
+  - apikey: []
+    bearerAuth: []
+
+tags:
+  - name: Auth
+    description: GoTrue. Hoy solo email/password; el OTP por SMS existe en backend pero sin UI (Fase 1.3b).
+  - name: Perfiles
+    description: '`profiles` — extiende `auth.users` con nombre, rol y teléfono.'
+  - name: Malla
+    description: '`weekly_plans` — el plan semanal consolidado que arma el coordinador.'
+  - name: Rutas
+    description: '`routes` — un día de trabajo de un conductor dentro de la malla.'
+  - name: Entregas
+    description: '`deliveries` — cada punto de una ruta, con su cumplido.'
+  - name: Eventos
+    description: '`delivery_events` — bitácora append-only del conductor. Dispara los triggers de estado.'
+  - name: Novedades
+    description: '`issues` — problemas reportados en una entrega (Fase 1.3).'
+  - name: Alertas
+    description: '`alerts` — generadas por la edge function, resueltas por el coordinador.'
+  - name: Clientes
+    description: '`clients` — empresas que contratan. Incluye `tarifa_flete`, por eso el conductor no la lee.'
+  - name: Conductores
+    description: '`drivers` — terceros contratistas. Extiende `profiles`.'
+  - name: Financiero
+    description: '`client_invoices` y `delivery_financials` — solo admin. El coordinador nunca ve margen.'
+  - name: RPC
+    description: Funciones de Postgres expuestas por PostgREST en `/rest/v1/rpc/*`.
+  - name: Storage
+    description: Bucket privado `cumplidos` — fotos de factura firmada y firmas.
+  - name: Funciones
+    description: Edge Functions (Deno) invocadas por `pg_cron`.
+  - name: Agentes IA
+    description: |
+      Rutas propias en `/app/api` (Fase 3.1/3.2, 2026-09) — las únicas de todo
+      este documento que NO son PostgREST. Auth por **cookie de sesión**
+      (`@supabase/ssr`, la misma del navegador), no por `apikey`+JWT: el
+      `middleware.ts` excluye `/api/*` de su chequeo de rol (un 302 a `/login`
+      no sirve a un `fetch`), así que cada ruta valida sesión+rol por su cuenta
+      leyendo las cookies con `createServerClient`. Corren en el servidor
+      porque `ANTHROPIC_API_KEY`/`GEMINI_API_KEY` no pueden llegar al
+      navegador. El proveedor de IA (Claude o Gemini) se elige por variable de
+      entorno dentro de `lib/ia/*.ts` — estas rutas no lo saben ni les importa.
+  - name: Realtime
+    description: |
+      **No es HTTP** — WebSocket en `wss://<ref>.supabase.co/realtime/v1/websocket`,
+      consumido vía `supabase.channel(...)`. La RLS **sí** aplica a Realtime: un
+      conductor solo recibe cambios de sus propias filas. Suscripciones vivas hoy
+      (`components/driver/DriverApp.tsx`):
+      `postgres_changes` sobre `routes` con `filter: driver_id=eq.<uid>` y sobre
+      `deliveries` con `filter: route_id=eq.<routeId>`. Requiere que las tablas
+      estén publicadas en *Database → Replication*.
+
+# ══════════════════════════════════════════════════════════════════════════════
+paths:
+
+  # ─── AUTH ───────────────────────────────────────────────────────────────────
+  /auth/v1/token:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión / refrescar sesión
+      operationId: authToken
+      description: |
+        `grant_type=password` es el único login con UI hoy
+        (`app/(auth)/login/page.tsx` → `supabase.auth.signInWithPassword`).
+        `grant_type=refresh_token` lo usa el SDK solo; el middleware reescribe
+        las cookies rotadas en cada request.
+
+        El cliente **no** debe distinguir "usuario no existe" de "contraseña
+        incorrecta": GoTrue devuelve `invalid_credentials` en ambos casos y
+        `authErrorMessage()` lo traduce a un único mensaje. Mantenerlo así —
+        evita enumeración de usuarios.
+      security:
+        - apikey: []
+      parameters:
+        - name: grant_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [password, refresh_token, pkce]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - title: password
+                  type: object
+                  required: [email, password]
+                  properties:
+                    email: { type: string, format: email }
+                    password: { type: string, format: password }
+                - title: refresh_token
+                  type: object
+                  required: [refresh_token]
+                  properties:
+                    refresh_token: { type: string }
+      responses:
+        '200':
+          description: Sesión emitida. El SDK persiste los tokens en **cookies** (no localStorage) para que el middleware pueda leerlos server-side.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/AuthError' }
+        '429':
+          description: Rate limit de GoTrue. La UI lo traduce a "Demasiados intentos".
+
+  /auth/v1/signup:
+    post:
+      tags: [Auth]
+      summary: '⚠️ Registro de usuario'
+      operationId: authSignup
+      description: |
+        **Sin UI en la app** — el registro público se eliminó y los usuarios se
+        crean desde el dashboard de Supabase. Se documenta porque el endpoint
+        **sigue existiendo** mientras *Disable signup* no esté activado en
+        Authentication → Providers.
+
+        ⚠️ **Escalada de privilegios.** El trigger `handle_new_user()` toma el rol
+        de `raw_user_meta_data->>'role'`, que es exactamente el objeto `data` de
+        este body — es decir, **controlado por el cliente**. Con el signup
+        habilitado, `{"data":{"role":"admin"}}` crea un administrador. El rol debe
+        venir de `raw_app_meta_data` (solo escribible por `service_role`) o estar
+        fijado a `'conductor'` en el trigger. Ver hallazgo C2 del audit.
+      security:
+        - apikey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                data:
+                  type: object
+                  description: '⚠️ Va a `raw_user_meta_data`. Confiable **no** es.'
+                  properties:
+                    name: { type: string }
+                    role: { $ref: '#/components/schemas/RolUsuario' }
+                    phone: { type: string, description: 'Sin `+` inicial, p. ej. `573229596618`.' }
+      responses:
+        '200':
+          description: Usuario creado; el trigger `on_auth_user_created` inserta su `profiles`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '422': { $ref: '#/components/responses/AuthError' }
+
+  /auth/v1/otp:
+    post:
+      tags: [Auth]
+      summary: Enviar OTP por SMS (backend listo, sin UI)
+      operationId: authOtp
+      description: |
+        Twilio Verify está configurado y verificado por consola, pero **no hay
+        pantalla de login por teléfono** hasta Fase 1.3b. El número va en E.164
+        con `+`; `profiles.phone` lo guarda **sin** el `+`
+        (p. ej. `573229596618`) — la UI de 1.3b y cualquier `tel:` deben normalizar.
+      security:
+        - apikey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, example: '+573229596618' }
+                create_user: { type: boolean, default: true }
+      responses:
+        '200': { description: SMS enviado. }
+        '400': { $ref: '#/components/responses/AuthError' }
+
+  /auth/v1/verify:
+    post:
+      tags: [Auth]
+      summary: Canjear el código OTP por una sesión
+      operationId: authVerify
+      security:
+        - apikey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, phone, token]
+              properties:
+                type: { type: string, enum: [sms] }
+                phone: { type: string, example: '+573229596618' }
+                token: { type: string, example: '123456' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+          description: Sesión emitida.
+        '400': { $ref: '#/components/responses/AuthError' }
+
+  /auth/v1/user:
+    get:
+      tags: [Auth]
+      summary: Usuario actual (valida el token contra el servidor)
+      operationId: authGetUser
+      description: |
+        Lo que llama `supabase.auth.getUser()`. **El middleware usa esto y no
+        `getSession()`** a propósito: `getSession()` decodifica la cookie sin
+        verificarla y una cookie es manipulable por el cliente. Este endpoint
+        valida la firma del JWT contra GoTrue. No lo cambies por `getSession()`.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthUser' }
+          description: Usuario autenticado.
+        '401': { $ref: '#/components/responses/AuthError' }
+
+  /auth/v1/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      operationId: authLogout
+      description: Revoca el refresh token y limpia las cookies. `useAuth().signOut()` propaga el fallo a propósito, para no redirigir con la sesión aún viva.
+      responses:
+        '204': { description: Sesión cerrada. }
+
+  # ─── PERFILES ───────────────────────────────────────────────────────────────
+  /rest/v1/profiles:
+    get:
+      tags: [Perfiles]
+      summary: Listar / leer perfiles
+      operationId: getProfiles
+      description: |
+        Política `profiles_select`: `id = auth.uid() OR get_my_role() IN ('admin','coordinador')`.
+        El conductor solo se ve a sí mismo — pero **no recibe 403**: el filtro RLS
+        le devuelve un array con su propia fila (o vacío).
+
+        Uso real: `hooks/useAuth.ts` y el `middleware.ts` (que lo consulta en
+        **cada request** para resolver el rol — ver hallazgo M1, debería salir de
+        un claim del JWT).
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/acceptObject'
+        - name: id
+          in: query
+          schema: { type: string }
+          example: eq.6f1c3d8e-0000-4000-8000-000000000000
+        - name: role
+          in: query
+          schema: { type: string }
+          example: eq.conductor
+      responses:
+        '200':
+          description: Perfiles visibles para el llamador.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Profile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Perfiles]
+      summary: '⚠️ Actualizar el propio perfil'
+      operationId: patchProfile
+      description: |
+        Política `profiles_update_self`: `USING (id = auth.uid()) WITH CHECK (id = auth.uid())`.
+
+        ⚠️ **Escalada de privilegios (hallazgo C1 — el más grave del audit).**
+        La política restringe la **fila**, no las **columnas**. Cualquier usuario
+        autenticado puede enviar `{"role":"admin"}` sobre su propia fila y
+        convertirse en administrador, ganando acceso a `client_invoices` y
+        `delivery_financials`. `role` y `id` deben protegerse con un trigger
+        `BEFORE UPDATE` o con `GRANT UPDATE (name, phone)` a nivel de columna.
+
+        Cuando se arregle, el contrato de esta operación pasa a ser
+        `{ name?, phone? }` únicamente.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+          example: eq.6f1c3d8e-0000-4000-8000-000000000000
+        - $ref: '#/components/parameters/prefer'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                role:
+                  $ref: '#/components/schemas/RolUsuario'
+      responses:
+        '204': { $ref: '#/components/responses/NoContentPatch' }
+        '200': { $ref: '#/components/responses/RepresentationPatch' }
+
+  # ─── MALLA ──────────────────────────────────────────────────────────────────
+  /rest/v1/weekly_plans:
+    get:
+      tags: [Malla]
+      summary: Listar mallas semanales
+      operationId: getWeeklyPlans
+      description: 'Política `weekly_plans_select`: admin y coordinador. El conductor no ve la malla — solo su ruta del día.'
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: week_start_date
+          in: query
+          schema: { type: string }
+          example: eq.2026-08-10
+        - name: estado
+          in: query
+          schema: { type: string }
+          example: eq.en_ejecucion
+      responses:
+        '200':
+          description: Mallas visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WeeklyPlan' }
+    post:
+      tags: [Malla]
+      summary: Crear una malla
+      operationId: createWeeklyPlan
+      description: 'Política `weekly_plans_write`: admin y coordinador.'
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WeeklyPlanInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+
+  # ─── RUTAS ──────────────────────────────────────────────────────────────────
+  /rest/v1/routes:
+    get:
+      tags: [Rutas]
+      summary: Listar rutas
+      operationId: getRoutes
+      description: |
+        Política `routes_select`: `driver_id = auth.uid() OR get_my_role() IN ('admin','coordinador')`.
+
+        Consulta real del conductor (`lib/queries/driver.ts::getRutaDelDia`):
+
+        ```
+        GET /rest/v1/routes
+          ?select=id,fecha,estado,drivers(license_plate)
+          &driver_id=eq.<uid>&fecha=eq.<hoy>
+          &order=created_at.asc&limit=1
+        ```
+
+        `hoy` se calcula en `America/Bogota`, no en UTC: de noche el desfase
+        mostraría la ruta del día equivocado.
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/acceptObject'
+        - name: driver_id
+          in: query
+          schema: { type: string }
+          example: eq.6f1c3d8e-0000-4000-8000-000000000000
+        - name: fecha
+          in: query
+          schema: { type: string }
+          example: eq.2026-08-15
+        - name: estado
+          in: query
+          schema: { type: string }
+          example: in.(pendiente,en_curso)
+      responses:
+        '200':
+          description: Rutas visibles. Array vacío si el conductor no tiene ruta hoy (estado vacío de la UI).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Route' }
+    post:
+      tags: [Rutas]
+      summary: Crear una ruta
+      operationId: createRoute
+      description: 'Política `routes_coord_write` (solo INSERT): admin y coordinador.'
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RouteInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+    patch:
+      tags: [Rutas]
+      summary: '⚠️ Actualizar una ruta'
+      operationId: patchRoute
+      description: |
+        Política `routes_driver_update`: el conductor edita **sus** rutas; admin y
+        coordinador, todas. Sin `WITH CHECK` explícito, así que Postgres reusa el
+        `USING` — un conductor no puede reasignarse la ruta a otro, pero conviene
+        hacerlo explícito.
+
+        ⚠️ **Hallazgo H1.** Igual que en `profiles`, la política es por fila y no
+        por columna: el conductor puede modificar `flete_pactado` (lo que se le
+        paga) y `distancia_km` de sus propias rutas. Las escrituras del conductor
+        deberían pasar por una RPC `SECURITY DEFINER` con lista blanca, o
+        bloquearse con un trigger.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+          example: eq.9a2b7c10-0000-4000-8000-000000000000
+        - $ref: '#/components/parameters/prefer'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { $ref: '#/components/schemas/EstadoRuta' }
+                hora_inicio: { type: string, format: date-time }
+                hora_fin: { type: string, format: date-time }
+                distancia_km: { type: number, description: '⚠️ Editable por el conductor hoy.' }
+                flete_pactado: { type: number, description: '⚠️ Editable por el conductor hoy — dato de pago.' }
+                notas: { type: string }
+      responses:
+        '204': { $ref: '#/components/responses/NoContentPatch' }
+        '200': { $ref: '#/components/responses/RepresentationPatch' }
+
+  # ─── ENTREGAS ───────────────────────────────────────────────────────────────
+  /rest/v1/deliveries:
+    get:
+      tags: [Entregas]
+      summary: Listar entregas
+      operationId: getDeliveries
+      description: |
+        Política `deliveries_select`: `route_id IN (rutas del conductor) OR admin/coordinador`.
+
+        **El conductor no usa este endpoint**: la tabla trae `valor_flete` (precio
+        al cliente) y RLS no oculta columnas. La app del conductor va por
+        `POST /rest/v1/rpc/entregas_de_ruta`, que devuelve una lista blanca sin
+        precio. Este `GET` es para el panel del coordinador (Fase 2).
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: route_id
+          in: query
+          schema: { type: string }
+          example: eq.9a2b7c10-0000-4000-8000-000000000000
+        - name: estado
+          in: query
+          schema: { type: string }
+          example: eq.en_punto
+        - name: client_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Entregas visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Delivery' }
+    post:
+      tags: [Entregas]
+      summary: Crear una entrega (punto de la malla)
+      operationId: createDelivery
+      description: 'Política `deliveries_coord_write` (solo INSERT): admin y coordinador.'
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeliveryInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+    patch:
+      tags: [Entregas]
+      summary: '⚠️ Cerrar la entrega con su cumplido'
+      operationId: patchDelivery
+      description: |
+        Política `deliveries_driver_update`: entregas de **sus** rutas para el
+        conductor; todas para admin/coordinador.
+
+        Es el **último paso** del cumplido (`lib/queries/driver.ts::marcarEntregada`):
+        primero se sube la evidencia a Storage, y solo entonces se persisten los
+        paths y se marca `entregado`, todo en un único `PATCH`. Si la subida falla
+        antes, la entrega se queda en `en_punto` y el conductor reintenta sin
+        estado inconsistente.
+
+        `estado = 'entregado'` **no lo pone ningún trigger** — los triggers solo
+        derivan `hora_llegada_punto`/`en_punto` y `hora_salida_punto`/
+        `tiempo_en_punto_minutos` a partir de los eventos. Cerrar la entrega es
+        responsabilidad de la app. Este `PATCH` sí dispara
+        `check_route_completion`, que marca la ruta `completada` si era el último punto.
+
+        **H1 — parcialmente cerrado en migración 007.** El trigger
+        `protect_delivery_columns()` restaura en silencio (sin error, para no
+        romper la UI ante un payload inesperado) `valor_flete`, `client_id`,
+        `route_id`, `address`, `city`, `latitude`, `longitude`,
+        `numero_secuencia` y `telefono_receptor` si quien hace el `UPDATE` es
+        `conductor` — esas columnas ya no se pueden alterar por esta vía.
+
+        ⚠️ **Lo que sigue abierto:** no hay verificación de que exista evidencia
+        antes de aceptar `estado = 'entregado'` — un conductor puede marcar
+        `entregado` sin `foto_cumplido_url`. El cierre de la entrega debería ser
+        una RPC `SECURITY DEFINER` que lo exija; hoy es responsabilidad de la app
+        (`lib/cumplido.ts`), no de la base de datos.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+          example: eq.3c4d5e6f-0000-4000-8000-000000000000
+        - $ref: '#/components/parameters/prefer'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CumplidoInput' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContentPatch' }
+        '200': { $ref: '#/components/responses/RepresentationPatch' }
+
+  # ─── EVENTOS ────────────────────────────────────────────────────────────────
+  /rest/v1/delivery_events:
+    get:
+      tags: [Eventos]
+      summary: Leer la bitácora de eventos
+      operationId: getDeliveryEvents
+      description: 'Política `events_select`: el conductor ve **sus** eventos; admin y coordinador, todos.'
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: route_id
+          in: query
+          schema: { type: string }
+        - name: delivery_id
+          in: query
+          schema: { type: string }
+        - name: tipo_evento
+          in: query
+          schema: { type: string }
+          example: eq.llegada_punto
+      responses:
+        '200':
+          description: Eventos visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DeliveryEvent' }
+    post:
+      tags: [Eventos]
+      summary: Registrar un evento (llegada / salida / cumplido / novedad)
+      operationId: createDeliveryEvent
+      description: |
+        Política `events_driver_insert`: `driver_id = auth.uid() AND route_id IN (rutas del conductor)`.
+        La doble condición impide falsificar el autor **y** escribir sobre una ruta ajena.
+
+        **Append-only por diseño**: la tabla no tiene políticas de UPDATE ni DELETE,
+        así que nadie —ni el admin— puede reescribir la bitácora. Es la evidencia
+        temporal de la operación; que sea inmutable es la característica, no una omisión.
+
+        Dispara los triggers de derivación de estado:
+
+        | `tipo_evento` | Efecto en `deliveries` |
+        |---|---|
+        | `llegada_punto` | `hora_llegada_punto = timestamp`, `estado = 'en_punto'` |
+        | `salida_punto` | `hora_salida_punto`, `tiempo_en_punto_minutos` |
+        | los demás | ninguno |
+
+        Tras insertar, la app **re-lee** la fila (`entregas_de_ruta`) en vez de
+        recalcular el estado en el cliente: una sola fuente de verdad.
+
+        `latitude`/`longitude` son opcionales a propósito — `lib/geo.ts` nunca
+        rechaza: si el conductor niega el permiso de GPS o expira el timeout, el
+        evento se registra sin coordenadas. Un conductor que no puede confirmar una
+        entrega por un permiso de ubicación es un conductor que deja de usar la app.
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeliveryEventInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+
+  # ─── NOVEDADES ──────────────────────────────────────────────────────────────
+  /rest/v1/issues:
+    get:
+      tags: [Novedades]
+      summary: Listar novedades
+      operationId: getIssues
+      description: 'Política `issues_select`: admin y coordinador ven todas; el conductor, las de sus entregas.'
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: delivery_id
+          in: query
+          schema: { type: string }
+        - name: estado
+          in: query
+          schema: { type: string }
+          example: eq.reportada
+      responses:
+        '200':
+          description: Novedades visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Issue' }
+    post:
+      tags: [Novedades]
+      summary: Reportar una novedad (Fase 1.3)
+      operationId: createIssue
+      description: |
+        Política `issues_driver_insert`: la entrega debe pertenecer a una ruta del
+        conductor (join `deliveries → routes`). **La UI aún no existe** — la tabla
+        y la política sí. Es lo que construye Fase 1.3.
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+    patch:
+      tags: [Novedades]
+      summary: Resolver una novedad
+      operationId: patchIssue
+      description: 'Política `issues_coord_update`: admin y coordinador.'
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/prefer'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: { $ref: '#/components/schemas/EstadoNovedad' }
+                resuelto_por: { type: string, format: uuid }
+                fecha_resolucion: { type: string, format: date-time }
+                notas_resolucion: { type: string }
+      responses:
+        '204': { $ref: '#/components/responses/NoContentPatch' }
+
+  # ─── ALERTAS ────────────────────────────────────────────────────────────────
+  /rest/v1/alerts:
+    get:
+      tags: [Alertas]
+      summary: Listar alertas
+      operationId: getAlerts
+      description: |
+        Política `alerts_select`: admin y coordinador. El conductor **no tiene
+        acceso** — la alerta es la señal de escalamiento *hacia* el coordinador.
+
+        Un índice único parcial `uniq_alerts_activa (delivery_id, tipo) WHERE resuelta = false`
+        garantiza **una sola alerta activa** por entrega y tipo: mientras el problema
+        persiste no se duplica, y al resolverse deja de contar (una reaparición sí
+        genera una nueva).
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: resuelta
+          in: query
+          schema: { type: string }
+          example: eq.false
+        - name: tipo
+          in: query
+          schema: { type: string }
+          example: eq.tiempo_en_punto
+      responses:
+        '200':
+          description: Alertas visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Alert' }
+    patch:
+      tags: [Alertas]
+      summary: Resolver una alerta
+      operationId: patchAlert
+      description: |
+        Política `alerts_update`: admin y coordinador.
+
+        **No existe INSERT para ningún rol.** Las alertas solo las escribe la edge
+        function con el `service_role`, que hace bypass de RLS. La ausencia de
+        política de INSERT es intencional, no un olvido.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/prefer'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resuelta: { type: boolean }
+                resuelta_por: { type: string, format: uuid }
+                resuelta_at: { type: string, format: date-time }
+      responses:
+        '204': { $ref: '#/components/responses/NoContentPatch' }
+
+  # ─── CLIENTES / CONDUCTORES ─────────────────────────────────────────────────
+  /rest/v1/clients:
+    get:
+      tags: [Clientes]
+      summary: Listar clientes
+      operationId: getClients
+      description: |
+        Política `clients_select`: admin y coordinador.
+
+        El conductor **no puede leer esta tabla**, y no es por descuido: contiene
+        `tarifa_flete`. Como RLS no filtra columnas y los tres roles comparten el
+        rol de BD `authenticated`, abrir la tabla al conductor le expondría el
+        precio. Por eso el nombre del cliente le llega por
+        `rpc/entregas_de_ruta`, que devuelve `c.name` y nada más.
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: city
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Clientes visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Client' }
+    post:
+      tags: [Clientes]
+      summary: Crear cliente
+      operationId: createClient
+      description: 'Política `clients_admin_write`: **solo admin** (las tarifas son dato sensible). El coordinador lee pero no escribe.'
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+
+  /rest/v1/drivers:
+    get:
+      tags: [Conductores]
+      summary: Listar conductores
+      operationId: getDrivers
+      description: |
+        Política `drivers_select`: `id = auth.uid() OR admin/coordinador`.
+        El conductor solo se ve a sí mismo. Se usa como *embed* desde `routes`
+        para sacar la placa: `select=id,fecha,estado,drivers(license_plate)`.
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: is_active
+          in: query
+          schema: { type: string }
+          example: eq.true
+      responses:
+        '200':
+          description: Conductores visibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DriverRow' }
+    post:
+      tags: [Conductores]
+      summary: Alta de conductor
+      operationId: createDriver
+      description: 'Política `drivers_admin_write`: solo admin. Requiere que el `profiles` ya exista (`id` es FK a `profiles`).'
+      parameters: [{ $ref: '#/components/parameters/prefer' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+
+  # ─── FINANCIERO ─────────────────────────────────────────────────────────────
+  /rest/v1/client_invoices:
+    get:
+      tags: [Financiero]
+      summary: Facturas al cliente
+      operationId: getClientInvoices
+      description: 'Política `invoices_admin_only`: **solo admin**. El coordinador no ve dinero. Para el coordinador esta tabla no existe: recibe `[]`, no un 403.'
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/limit'
+        - name: estado
+          in: query
+          schema: { type: string }
+          example: eq.vencida
+      responses:
+        '200':
+          description: Facturas (vacío para no-admin).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientInvoice' }
+
+  /rest/v1/delivery_financials:
+    get:
+      tags: [Financiero]
+      summary: Financiero por entrega (pago al transportista y margen)
+      operationId: getDeliveryFinancials
+      description: |
+        Política `delivery_financials_admin_only`: **solo admin**.
+
+        Tabla separada de `deliveries` por diseño: el coordinador necesita ver
+        `deliveries.valor_flete` (lo que se cobra al cliente) para armar la malla,
+        pero **nunca** el pago al transportista ni el margen. Como RLS no puede
+        ocultar columnas, lo sensible vive en su propia tabla.
+        `margen` es una columna generada: `valor_flete_cliente - valor_pago_transportista`.
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/limit'
+        - name: delivery_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Financiero (vacío para no-admin).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DeliveryFinancial' }
+
+  # ─── RPC ────────────────────────────────────────────────────────────────────
+  /rest/v1/rpc/entregas_de_ruta:
+    post:
+      tags: [RPC, Entregas]
+      summary: Entregas de una ruta, con nombre de cliente (solo el conductor dueño)
+      operationId: rpcEntregasDeRuta
+      description: |
+        **La consulta principal de la app del conductor.** `SECURITY DEFINER`,
+        migraciones 005 y 006.
+
+        Existe porque el conductor no puede leer `public.clients` (expondría
+        `tarifa_flete`) y el join le devolvía `NULL`. Endurecimiento aplicado —
+        los cuatro puntos son obligatorios para cualquier `SECURITY DEFINER` nuevo
+        en este proyecto:
+
+        1. `set search_path = public, pg_temp` — con `pg_temp` **al final**, para que
+           no se pueda hacer shadowing de un objeto desde un esquema anterior del path.
+        2. Chequeo de propiedad **dentro** de la función: `exists (select 1 from routes
+           where id = p_route_id and driver_id = auth.uid())`. Con un `route_id` ajeno
+           devuelve vacío, no un error — no filtra ni la existencia de la ruta.
+        3. `revoke all from public, anon` + `grant execute to authenticated`, en la
+           **misma transacción** que el `create` (tras un `drop`+`create` Postgres
+           concede EXECUTE a PUBLIC por defecto; ese `revoke` es *load-bearing*).
+        4. Columnas en lista blanca — sin `select *`, y explícitamente **sin `valor_flete`**.
+
+        El `left join` a `clients` también es deliberado: si `client_id` quedara
+        huérfano, la entrega **no** debe desaparecer de la lista. Un nombre faltante
+        es cosmético; una entrega faltante es carga que nadie entrega.
+
+        Llamada desde el SQL Editor devuelve vacío (`auth.uid()` es `NULL`) — eso
+        es el chequeo de propiedad funcionando.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_route_id]
+              properties:
+                p_route_id:
+                  type: string
+                  format: uuid
+                  example: 9a2b7c10-0000-4000-8000-000000000000
+      responses:
+        '200':
+          description: Entregas ordenadas por `numero_secuencia`. Vacío si la ruta no es del llamador.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EntregaDeRuta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /rest/v1/rpc/get_my_role:
+    post:
+      tags: [RPC]
+      summary: Rol del usuario autenticado
+      operationId: rpcGetMyRole
+      description: |
+        `SECURITY DEFINER` con `search_path = public, pg_temp`. Es la función que
+        usa **toda** la RLS del schema; es `SECURITY DEFINER` para evitar la
+        recursión infinita de leer `profiles` desde una política sobre `profiles`.
+
+        Devuelve `null` para `anon`. Ejecutable por PUBLIC, lo cual aquí es
+        inocuo (solo revela el rol del propio llamador), pero conviene
+        `revoke ... from anon` por higiene.
+      responses:
+        '200':
+          description: Rol del llamador.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RolUsuario'
+                  - type: 'null'
+
+  /rest/v1/rpc/seed_demo_data:
+    post:
+      tags: [RPC]
+      summary: '⚠️ Sembrar datos demo — NO debe estar expuesta'
+      operationId: rpcSeedDemoData
+      description: |
+        ⚠️ **Hallazgo C4 del audit.** Función `SECURITY DEFINER` de `scripts/schema.sql`
+        a la que **nunca se le hizo `revoke`**. Postgres concede `EXECUTE` a `PUBLIC`
+        por defecto, así que hoy es invocable **sin sesión**, solo con la anon key
+        (que está en el bundle público del navegador), y escribe en `clients`,
+        `weekly_plans`, `routes`, `deliveries` y `delivery_financials` **saltándose
+        la RLS**.
+
+        Es una herramienta de setup local; no debería existir en producción.
+        Arreglo: `revoke all on function public.seed_demo_data() from public, anon, authenticated;`
+        o `drop function` en el proyecto de producción.
+      responses:
+        '200':
+          description: Texto de confirmación del seed.
+          content:
+            application/json:
+              schema: { type: string }
+
+  # ─── STORAGE ────────────────────────────────────────────────────────────────
+  /storage/v1/object/cumplidos/{routeId}/{deliveryId}/{filename}:
+    post:
+      tags: [Storage]
+      summary: Subir la evidencia del cumplido (foto o firma)
+      operationId: uploadCumplido
+      description: |
+        Bucket **privado** `cumplidos` (`public = false`), límite 5 MB, MIME
+        permitidos `image/jpeg`, `image/png`, `image/webp` — todo aplicado por el
+        propio bucket, no solo por el cliente.
+
+        La ruta del objeto es **determinista** y la fija `lib/storage.ts`; la
+        política RLS la parsea para autorizar:
+
+        ```
+        {route_id}/{delivery_id}/cumplido.jpg     (foto de la factura firmada)
+        {route_id}/{delivery_id}/firma.png        (firma del receptor — opcional)
+        ```
+
+        Política `cumplidos_driver_insert`: `storage.foldername(name)[1]` (el
+        `route_id`) debe corresponder a una ruta con `driver_id = auth.uid()`. La
+        comparación es `r.id::text = ...` en vez de castear el segmento a `uuid`:
+        un path malformado no hace match (deny limpio) en lugar de lanzar una
+        excepción de cast.
+
+        El conductor tiene **INSERT pero no UPDATE**, así que se sube con
+        `upsert: false`. Un `409 Duplicate` se trata como **éxito**: el path es
+        determinista por entrega, así que un objeto ahí *es* la evidencia de esta
+        entrega — el fallo típico en móvil es que el request llega pero la
+        respuesta no vuelve. Con `upsert: true` el reintento intentaría un UPDATE,
+        la RLS lo bloquearía y un fallo seguro se volvería uno raro.
+
+        Antes de subir, el cliente redimensiona a 1920 px de lado mayor y
+        recomprime a JPEG q=0.8 (fotos de cámara de 4000 px no viajan por una red
+        móvil rural).
+      parameters:
+        - { name: routeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: deliveryId, in: path, required: true, schema: { type: string, format: uuid } }
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string, enum: [cumplido.jpg, firma.png] }
+        - name: x-upsert
+          in: header
+          schema: { type: string, enum: ['false'] }
+          description: 'Siempre `false` — ver arriba.'
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: Subido. El `path` devuelto se persiste en `deliveries.foto_cumplido_url` / `firma_url`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Key: { type: string, example: cumplidos/9a2b.../3c4d.../cumplido.jpg }
+        '409':
+          description: 'Duplicate — **tratado como éxito** por `lib/storage.ts`.'
+        '403': { $ref: '#/components/responses/RlsDenied' }
+        '413': { description: Supera los 5 MB del bucket. }
+
+  /storage/v1/object/sign/cumplidos/{path}:
+    post:
+      tags: [Storage]
+      summary: Generar una URL firmada para leer un cumplido
+      operationId: signCumplido
+      description: |
+        Política `cumplidos_read`: **solo admin y coordinador**. El bucket es
+        privado y nunca se sirven URLs públicas.
+
+        ⚠️ **Hallazgo M4.** `getCumplidoUrl()` usa 3600 s por defecto. Una URL
+        firmada es una capacidad al portador: durante una hora, cualquiera con el
+        enlace ve la factura firmada del cliente (razón social, dirección, firma
+        manuscrita). Para visualización en pantalla bastan 60–300 s.
+
+        ⚠️ **Brecha funcional:** el conductor no tiene `SELECT` en el bucket, así
+        que **no puede releer lo que él mismo subió**. Hoy la UI solo conserva el
+        blob local de la sesión; tras un refresh, la evidencia es invisible para él.
+      parameters:
+        - { name: path, in: path, required: true, schema: { type: string }, example: '9a2b.../3c4d.../cumplido.jpg' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expiresIn]
+              properties:
+                expiresIn: { type: integer, default: 3600, example: 300, description: Vigencia en segundos. }
+      responses:
+        '200':
+          description: URL firmada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signedURL: { type: string }
+        '403': { $ref: '#/components/responses/RlsDenied' }
+
+  # ─── EDGE FUNCTIONS ─────────────────────────────────────────────────────────
+  /functions/v1/check-tiempo-en-punto:
+    post:
+      tags: [Funciones]
+      summary: '⚠️ Cron de alertas — conductor >60 min en un punto'
+      operationId: checkTiempoEnPunto
+      description: |
+        Edge Function (Deno) invocada por `pg_cron` cada 5 min. Busca entregas en
+        `estado = 'en_punto'` con `hora_llegada_punto` anterior al umbral de 60 min,
+        inserta una fila en `public.alerts` y manda el mismo mensaje a Telegram
+        (*best-effort*: si Telegram falla, la alerta ya quedó persistida — la
+        fuente de verdad es la tabla, no el mensaje).
+
+        Corre con el `SUPABASE_SERVICE_ROLE_KEY`, que hace bypass de RLS; por eso
+        `alerts` no expone INSERT a ningún rol. Un `23505` al insertar significa
+        que otra corrida concurrente ganó la carrera: se ignora, no es un error.
+
+        **Pendiente de despliegue manual** (`supabase functions deploy` + `pg_cron`).
+
+        ⚠️ **Hallazgo H4.** El handler es `Deno.serve(async () => ...)` — no
+        inspecciona al llamador. `verify_jwt = true` solo comprueba que el JWT esté
+        firmado por el proyecto, y **la anon key es un JWT válido del proyecto que
+        va publicada en el bundle del navegador**. Cualquiera puede invocarla y
+        provocar envíos a Telegram y escrituras con el service role. Antes de
+        desplegar: exigir un secreto compartido en un header, o verificar que el
+        claim `role` del JWT sea `service_role`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resumen de la corrida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checked: { type: integer, description: Entregas que superaban el umbral. }
+                  alerted: { type: integer, description: Alertas nuevas insertadas. }
+                  telegram_ok: { type: integer, description: Mensajes de Telegram entregados. }
+
+  # ─── AGENTES IA (rutas propias, no PostgREST) ───────────────────────────────
+  /api/informe:
+    post:
+      tags: [Agentes IA]
+      summary: Redactar el informe de cumplimiento semanal
+      operationId: postInforme
+      description: |
+        Rol requerido: `admin` o `coordinador` (verificado leyendo `profiles`
+        con el cliente de servidor, no con RLS de PostgREST).
+
+        Los NÚMEROS del informe los calcula `lib/cumplimiento.ts` — código, no
+        el modelo. El modelo (Claude u Gemini, según qué llave esté
+        configurada) sólo redacta el texto y tiene prohibido producir cifras
+        nuevas: este informe se le entrega a un cliente que paga, y un número
+        inventado por un modelo es una factura mal sustentada.
+
+        Si `entregasDelInforme` falla (RLS, un join mal escrito, timeout), la
+        respuesta es `502` con `{cumplimiento: null, analisis: null, error}` —
+        nunca un 500 desnudo. Si el total de entregas es 0, responde
+        `{cumplimiento, analisis: null}` sin llamar al modelo: pedirle que
+        redacte sobre cero datos es cómo se produce un informe inventado.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clienteId, desde, hasta]
+              properties:
+                clienteId: { type: string, format: uuid }
+                desde: { type: string, format: date }
+                hasta: { type: string, format: date }
+      responses:
+        '200':
+          description: Cifras siempre presentes; `analisis` es `null` si no hubo redacción.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cumplimiento: { type: [object, 'null'] }
+                  analisis: { type: [object, 'null'] }
+                  error: { type: string }
+        '400': { description: 'clienteId/desde/hasta inválidos o desde > hasta.' }
+        '401': { description: Sin sesión. }
+        '403': { description: 'Sesión válida pero rol distinto de admin/coordinador.' }
+        '502': { description: Falló cargar entregas o falló el modelo — las cifras que sí cargaron pueden venir igual. }
+        '503': { description: 'Falta configurar Supabase o ninguna llave de IA (ANTHROPIC_API_KEY/GEMINI_API_KEY).' }
+
+  /api/informe/exportar:
+    get:
+      tags: [Agentes IA]
+      summary: Descargar el informe en el formato exacto del cliente (.xlsx)
+      operationId: getInformeExportar
+      description: |
+        El entregable real no es "un informe propio" — es el Excel del cliente
+        (hoy, Casablanca), ya lleno, listo para subir de un solo movimiento.
+        El formato vive en `lib/exportadores/casablanca.ts`, deliberadamente
+        FUERA del núcleo: el día que llegue un cliente #2 con su propio
+        formato, se agrega un adaptador nuevo, éste no se toca.
+
+        No llama a ningún modelo de IA — sólo formatea datos ya calculados con
+        `exceljs`. Vive separado de `POST /api/informe` a propósito: un fallo
+        de saldo o cuota de IA no debe tumbar la descarga del Excel.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: clienteId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: desde
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: hasta
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: 'El archivo `.xlsx`, como adjunto (`Content-Disposition: attachment`).'
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        '400': { description: Parámetros inválidos. }
+        '401': { description: Sin sesión. }
+        '403': { description: 'Rol distinto de admin/coordinador.' }
+        '404': { description: No hay entregas en ese rango. }
+        '502': { description: Falló cargar las entregas. }
+
+  /api/cumplidos:
+    post:
+      tags: [Agentes IA]
+      summary: 'Agente 1 (parcial) — leer una página del lote escaneado y proponer el cierre'
+      operationId: postCumplidos
+      description: |
+        Recibe **una página** (imagen) por llamada — el PDF completo de
+        CamScanner se parte en el NAVEGADOR (`lib/cumplidos.ts`, sin librería:
+        escanea los marcadores de bytes JPEG que CamScanner incrusta), porque
+        23 páginas por una llamada al modelo cada una no cabe en el timeout de
+        una función serverless.
+
+        COPILOTO, NO AUTOPILOTO: esta ruta **propone**, nunca cierra la
+        entrega — eso lo hace el cliente llamando a
+        `PATCH /rest/v1/deliveries` con `CumplidoInput`, ya probado. La razón
+        es el documento, no la prudencia: el número de factura está IMPRESO
+        (certeza alta), pero la fecha real de entrega está MANUSCRITA en un
+        sello que cambia de posición y nitidez en cada punto.
+
+        **Medido contra el PDF real de Casablanca (2026-09-08): ~92% de
+        precisión** sobre lo verificado a mano. Hallazgo importante: la
+        confianza `"alta"` que reporta el modelo **no es una garantía
+        estable** — la misma imagen exacta, llamada dos veces, dio respuestas
+        distintas. No tratar `confianza_fecha: "alta"` como suficiente para
+        saltarse la confirmación humana.
+
+        El emparejamiento con `deliveries.numero_factura` se hace aquí mismo,
+        comparando por dígitos (`FEV76883` en el encabezado ≡ `76883` en
+        "Notas Factura" son la misma factura).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [pagina]
+              properties:
+                pagina:
+                  type: string
+                  format: binary
+                  description: 'Una página, como JPEG. Máximo 8 MB.'
+      responses:
+        '200':
+          description: Propuesta de lectura + la entrega emparejada, si se encontró.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  extraido:
+                    type: object
+                    properties:
+                      numero_factura: { type: [string, 'null'] }
+                      punto_entrega: { type: [string, 'null'] }
+                      fecha_entrega: { type: [string, 'null'], format: date }
+                      confianza_fecha: { type: string, enum: [alta, media, baja] }
+                      hora_entrega: { type: [string, 'null'] }
+                      recibido_por: { type: [string, 'null'] }
+                      novedad:
+                        type: [object, 'null']
+                        properties:
+                          tipo: { $ref: '#/components/schemas/TipoNovedad' }
+                          descripcion: { type: string }
+                  entrega:
+                    type: [object, 'null']
+                    description: 'La fila de `deliveries` con el mismo `numero_factura`, si existe. `null` = "sin emparejar" (ESPERADO si la base sólo tiene facturas sintéticas de prueba).'
+        '400': { description: 'Falta el archivo, o pesa más de 8 MB.' }
+        '401': { description: Sin sesión. }
+        '403': { description: 'Rol distinto de admin/coordinador.' }
+        '502': { description: 'El modelo falló (esquema mal formado, 404 de modelo retirado, o 429/503 agotando los 3 reintentos de `lib/ia/reintentar.ts`).' }
+        '503': { description: 'Falta configurar Supabase o ninguna llave de IA.' }
+        '500':
+          description: Faltan `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, o falló la consulta.
+
+# ══════════════════════════════════════════════════════════════════════════════
+components:
+
+  securitySchemes:
+    apikey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: '`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Pública por diseño — identifica el proyecto, no autoriza nada.'
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Access token de GoTrue. Su claim `sub` es `auth.uid()`, la base de toda la RLS.'
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+      description: |
+        Sólo para el tag "Agentes IA" (`/api/*`). El navegador manda la sesión
+        de Supabase como cookie httpOnly (`@supabase/ssr`) en vez de un header
+        `Authorization`; la ruta la lee con `createServerClient` y valida
+        sesión+rol ella misma — `middleware.ts` excluye `/api/*` de su
+        chequeo porque un 302 a `/login` no le sirve a un `fetch`.
+
+  parameters:
+    select:
+      name: select
+      in: query
+      description: 'Columnas y *embeds*. Ej.: `id,fecha,drivers(license_plate)`.'
+      schema: { type: string }
+      example: 'id,fecha,estado'
+    order:
+      name: order
+      in: query
+      description: 'Ej.: `numero_secuencia.asc`, `created_at.desc.nullslast`.'
+      schema: { type: string }
+      example: created_at.desc
+    limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1 }
+    prefer:
+      name: Prefer
+      in: header
+      description: '`return=representation` para recibir la(s) fila(s) resultante(s); `return=minimal` (default) devuelve cuerpo vacío.'
+      schema: { type: string, enum: [return=minimal, return=representation] }
+    acceptObject:
+      name: Accept
+      in: header
+      description: '`application/vnd.pgrst.object+json` devuelve un objeto en vez de un array; falla con `PGRST116` si no hay exactamente una fila.'
+      schema: { type: string }
+
+  responses:
+    Created:
+      description: 'Creado. Cuerpo vacío salvo `Prefer: return=representation`.'
+    NoContentPatch:
+      description: |
+        Aplicado. **`204` no garantiza que se haya modificado algo**: si la RLS
+        excluyó la fila, se actualizaron 0 filas y la respuesta es idéntica. Usa
+        `Prefer: return=representation` cuando necesites confirmarlo.
+    RepresentationPatch:
+      description: 'Filas actualizadas (con `Prefer: return=representation`).'
+      content:
+        application/json:
+          schema: { type: array, items: { type: object } }
+    Unauthorized:
+      description: Falta la `apikey` o el JWT es inválido/expiró.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RlsDenied:
+      description: '`42501` — violación del `WITH CHECK` de una política RLS.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AuthError:
+      description: Error de GoTrue.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AuthErrorBody' }
+
+  schemas:
+
+    # ── Enums (espejo exacto de los CHECK de scripts/schema.sql) ──────────────
+    RolUsuario:
+      type: string
+      enum: [admin, coordinador, conductor]
+    EstadoRuta:
+      type: string
+      enum: [pendiente, en_curso, completada, cancelada]
+    EstadoEntrega:
+      type: string
+      enum: [pendiente, en_punto, entregado, novedad, no_entregado]
+    EstadoPlan:
+      type: string
+      enum: [borrador, confirmado, en_ejecucion, completado]
+    TipoEvento:
+      type: string
+      enum: [inicio_ruta, fin_ruta, llegada_punto, salida_punto, cumplido, novedad]
+    TipoNovedad:
+      type: string
+      enum: [rechazo, faltante, danado, cliente_ausente, direccion_errada, otro]
+    EstadoNovedad:
+      type: string
+      enum: [reportada, pendiente, resuelta]
+    TipoServicio:
+      type: string
+      enum: [paqueteo, consolidado, exclusivo]
+      description: '`paqueteo` = parcelas por peso · `consolidado` = varios clientes en un camión · `exclusivo` = camión completo, tarifa fija.'
+    EstadoFactura:
+      type: string
+      enum: [emitida, enviada, pagada, vencida]
+    TipoAlerta:
+      type: string
+      enum: [tiempo_en_punto, ruta_no_iniciada, novedad]
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+    Session:
+      type: object
+      properties:
+        access_token: { type: string, description: 'JWT (~1 h). El SDK lo guarda en **cookie**, no en localStorage, para que el middleware lo lea server-side.' }
+        token_type: { type: string, example: bearer }
+        expires_in: { type: integer, example: 3600 }
+        refresh_token: { type: string }
+        user: { $ref: '#/components/schemas/AuthUser' }
+    AuthUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: [string, 'null'], description: '`null` en usuarios solo-teléfono.' }
+        phone: { type: [string, 'null'], description: 'E.164 **sin** `+` (p. ej. `573229596618`).' }
+        role: { type: string, example: authenticated, description: 'Rol de **base de datos**, no de negocio. El rol de negocio vive en `profiles.role`.' }
+        user_metadata: { type: object, description: '⚠️ Escribible por el cliente — nunca uses esto para autorizar.' }
+        app_metadata: { type: object, description: 'Solo escribible por `service_role`. **Aquí** debería vivir el rol.' }
+        created_at: { type: string, format: date-time }
+    AuthErrorBody:
+      type: object
+      properties:
+        code: { type: integer }
+        error_code: { type: string, example: invalid_credentials }
+        msg: { type: string }
+
+    # ── Errores PostgREST ─────────────────────────────────────────────────────
+    Error:
+      type: object
+      properties:
+        code: { type: string, example: '42501', description: '`42501` RLS · `23505` único · `23503` FK · `PGRST116` no hubo exactamente una fila.' }
+        message: { type: string }
+        details: { type: [string, 'null'] }
+        hint: { type: [string, 'null'] }
+
+    # ── Entidades ─────────────────────────────────────────────────────────────
+    Profile:
+      type: object
+      description: Extiende `auth.users`. La crea el trigger `on_auth_user_created`.
+      properties:
+        id: { type: string, format: uuid, description: 'FK a `auth.users`, `on delete cascade`.' }
+        email: { type: [string, 'null'], description: '`null` para usuarios solo-teléfono (migración 003).' }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/RolUsuario' }
+        phone: { type: [string, 'null'], description: 'Sin `+` inicial.' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Client:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, example: Makro Colombia }
+        email: { type: string, format: email, description: Único. }
+        phone: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        city: { type: string, example: Montería }
+        department: { type: string, example: Córdoba }
+        contact_person: { type: [string, 'null'] }
+        tipo_servicio: { $ref: '#/components/schemas/TipoServicio' }
+        tarifa_flete: { type: [number, 'null'], description: 'Tarifa base cobrada al cliente. **Motivo por el que el conductor no lee esta tabla.**' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ClientInput:
+      type: object
+      required: [name, email, city, department]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        address: { type: string }
+        city: { type: string }
+        department: { type: string }
+        contact_person: { type: string }
+        tipo_servicio: { $ref: '#/components/schemas/TipoServicio' }
+        tarifa_flete: { type: number }
+
+    DriverRow:
+      type: object
+      description: Conductor tercero. `id` es a la vez PK y FK a `profiles`.
+      properties:
+        id: { type: string, format: uuid }
+        vehicle_id: { type: [string, 'null'], example: Nissan Frontier 2022 }
+        license_plate: { type: string, example: AZW-123, description: Única. }
+        document_number: { type: string, description: Único. }
+        phone_number: { type: [string, 'null'] }
+        is_active: { type: boolean, default: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DriverInput:
+      type: object
+      required: [id, license_plate, document_number]
+      properties:
+        id: { type: string, format: uuid }
+        vehicle_id: { type: string }
+        license_plate: { type: string }
+        document_number: { type: string }
+        phone_number: { type: string }
+        is_active: { type: boolean }
+
+    WeeklyPlan:
+      type: object
+      description: 'La **malla**: plan semanal consolidado multi-cliente.'
+      properties:
+        id: { type: string, format: uuid }
+        week_start_date: { type: string, format: date, description: Lunes. }
+        week_end_date: { type: string, format: date }
+        estado: { $ref: '#/components/schemas/EstadoPlan' }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    WeeklyPlanInput:
+      type: object
+      required: [week_start_date, week_end_date, created_by]
+      properties:
+        week_start_date: { type: string, format: date }
+        week_end_date: { type: string, format: date }
+        estado: { $ref: '#/components/schemas/EstadoPlan' }
+        created_by: { type: string, format: uuid }
+
+    Route:
+      type: object
+      description: Un día de trabajo de un conductor. Modelo operativo, una ruta por conductor por día.
+      properties:
+        id: { type: string, format: uuid }
+        weekly_plan_id: { type: string, format: uuid }
+        driver_id: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        estado: { $ref: '#/components/schemas/EstadoRuta' }
+        hora_inicio: { type: [string, 'null'], format: date-time }
+        hora_fin: { type: [string, 'null'], format: date-time, description: 'La pone el trigger `check_route_completion` al cerrarse el último punto.' }
+        distancia_km: { type: [number, 'null'] }
+        flete_pactado: { type: [number, 'null'], description: '⚠️ Hoy editable por el propio conductor — hallazgo H1.' }
+        notas: { type: [string, 'null'] }
+        drivers:
+          description: '*Embed* opcional con `select=...,drivers(license_plate)`. PostgREST puede tiparlo como objeto o array; `getRutaDelDia` normaliza ambos.'
+          oneOf:
+            - { $ref: '#/components/schemas/DriverRow' }
+            - { type: array, items: { $ref: '#/components/schemas/DriverRow' } }
+            - { type: 'null' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RouteInput:
+      type: object
+      required: [weekly_plan_id, driver_id, fecha]
+      properties:
+        weekly_plan_id: { type: string, format: uuid }
+        driver_id: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        estado: { $ref: '#/components/schemas/EstadoRuta' }
+        flete_pactado: { type: number }
+        notas: { type: string }
+
+    Delivery:
+      type: object
+      description: Un **punto** de la ruta.
+      properties:
+        id: { type: string, format: uuid }
+        route_id: { type: string, format: uuid }
+        client_id: { type: string, format: uuid }
+        address: { type: string }
+        city: { type: string }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        numero_secuencia: { type: integer, description: Orden del punto en la ruta. }
+        valor_flete: { type: [number, 'null'], description: 'Cobrado al cliente. Visible al coordinador; **excluido** de `entregas_de_ruta`.' }
+        estado: { $ref: '#/components/schemas/EstadoEntrega' }
+        hora_llegada_punto: { type: [string, 'null'], format: date-time, description: 'Derivada por trigger desde el evento `llegada_punto`. Siembra el timer del conductor, así un refresh no lo reinicia.' }
+        hora_salida_punto: { type: [string, 'null'], format: date-time, description: Derivada por trigger desde `salida_punto`. }
+        tiempo_en_punto_minutos: { type: [integer, 'null'], description: 'Calculada por trigger. Es lo que vigila el cron de alertas (umbral 60 min).' }
+        foto_cumplido_url: { type: [string, 'null'], description: '**Path** en el bucket `cumplidos`, no una URL — hay que firmarla para leerla.' }
+        firma_url: { type: [string, 'null'], description: 'Path de la firma PNG (migración 006). Opcional: la evidencia legal real es la foto de la factura sellada.' }
+        recibido_por: { type: [string, 'null'], description: 'Nombre de quien recibe. No se precarga: recibe quien esté en la bodega ese día.' }
+        telefono_receptor: { type: [string, 'null'], description: 'Migración 004. Alimenta el botón "Llamar" (`tel:`). Texto libre — viene del Excel del cliente y no siempre está normalizado.' }
+        observaciones: { type: [string, 'null'] }
+        fecha_programada: { type: [string, 'null'], format: date, description: 'Migración 008. La fecha COMPROMETIDA con el cliente (viene en su Excel semanal, por factura) — es contra lo que se mide "a tiempo" en `lib/cumplimiento.ts`. `null` en entregas viejas: no se inventa un compromiso retroactivo, se excluyen del % en vez de ensuciarlo.' }
+        numero_factura: { type: [string, 'null'], description: 'Migración 009. Número IMPRESO de la factura del cliente (ej. "FEV76883") — la llave de emparejamiento entre el Excel del cliente, la foto de la factura firmada y esta fila. Único por `client_id`, no global: dos clientes pueden compartir numeración.' }
+        fecha_reprogramada: { type: [string, 'null'], format: date, description: 'Migración 010 ("2DA FECHA" en el Excel del cliente). Cuando una novedad obliga a reprogramar, la fecha nueva se guarda AQUÍ — `fecha_programada` nunca se sobreescribe, por indicación explícita de la dueña: el % de cumplimiento se mide siempre contra el compromiso original. Sólo sirve para analizar causas de reprogramación. Hoy no hay UI/API que la escriba — se puebla a mano o, cuando exista, por el importador del Excel del cliente.' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DeliveryInput:
+      type: object
+      required: [route_id, client_id, address, city, numero_secuencia]
+      properties:
+        route_id: { type: string, format: uuid }
+        client_id: { type: string, format: uuid }
+        address: { type: string }
+        city: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        numero_secuencia: { type: integer }
+        valor_flete: { type: number }
+        telefono_receptor: { type: string }
+        fecha_programada: { type: string, format: date, description: 'Migración 008. La fecha comprometida del Excel del cliente; se pone al armar la malla.' }
+        numero_factura: { type: string, description: 'Migración 009. Del Excel/factura del cliente. Único por `client_id`.' }
+    CumplidoInput:
+      type: object
+      description: Cuerpo de `marcarEntregada()`. Los `*_url` son **paths** del bucket, ya subidos.
+      properties:
+        estado: { $ref: '#/components/schemas/EstadoEntrega' }
+        foto_cumplido_url: { type: [string, 'null'], example: '9a2b.../3c4d.../cumplido.jpg' }
+        firma_url: { type: [string, 'null'], example: '9a2b.../3c4d.../firma.png' }
+        recibido_por: { type: [string, 'null'] }
+        observaciones: { type: [string, 'null'] }
+
+    EntregaDeRuta:
+      type: object
+      description: |
+        Fila que devuelve `rpc/entregas_de_ruta`. **Lista blanca de 12 columnas** —
+        `valor_flete` y todo `clients` salvo `name` quedan fuera a propósito.
+      properties:
+        id: { type: string, format: uuid }
+        route_id: { type: string, format: uuid }
+        numero_secuencia: { type: integer }
+        address: { type: string }
+        city: { type: string }
+        telefono_receptor: { type: [string, 'null'] }
+        estado: { $ref: '#/components/schemas/EstadoEntrega' }
+        hora_llegada_punto: { type: [string, 'null'], format: date-time }
+        cliente_nombre: { type: [string, 'null'], description: '`null` si `client_id` está huérfano — la UI muestra "—" pero la entrega **no** desaparece.' }
+        foto_cumplido_url: { type: [string, 'null'] }
+        firma_url: { type: [string, 'null'] }
+        recibido_por: { type: [string, 'null'] }
+
+    DeliveryEvent:
+      type: object
+      description: Bitácora **append-only**. Sin políticas de UPDATE ni DELETE.
+      properties:
+        id: { type: string, format: uuid }
+        delivery_id: { type: string, format: uuid }
+        route_id: { type: string, format: uuid }
+        driver_id: { type: string, format: uuid }
+        tipo_evento: { $ref: '#/components/schemas/TipoEvento' }
+        timestamp: { type: string, format: date-time }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        metadata: { type: [object, 'null'] }
+        created_at: { type: string, format: date-time }
+    DeliveryEventInput:
+      type: object
+      required: [delivery_id, route_id, driver_id, tipo_evento]
+      properties:
+        delivery_id: { type: string, format: uuid }
+        route_id: { type: string, format: uuid }
+        driver_id: { type: string, format: uuid, description: 'Debe ser `auth.uid()`; la RLS lo exige.' }
+        tipo_evento: { $ref: '#/components/schemas/TipoEvento' }
+        latitude: { type: [number, 'null'], description: '`null` si el GPS no estuvo disponible — nunca bloquea el evento.' }
+        longitude: { type: [number, 'null'] }
+        metadata: { type: object }
+
+    Issue:
+      type: object
+      description: Una **novedad**.
+      properties:
+        id: { type: string, format: uuid }
+        delivery_id: { type: string, format: uuid }
+        tipo_novedad: { $ref: '#/components/schemas/TipoNovedad' }
+        descripcion: { type: string }
+        foto_novedad_url: { type: [string, 'null'] }
+        estado: { $ref: '#/components/schemas/EstadoNovedad' }
+        resuelto_por: { type: [string, 'null'], format: uuid }
+        fecha_resolucion: { type: [string, 'null'], format: date-time }
+        notas_resolucion: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    IssueInput:
+      type: object
+      required: [delivery_id, tipo_novedad, descripcion]
+      properties:
+        delivery_id: { type: string, format: uuid }
+        tipo_novedad: { $ref: '#/components/schemas/TipoNovedad' }
+        descripcion: { type: string }
+        foto_novedad_url: { type: string }
+
+    Alert:
+      type: object
+      description: Solo la escribe la edge function con el `service_role`.
+      properties:
+        id: { type: string, format: uuid }
+        delivery_id: { type: string, format: uuid }
+        route_id: { type: string, format: uuid }
+        tipo: { $ref: '#/components/schemas/TipoAlerta' }
+        mensaje: { type: string, example: '⏱️ El conductor Juan lleva 72 min en el punto de Makro (Cra 50 # 80-10).' }
+        resuelta: { type: boolean, default: false }
+        resuelta_por: { type: [string, 'null'], format: uuid }
+        resuelta_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ClientInvoice:
+      type: object
+      description: Solo admin. Integración Sistran/Cigo → DIAN.
+      properties:
+        id: { type: string, format: uuid }
+        client_id: { type: string, format: uuid }
+        weekly_plan_id: { type: string, format: uuid }
+        numero_factura: { type: [string, 'null'], description: Único. }
+        total_entregas: { type: [integer, 'null'] }
+        entregas_completadas: { type: [integer, 'null'] }
+        entregas_fallidas: { type: [integer, 'null'] }
+        valor_total: { type: [number, 'null'] }
+        valor_flete_cobrado: { type: [number, 'null'] }
+        margen_operativo: { type: [number, 'null'] }
+        estado: { $ref: '#/components/schemas/EstadoFactura' }
+        fecha_emision: { type: [string, 'null'], format: date }
+        fecha_vencimiento: { type: [string, 'null'], format: date, description: 'Plazo de 30 días — alimenta el DSO.' }
+        sistran_sync_id: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DeliveryFinancial:
+      type: object
+      description: Solo admin. Tabla aparte de `deliveries` porque RLS no oculta columnas.
+      properties:
+        id: { type: string, format: uuid }
+        delivery_id: { type: string, format: uuid }
+        valor_flete_cliente: { type: [number, 'null'] }
+        valor_pago_transportista: { type: [number, 'null'] }
+        margen: { type: [number, 'null'], readOnly: true, description: 'Columna **generada**: `valor_flete_cliente - valor_pago_transportista`.' }
+        created_at: { type: string, format: date-time }

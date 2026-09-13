@@ -5,5 +5,5 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <DashboardShell variant="coordinator">{children}</DashboardShell>
+  return <DashboardShell>{children}</DashboardShell>
 }

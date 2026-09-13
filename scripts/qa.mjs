@@ -50,16 +50,17 @@ const SEGMENTS = {
       { path: '/dashboard/rutas', label: 'rutas' },
       { path: '/dashboard/conductores', label: 'conductores' },
       { path: '/dashboard/clientes', label: 'clientes' },
+      { path: '/dashboard/cumplidos', label: 'cumplidos' },
+      { path: '/dashboard/informe', label: 'informe-de-cumplimiento' },
     ],
   },
+  // `/admin` como panel aparte se retiró el 2026-09-08: el informe se movió a
+  // /dashboard/informe (coordinador y admin comparten un solo panel, ver
+  // lib/roles.ts). Este segmento se queda sólo para confirmar que una cuenta
+  // admin sigue entrando sin quedar huérfana — no es una pantalla distinta.
   admin: {
     role: 'admin',
-    routes: [
-      { path: '/admin', label: 'metricas' },
-      { path: '/admin/clientes', label: 'clientes' },
-      { path: '/admin/facturacion', label: 'facturacion' },
-      { path: '/admin/reportes', label: 'reportes' },
-    ],
+    routes: [{ path: '/dashboard', label: 'panel-como-admin' }],
   },
   driver: {
     role: 'conductor',

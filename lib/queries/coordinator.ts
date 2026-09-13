@@ -17,7 +17,11 @@
 //     de verdad (tiempo promedio en punto, novedades).
 import { supabase } from '@/lib/supabase'
 import { hoyOperacion, minutosDesde, MINUTOS_EN_PUNTO_ALERTA } from '@/lib/fecha'
-import type { EstadoEntrega, EstadoRuta } from '@/types'
+import { uploadCumplido } from '@/lib/storage'
+import { crearNovedad, marcarConNovedad } from '@/lib/queries/issues'
+import { horaSalidaDesdeExtraccion } from '@/lib/cumplidos'
+import type { EstadoEntrega, EstadoRuta, TipoNovedad } from '@/types'
+import type { ExtraidoCumplido } from '@/lib/ia/cumplido'
 
 // PostgREST tipa una relación a-uno como objeto o arreglo según el caso.
 function unir<T>(rel: T | T[] | null): T | null {
@@ -339,4 +343,57 @@ export async function getOperacionEnVivo(): Promise<OperacionEnVivo> {
   const rutas = await getRutasDelDia()
   const posiciones = await getUltimasPosiciones(rutas.map((r) => r.id))
   return { rutas, posiciones }
+}
+
+// --- Cierre de cumplido desde el lote escaneado (Fase 3.2) ------------------
+//
+// DISTINTO del cierre del conductor (`lib/cumplido.ts`/`lib/novedad.ts`): esos
+// registran un delivery_event con GPS y hora REALES del momento en que el
+// conductor actúa. Aquí no hay eso — el punto se visitó hace días y quien
+// confirma (Girle) no es conductora, así que ese evento (a) fallaría por FK
+// (`delivery_events.driver_id` exige una fila en `drivers`) y (b) si no
+// fallara, grabaría la hora/GPS de HOY en la oficina como si fuera la entrega.
+//
+// Por eso `hora_salida_punto` se escribe DIRECTO desde la fecha manuscrita que
+// leyó el modelo — es de ahí de donde `lib/cumplimiento.ts` deriva "a tiempo".
+// Sin esto, la entrega quedaría 'entregado' pero con `hora_salida_punto` nulo
+// para siempre, y el informe la excluiría en silencio. La conversión en sí
+// vive en `lib/cumplidos.ts` (sin dependencias de Supabase, así se prueba sola).
+
+/** Cierra la entrega como 'entregado' con lo que propuso el agente de cumplido. */
+export async function cerrarCumplidoDesdeExtraccion(
+  routeId: string,
+  deliveryId: string,
+  extraido: ExtraidoCumplido,
+  pagina: File
+): Promise<void> {
+  const fotoPath = await uploadCumplido(routeId, deliveryId, pagina)
+  const { error } = await supabase
+    .from('deliveries')
+    .update({
+      estado: 'entregado',
+      foto_cumplido_url: fotoPath,
+      recibido_por: extraido.recibido_por?.trim() || null,
+      hora_salida_punto: horaSalidaDesdeExtraccion(extraido),
+    })
+    .eq('id', deliveryId)
+  if (error) throw error
+}
+
+/** Cierra la entrega como 'novedad' con lo que anotó el sello. */
+export async function cerrarNovedadDesdeExtraccion(
+  routeId: string,
+  deliveryId: string,
+  novedad: NonNullable<ExtraidoCumplido['novedad']>,
+  pagina: File
+): Promise<void> {
+  const fotoPath = await uploadCumplido(routeId, deliveryId, pagina)
+  await crearNovedad({
+    id: crypto.randomUUID(),
+    deliveryId,
+    tipo: novedad.tipo as TipoNovedad,
+    descripcion: novedad.descripcion,
+    fotoUrl: fotoPath,
+  })
+  await marcarConNovedad(deliveryId)
 }

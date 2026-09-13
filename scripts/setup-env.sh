@@ -33,6 +33,11 @@ else
 NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 
+# IA (opcional) — agentes de /admin y /dashboard/cumplidos. Sin ninguna de las
+# dos, esas pantallas funcionan igual, sólo sin la parte de IA. Ver lib/ia/.
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+
 # Environment
 NODE_ENV=development
 NEXT_PUBLIC_API_URL=http://localhost:3000
