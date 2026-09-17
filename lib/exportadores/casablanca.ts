@@ -7,10 +7,10 @@
 // <día> <fecha> CASABLANCA"), para que se pueda subir tal cual en vez de
 // servir sólo de referencia.
 //
-// EL FORMATO CAMBIÓ CON EL TIEMPO (Girle, 2026-09-08, tres archivos reales
+// EL FORMATO CAMBIÓ CON EL TIEMPO (Yirle, 2026-09-08, tres archivos reales
 // comparados: junio, agosto, septiembre). Junio traía "Orden de compra" +
 // peso/cajas; agosto se quedó con "Orden de compra" pero soltó peso/cajas;
-// septiembre (el más reciente) soltó también "Orden de compra". Girle pidió
+// septiembre (el más reciente) soltó también "Orden de compra". Yirle pidió
 // traerla de vuelta — justo después de "Nro documento" — sin el resto de lo
 // viejo (peso/cajas NO vuelven). El formato objetivo queda: columnas de
 // septiembre + "Orden de compra" reinsertada en su lugar de agosto/junio.

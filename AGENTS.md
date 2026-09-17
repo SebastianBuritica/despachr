@@ -37,7 +37,7 @@ informal, un humano le extrae los datos, y los teclea en un sistema formal.*
 | Persona | Documento que llega | Sistema donde lo mete |
 |---|---|---|
 | Isaac (coordinador) | WhatsApp + facturas físicas | SISTRAN |
-| Girle (asistente) | fotos de cumplidos | el Excel del cliente |
+| Yirle (asistente) | fotos de cumplidos | el Excel del cliente |
 | Yuli (contadora) | cumplidos cerrados | SISTRAN + SIGO |
 | La gerente | datos operativos sueltos | propuestas e informes |
 
@@ -53,8 +53,8 @@ a mano; cada agente automatiza **un salto**. No son cuatro módulos — es un ob
 
 | # | Agente | Le quita trabajo a | Estado |
 |---|---|---|---|
-| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Girle | lectura **medida (~92%)**, falta cablear el cierre ← **el siguiente** |
-| 2 | **Informe** — cumplimiento semanal por cliente, redactado | Girle + gerencia | **hecho** |
+| 1 | **Cumplido** — lee la foto de la factura firmada y cierra la entrega | Yirle | lectura **medida (~92%)**, falta cablear el cierre ← **el siguiente** |
+| 2 | **Informe** — cumplimiento semanal por cliente, redactado | Yirle + gerencia | **hecho** |
 | 3 | **Despacho** — del requerimiento arma la malla y notifica | Isaac | después |
 | 4 | **Facturación** — el cumplido cerrado dispara la factura | Yuli | al final |
 
@@ -152,7 +152,7 @@ fotografía las facturas firmadas, sólo que las manda por WhatsApp por la tarde
 
 ## 👥 User Roles & Workflows
 
-**Two tiers in practice, not three** (decisión 2026-09-08): back-office staff — Isaac, Girle, Yuli,
+**Two tiers in practice, not three** (decisión 2026-09-08): back-office staff — Isaac, Yirle, Yuli,
 la dueña — all share the same `/dashboard` panel, regardless of whether their DB role is `coordinador`
 or `admin`. `admin` doesn't unlock its own screens; it's reserved for two things that only happen by
 SQL (`supabase db query --linked`), never through the app UI: promoting another profile's `role`
@@ -161,7 +161,7 @@ provisioning — "give Isaac an account" — is `coordinador`; `admin` is for th
 those two specific SQL-only powers, not a routine login tier. The **driver** stays genuinely separate
 — a different mobile-only interface for someone in the field, not a privilege distinction.
 
-### **Back-office staff** (`coordinador` role — Isaac, Girle, Yuli, and the owner day-to-day)
+### **Back-office staff** (`coordinador` role — Isaac, Yirle, Yuli, and the owner day-to-day)
 - Builds **malla** (weekly route plan), assigns drivers/vehicles, despacha
 - Real-time monitoring: sees truck positions on map, live delivery state
 - Receives alerts: "Truck at point 3 for 65 minutes" → escalate to driver
@@ -219,14 +219,14 @@ those two specific SQL-only powers, not a routine login tier. The **driver** sta
 | **Maps** | **MapLibre GL + tiles CARTO** (`dark_all`/`light_all` según el tema). Sin token ni cuenta de facturación — misma razón por la que la landing ya usaba CARTO. El mapa dibuja las entregas por `deliveries.latitude/longitude` y la **última posición conocida** de cada ruta desde `delivery_events` (no hay tracking continuo en el schema: el último evento con coords es el mejor dato real, y por eso la UI muestra su hora). |
 | **Alerts** | Tabla `alerts` **conectada** en el panel del coordinador (ver + resolver, con constancia de quién y cuándo). La **llena** la edge function `check-tiempo-en-punto` con service role — el coordinador no tiene policy de INSERT a propósito. Telegram sigue pendiente de desplegar. |
 
-> **Hallazgo de deliverability (2026-09-09, provisionando a Girle) — bloquea escalar a otros clientes,
+> **Hallazgo de deliverability (2026-09-09, provisionando a Yirle) — bloquea escalar a otros clientes,
 > no bloquea el piloto:** el correo de recuperación de contraseña (SMTP genérico que trae Supabase por
 > defecto, remitente `mail.app.supabase.io`) se probó extremo a extremo — llegó en segundos al Gmail
 > personal de Sebastian, directo a la bandeja principal — pero **nunca le llegó a
 > `administrativa@vaniagloballogistics.com`** (dominio corporativo, probablemente Google Workspace o
 > M365), ni siquiera a spam. Causa más probable: filtrado de entrada del dominio corporativo contra un
 > remitente compartido sin reputación propia — **no es un bug de la app**, y por eso el piloto se
-> resolvió con una contraseña puesta directo por SQL (relevada por Sebastian a Girle fuera del chat),
+> resolvió con una contraseña puesta directo por SQL (relevada por Sebastian a Yirle fuera del chat),
 > sin esperar al correo.
 >
 > **Por qué esto SÍ es un problema para vender a otras empresas:** toda empresa objetivo de Despachr
@@ -236,7 +236,7 @@ those two specific SQL-only powers, not a routine login tier. The **driver** sta
 > construida todavía:** configurar SMTP propio en Supabase Auth (Resend/Postmark/SES) con un dominio de
 > envío verificado (SPF/DKIM/DMARC alineados) — un remitente con reputación propia se filtra mucho
 > menos que uno compartido multi-tenant. Post-v1, pero **antes de onboardear cliente #2** (ver
-> STATUS.md), porque si a Girle le pasó, le va a pasar a cualquiera con IT corporativo serio.
+> STATUS.md), porque si a Yirle le pasó, le va a pasar a cualquiera con IT corporativo serio.
 
 ---
 
@@ -308,7 +308,7 @@ app/
 > conductor → `/driver`. **`admin` no desbloquea ninguna pantalla propia** (decisión 2026-09-08): sólo
 > puede cambiar el `role` de otro perfil (`protect_profile_columns`, migración 007) y borrar del
 > bucket `cumplidos` — ninguna de las dos cosas tiene UI, se hacen por SQL directo (`supabase db
-> query --linked`), así que no justifican un panel aparte. Isaac, Girle y quien vea el informe
+> query --linked`), así que no justifican un panel aparte. Isaac, Yirle y quien vea el informe
 > navegan el mismo `/dashboard`; sólo el conductor tiene una app distinta, porque su interfaz es
 > genuinamente otra (móvil, en campo), no una cuestión de privilegio.
 

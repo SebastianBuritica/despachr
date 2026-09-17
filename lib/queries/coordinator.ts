@@ -350,7 +350,7 @@ export async function getOperacionEnVivo(): Promise<OperacionEnVivo> {
 // DISTINTO del cierre del conductor (`lib/cumplido.ts`/`lib/novedad.ts`): esos
 // registran un delivery_event con GPS y hora REALES del momento en que el
 // conductor actúa. Aquí no hay eso — el punto se visitó hace días y quien
-// confirma (Girle) no es conductora, así que ese evento (a) fallaría por FK
+// confirma (Yirle) no es conductora, así que ese evento (a) fallaría por FK
 // (`delivery_events.driver_id` exige una fila en `drivers`) y (b) si no
 // fallara, grabaría la hora/GPS de HOY en la oficina como si fuera la entrega.
 //

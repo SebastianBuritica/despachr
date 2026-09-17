@@ -1,9 +1,9 @@
 -- 012 — orden de compra
 --
--- POR QUÉ: el formato de Casablanca cambió con el tiempo (Girle, 2026-09-08) —
+-- POR QUÉ: el formato de Casablanca cambió con el tiempo (Yirle, 2026-09-08) —
 -- las versiones de junio y agosto traían "Orden de compra" junto al número de
 -- documento; la de septiembre (la más reciente) la quitó junto con peso/cajas.
--- Girle pidió específicamente traerla de vuelta, sin el resto de lo viejo
+-- Yirle pidió específicamente traerla de vuelta, sin el resto de lo viejo
 -- (peso/cajas no vuelven). Es un dato del cliente, no algo que el sistema
 -- calcule — mismo patrón que `numero_factura` (migración 009).
 

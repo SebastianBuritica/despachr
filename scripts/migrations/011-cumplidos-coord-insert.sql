@@ -1,7 +1,7 @@
 -- 011 — coordinador/admin pueden subir evidencia al bucket `cumplidos`
 --
 -- POR QUÉ: Fase 3.2 cierra el cumplido desde el LOTE ESCANEADO que sube el
--- coordinador (Girle), no desde el conductor en el punto. La política
+-- coordinador (Yirle), no desde el conductor en el punto. La política
 -- `cumplidos_driver_insert` (migración 001) sólo deja subir a quien es
 -- driver_id de la ruta — coordinador/admin sólo tenían `cumplidos_read`
 -- (SELECT). Sin esta política, `uploadCumplido` desde `/dashboard/cumplidos`

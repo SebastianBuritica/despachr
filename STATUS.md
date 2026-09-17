@@ -31,7 +31,7 @@ Lectura real confirmada funcionando en `/dashboard/cumplidos` (ver hallazgo del 
 **Cierre (2026-09-08, mismo día):** botón "Confirmar" por fila llama a
 `cerrarCumplidoDesdeExtraccion`/`cerrarNovedadDesdeExtraccion` (`lib/queries/coordinator.ts`) — NO
 las funciones del conductor (`confirmarCumplido`/`reportarNovedad`): esas habrían fallado por FK
-(`delivery_events.driver_id` exige que quien confirma sea conductor, y Girle no lo es) y habrían
+(`delivery_events.driver_id` exige que quien confirma sea conductor, y Yirle no lo es) y habrían
 grabado GPS/hora de la oficina como si fueran los de la entrega real. Escribe `hora_salida_punto`
 directo desde la fecha manuscrita — sin esto el informe habría excluido estas entregas en silencio
 (deriva "a tiempo" de esa columna). Migración `011` (ya en prod) le da a coordinador/admin INSERT en
@@ -138,7 +138,7 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
    una nota de reunión de Notion que ya vive completa ahí, en privado — se borró del working tree
    (nunca se commiteó). Notion queda como única fuente; el agente tiene acceso de lectura directo si
    hace falta ese contexto de nuevo.
-3. ~~Crear el usuario de Girle.~~ **Hecho (2026-09-09).** `coordinador`, creada por SQL directo (sin
+3. ~~Crear el usuario de Yirle.~~ **Hecho (2026-09-09).** `coordinador`, creada por SQL directo (sin
    dashboard, sin Chrome) — email `administrativa@vaniagloballogistics.com`. El correo de recuperación
    de contraseña de Supabase **no le llegó** (probado extremo a extremo: sí llegó a un Gmail personal
    en segundos, nunca llegó a su dominio corporativo, ni a spam) — se le puso contraseña directo por
@@ -153,7 +153,7 @@ las arregló bien igual, pero el prompt podría ampliarse para nombrar esos form
    en verde pero nadie ha hecho clic en "Confirmar" contra datos reales todavía (bloqueado por el
    punto 5: no hay facturas reales cargadas en `deliveries.numero_factura`).
 7. **SMTP propio para Auth** (Resend/Postmark/SES + dominio verificado SPF/DKIM/DMARC) — no bloquea el
-   piloto (Girle ya tiene contraseña puesta por SQL), pero **sí bloquea onboardear cliente #2**: el
+   piloto (Yirle ya tiene contraseña puesta por SQL), pero **sí bloquea onboardear cliente #2**: el
    correo de recuperación/invitación de Supabase por defecto no le llega a dominios corporativos con
    filtrado serio (ver hallazgo 2026-09-09 en AGENTS.md). Hacerlo antes de Fase 6 (multi-tenant), no
    después.

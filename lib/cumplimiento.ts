@@ -37,7 +37,7 @@ export interface EntregaInforme {
   novedad: TipoNovedad | null
   observaciones: string | null
   /** La foto de la factura firmada, si ya volvió. Null = todavía no llega —
-   *  esto es LITERALMENTE lo que Girle persigue con el cuaderno físico. */
+   *  esto es LITERALMENTE lo que Yirle persigue con el cuaderno físico. */
   fotoCumplidoUrl: string | null
 }
 

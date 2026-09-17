@@ -25,7 +25,7 @@ import type { Cumplimiento, EntregaInforme } from '@/lib/cumplimiento'
 
 // El SDK de Gemini stringifica sus errores como `ApiError: {json crudo}` — sin
 // esto ese JSON completo se ve tal cual en la tabla de /dashboard/cumplidos,
-// donde lo lee Girle. Se extrae sólo `.error.message` cuando se puede.
+// donde lo lee Yirle. Se extrae sólo `.error.message` cuando se puede.
 function mensajeGemini(e: unknown): string {
   const bruto = e instanceof Error ? e.message : String(e)
   try {

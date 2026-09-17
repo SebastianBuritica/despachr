@@ -43,7 +43,7 @@ interface NavItem {
 // lib/roles.ts: admin no desbloquea una pantalla propia, sólo permisos por
 // SQL que la app no expone). Antes había un `variant="admin"` con una sola
 // pantalla (el informe); vivía aparte porque el rol lo exigía, no porque el
-// contenido fuera distinto — Isaac, Girle y quien vea el informe navegan el
+// contenido fuera distinto — Isaac, Yirle y quien vea el informe navegan el
 // mismo menú.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Operación en vivo', href: '/dashboard', icon: LayoutGrid, exact: true },

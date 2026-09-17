@@ -9,17 +9,17 @@ what to do next, read [STATUS.md](STATUS.md); for durable product/stack/conventi
 
 ---
 
-## 2026-09-09 — formato real de Casablanca + Girle provisionada + hallazgo de deliverability
+## 2026-09-09 — formato real de Casablanca + Yirle provisionada + hallazgo de deliverability
 
-**Exportador de Casablanca actualizado contra 3 archivos reales** (junio, agosto, septiembre — Girle).
+**Exportador de Casablanca actualizado contra 3 archivos reales** (junio, agosto, septiembre — Yirle).
 El formato cambió con el tiempo: junio traía "Orden de compra" + peso/cajas, agosto se quedó sólo con
-"Orden de compra", septiembre (el más reciente) la soltó también. Girle pidió traerla de vuelta justo
+"Orden de compra", septiembre (el más reciente) la soltó también. Yirle pidió traerla de vuelta justo
 después de "Nro documento", sin el resto de lo viejo. De paso apareció un bug real independiente de
 eso: el exportador **nunca escribía "Desc. punto de envio"** (la primera columna del archivo real —
 qué punto es cada fila), aunque el dato ya existía en la app. Migración `012` agrega
 `deliveries.orden_compra`; el exportador ahora reproduce las 11 columnas exactas del archivo real.
 
-**Usuario de Girle creado por SQL directo**, sin dashboard de Supabase ni navegador — `coordinador`,
+**Usuario de Yirle creado por SQL directo**, sin dashboard de Supabase ni navegador — `coordinador`,
 schema verificado columna por columna contra una fila real antes de insertar (`auth.users` +
 `auth.identities`, el trigger `handle_new_user` ya existente le puso el rol bien desde el insert).
 El correo de recuperación de contraseña **nunca le llegó** — se probó extremo a extremo mandándolo a
@@ -27,7 +27,7 @@ un Gmail personal (llegó en segundos, a la bandeja principal) contra su direcci
 (`administrativa@vaniagloballogistics.com`, dominio corporativo) — ni siquiera llegó a spam. Se le puso
 contraseña directo por SQL como salida práctica para el piloto.
 
-**Hallazgo que importa más allá de Girle:** el SMTP compartido por defecto de Supabase
+**Hallazgo que importa más allá de Yirle:** el SMTP compartido por defecto de Supabase
 (`mail.app.supabase.io`) parece filtrarse en dominios corporativos con IT serio — que es el perfil
 típico de cualquier empresa a la que se le venda Despachr, no un caso raro. Documentado en AGENTS.md
 como bloqueante para onboardear cliente #2 (necesita SMTP propio con dominio verificado), aunque no
@@ -57,7 +57,7 @@ bloquea el piloto actual.
   humana efectivamente cierra la entrega. El plan original en el código decía "cablear a
   `confirmarCumplido`/`reportarNovedad`" (las funciones del conductor) — trazar el camino completo
   mostró que eso habría fallado, no sólo estado mal diseñado: esas funciones insertan un
-  `delivery_event` con `driver_id = auth.uid()`, y quien confirma el lote (Girle) no tiene fila en
+  `delivery_event` con `driver_id = auth.uid()`, y quien confirma el lote (Yirle) no tiene fila en
   `drivers`, así que el insert habría violado la FK. Y aunque no la violara, habría grabado el GPS y
   la hora de HOY en la oficina como si fuera la entrega real, de hace días. Se escribieron dos
   funciones nuevas en `lib/queries/coordinator.ts` (`cerrarCumplidoDesdeExtraccion`,
@@ -181,7 +181,7 @@ bloquea el piloto actual.
 La reunión con la dueña (2026-08-24, transcrita en Notion) reordenó el producto. Hasta aquí Despachr
 era una **herramienta que la gente opera**: paneles, mapas, tableros. Ese es el molde en el que Drivin
 y SimpliRoute llevan diez años ganando. Lo que la operación real pide es otra cosa: **software que
-hace el trabajo**. Concretamente, el trabajo de Girle — llenar a mano el Excel que manda el cliente,
+hace el trabajo**. Concretamente, el trabajo de Yirle — llenar a mano el Excel que manda el cliente,
 persiguiendo cumplidos que llegan 15–20 días tarde, y filtrarlo para sacar el porcentaje de la
 reunión de los viernes.
 
@@ -257,7 +257,7 @@ midiendo, y esa medición sólo cuenta hecha con Opus 5.
 
 **Sin cerrar al terminar esta sesión:** los 5 commits de este tramo (`9329395`…`54ea8b1`) siguen sin
 subir ni mergear a `main`; `docs/reunion-2026-08-24.md` sigue sin decisión (commit vs. fuera del repo
-— trae márgenes y nombres del equipo); el usuario de Girle (rol `coordinador`) no se ha creado; y el
+— trae márgenes y nombres del equipo); el usuario de Yirle (rol `coordinador`) no se ha creado; y el
 emparejamiento por factura sigue sin una sola factura real cargada (`FEV...`) — sólo las sintéticas
 de la semilla.
 
